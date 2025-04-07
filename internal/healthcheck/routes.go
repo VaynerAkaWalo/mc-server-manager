@@ -1,7 +1,7 @@
 package healthcheck
 
 import (
-	"encoding/json"
+	"github.com/VaynerAkaWalo/mc-server-manager/internal/web"
 	"net/http"
 )
 
@@ -17,7 +17,5 @@ func (h *Handlers) RegisterHealthcheckRoutes(router *http.ServeMux) {
 }
 
 func (h *Handlers) healthcheckHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	json.NewEncoder(w).Encode(Response{Status: "OK"})
+	web.SendJsonResponse(w, http.StatusOK, Response{Status: "OK"})
 }
