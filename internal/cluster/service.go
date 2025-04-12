@@ -60,6 +60,10 @@ func (s *Service) CreateServerInCluster(serverRequest ServerRequest) error {
 				"env":         serverRequest.Env,
 				"expireAfter": serverRequest.ExpireAfter,
 			},
+			"status": map[string]interface{}{
+				"status":      "new",
+				"startedTime": "",
+			},
 		},
 	}
 
