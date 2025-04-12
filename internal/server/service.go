@@ -25,7 +25,7 @@ func (s *Service) getActiveServers() ([]response, error) {
 		return nil, err
 	}
 
-	var activeServers []response
+	activeServers := make([]response, 0)
 	for _, item := range activeServerResources.Items {
 		tcpRoute, _, erro := unstructured.NestedString(item.Object, "spec", "routeName")
 		if erro != nil {
@@ -113,7 +113,7 @@ func (s *Service) shutdownExpiredServers() (expiredServers, error) {
 		return expiredServers{}, err
 	}
 
-	var serversExpired []string
+	serversExpired := make([]string, 0)
 	for _, server := range activeServerResources.Items {
 		creationDate, _, _ := unstructured.NestedString(server.Object, "metadata", "creationTimestamp")
 		createdTime, _ := time.Parse(time.RFC3339, creationDate)
