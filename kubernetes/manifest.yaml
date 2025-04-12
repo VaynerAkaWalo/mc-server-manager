@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mc-server-manager
+  namespace: minecraft-server
+  labels:
+    app: mc-server-manager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mc-server-manager
+  template:
+    metadata:
+      name: mc-server-manager
+      labels:
+        app: mc-server-manager
+    spec:
+      containers:
+        - name: mc-server-manager
+          image: ghcr.io/vaynerakawalo/mc-server-manager:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          env:
+            - name: env
+              value: prod
+      restartPolicy: Always
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mc-server-manager
+spec:
+  selector:
+    app: mc-server-manager
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+  type: ClusterIP
+
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: mc-server-manager-http
+  namespace: minecraft-server
+spec:
+  parentRefs:
+    - name: envoy-gateway
+      sectionName: http
+      kind: Gateway
+      namespace: infra
+
+  hostnames:
+    - blamedevs.com
+
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /mc-server-manager
+
+      backendRefs:
+        - name: mc-server-manager
+          namespace: minecraft-server
+          port: 80

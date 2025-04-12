@@ -6,7 +6,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"log"
+	"os"
 	"sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 )
 
@@ -15,9 +15,11 @@ type ClientLoader struct {
 }
 
 func CreateClientLoader() ClientLoader {
-	config, err := localConfig()
-	if err != nil {
-		log.Fatal("Failed to load config")
+	var config *rest.Config
+	if os.Getenv("env") != "prod" {
+		config, _ = localConfig()
+	} else {
+		config, _ = rest.InClusterConfig()
 	}
 
 	return ClientLoader{
@@ -42,8 +44,4 @@ func localConfig() (*rest.Config, error) {
 	flag.Parse()
 
 	return clientcmd.BuildConfigFromFlags("", *kubeconfig)
-}
-
-func inClusterConfig() (*rest.Config, error) {
-	return rest.InClusterConfig()
 }
