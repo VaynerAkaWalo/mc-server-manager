@@ -7,6 +7,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"log"
+	"sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 )
 
 type ClientLoader struct {
@@ -30,6 +31,10 @@ func (l *ClientLoader) Client() (*kubernetes.Clientset, error) {
 
 func (l *ClientLoader) DynamicClient() (*dynamic.DynamicClient, error) {
 	return dynamic.NewForConfig(&l.config)
+}
+
+func (l *ClientLoader) GatewayClient() (*versioned.Clientset, error) {
+	return versioned.NewForConfig(&l.config)
 }
 
 func localConfig() (*rest.Config, error) {
