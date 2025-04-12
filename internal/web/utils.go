@@ -8,6 +8,7 @@ import (
 func SendJsonResponse(w http.ResponseWriter, code int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	w.WriteHeader(code)
 	json.NewEncoder(w).Encode(payload)
 }
