@@ -17,6 +17,7 @@ func NewServerHandlers(serverService Service) *Handlers {
 }
 
 func (h *Handlers) RegisterServerRoutes(router *http.ServeMux) {
+	router.HandleFunc("OPTIONS /servers", h.preFlightHandler)
 	router.HandleFunc("GET /servers", h.listServersHandler)
 	router.HandleFunc("POST /servers", h.provisionServer)
 	router.HandleFunc("DELETE /servers", h.shutdownExpiredServers)
@@ -35,7 +36,7 @@ func (h *Handlers) listServersHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) provisionServer(w http.ResponseWriter, r *http.Request) {
 	var req request
 	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
+	if err != nil || req.Name == "" || req.ExpireAfter == 0 || req.Version == "" {
 		web.SendErrorResponse(w, http.StatusBadRequest, "Invalid json structure")
 		return
 	}
@@ -56,4 +57,8 @@ func (h *Handlers) shutdownExpiredServers(w http.ResponseWriter, r *http.Request
 	}
 
 	web.SendJsonResponse(w, http.StatusOK, results)
+}
+
+func (h *Handlers) preFlightHandler(w http.ResponseWriter, r *http.Request) {
+	web.SendJsonResponse(w, http.StatusOK, nil)
 }
