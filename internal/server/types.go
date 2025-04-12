@@ -1,8 +1,9 @@
 package server
 
 type response struct {
-	Name string `json:"name"`
-	IP   string `json:"IP"`
+	Name          string `json:"name"`
+	IP            string `json:"IP"`
+	RemainingTime string `json:"remainingTime"`
 }
 
 type request struct {

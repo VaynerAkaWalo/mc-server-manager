@@ -33,8 +33,9 @@ func (s *Service) getActiveServers() ([]response, error) {
 		}
 
 		activeServers = append(activeServers, response{
-			Name: item.GetName(),
-			IP:   "minecraft.blamedevs.com:" + strconv.Itoa(s.getPortForTCPRoute(tcpRoute)),
+			Name:          item.GetName(),
+			IP:            "minecraft.blamedevs.com:" + strconv.Itoa(s.getPortForTCPRoute(tcpRoute)),
+			RemainingTime: getRemainingTime(item.Object).Round(time.Minute).String(),
 		})
 	}
 
@@ -115,19 +116,13 @@ func (s *Service) shutdownExpiredServers() (expiredServers, error) {
 
 	serversExpired := make([]string, 0)
 	for _, server := range activeServerResources.Items {
-		creationDate, _, _ := unstructured.NestedString(server.Object, "metadata", "creationTimestamp")
-		createdTime, _ := time.Parse(time.RFC3339, creationDate)
-
-		expireAfter, _, _ := unstructured.NestedInt64(server.Object, "spec", "expireAfter")
-		expireTime := createdTime.Add(time.Duration(expireAfter * int64(time.Millisecond)))
-
-		expired := time.Now().After(expireTime)
-		if expired == true {
-			fmt.Println("Deleting server " + server.GetName())
+		remainingTime := getRemainingTime(server.Object)
+		if remainingTime != remainingTime.Abs() {
+			fmt.Println("Server " + server.GetName() + " expired initiating shutdown")
 			s.clusterService.DeleteServer(server.GetName())
 			serversExpired = append(serversExpired, server.GetName())
 		} else {
-			fmt.Println("Server " + server.GetName() + " remaining time " + expireTime.Sub(time.Now()).String())
+			fmt.Println("Server " + server.GetName() + " remaining time " + remainingTime.String())
 		}
 	}
 
