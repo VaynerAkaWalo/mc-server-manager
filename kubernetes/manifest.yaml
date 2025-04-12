@@ -27,6 +27,38 @@ spec:
             - name: env
               value: prod
       restartPolicy: Always
+      serviceAccountName: mc-server-manager-account
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: mc-server-management
+rules:
+  - apiGroups: ["servers.blamedevs.com"]
+    resources: ["mcservers"]
+    verbs: ["get", "list", "watch", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: mc-server-management-binding
+subjects:
+  - kind: ServiceAccount
+    name: mc-server-manager-account
+    namespace: minecraft-server
+roleRef:
+  kind: ClusterRole
+  name: mc-server-management
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mc-server-manager-account
+  namespace: minecraft-server
 
 ---
 apiVersion: v1
@@ -52,7 +84,7 @@ metadata:
 spec:
   parentRefs:
     - name: envoy-gateway
-      sectionName: http
+      sectionName: https
       kind: Gateway
       namespace: infra
 
@@ -64,6 +96,12 @@ spec:
         - path:
             type: PathPrefix
             value: /mc-server-manager
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              replacePrefixMatch: /
+              type: ReplacePrefixMatch
 
       backendRefs:
         - name: mc-server-manager
