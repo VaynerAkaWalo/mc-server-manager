@@ -31,11 +31,13 @@ func (s *Service) getActiveServers() ([]response, error) {
 		if erro != nil {
 			return nil, erro
 		}
+		status, _, _ := unstructured.NestedString(item.Object, "status", "status")
 
 		activeServers = append(activeServers, response{
 			Name:          item.GetName(),
 			IP:            "minecraft.blamedevs.com:" + strconv.Itoa(s.getPortForTCPRoute(tcpRoute)),
 			RemainingTime: getRemainingTime(item.Object).Round(time.Minute).String(),
+			Status:        status,
 		})
 	}
 

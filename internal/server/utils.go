@@ -2,15 +2,29 @@ package server
 
 import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"log"
 	"time"
 )
 
 func getRemainingTime(server map[string]interface{}) time.Duration {
-	creationDate, _, _ := unstructured.NestedString(server, "metadata", "creationTimestamp")
-	createdTime, _ := time.Parse(time.RFC3339, creationDate)
+	resourceCreationTime, _, _ := unstructured.NestedString(server, "metadata", "creationTimestamp")
+	createdTime, _ := time.Parse(time.RFC3339, resourceCreationTime)
 
 	expireAfter, _, _ := unstructured.NestedInt64(server, "spec", "expireAfter")
-	expireTime := createdTime.Add(time.Duration(expireAfter * int64(time.Millisecond)))
+	expireIn := time.Duration(expireAfter * int64(time.Millisecond))
 
-	return expireTime.Sub(time.Now())
+	expireTimeByCreation := createdTime.Add(expireIn)
+
+	serverStartedTime, _, _ := unstructured.NestedString(server, "status", "startedTime")
+	if serverStartedTime == "" && createdTime.Add(10*time.Minute).Before(time.Now()) {
+		log.Println("Started time is null and server was created over 10 minutes ago")
+		return expireTimeByCreation.Sub(time.Now())
+	} else if serverStartedTime == "" {
+		log.Println("Server is still not ready")
+		return expireIn
+	}
+	startedTime, _ := time.Parse(time.RFC3339, serverStartedTime)
+	expireTimeByStartedTime := startedTime.Add(expireIn)
+
+	return expireTimeByStartedTime.Sub(time.Now())
 }

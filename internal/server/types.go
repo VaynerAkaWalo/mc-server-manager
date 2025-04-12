@@ -4,6 +4,7 @@ type response struct {
 	Name          string `json:"name"`
 	IP            string `json:"IP"`
 	RemainingTime string `json:"remainingTime"`
+	Status        string `json:"status"`
 }
 
 type request struct {
