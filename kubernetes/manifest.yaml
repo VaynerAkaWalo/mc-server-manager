@@ -37,7 +37,7 @@ metadata:
 rules:
   - apiGroups: ["servers.blamedevs.com"]
     resources: ["mcservers"]
-    verbs: ["get", "list", "watch", "delete"]
+    verbs: ["get", "list", "create", "delete"]
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -51,6 +51,32 @@ subjects:
 roleRef:
   kind: ClusterRole
   name: mc-server-management
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: minecraft-server
+  name: mc-server-management-routes
+rules:
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources: ["tcproutes"]
+    verbs: ["get", "list", "watch", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  namespace: minecraft-server
+  name: mc-server-management-routes-binding
+subjects:
+  - kind: ServiceAccount
+    name: mc-server-manager-account
+    namespace: minecraft-server
+roleRef:
+  kind: Role
+  name: mc-server-management-routes
   apiGroup: rbac.authorization.k8s.io
 
 ---
@@ -107,3 +133,26 @@ spec:
         - name: mc-server-manager
           namespace: minecraft-server
           port: 80
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: expired-server-cleaner
+  namespace: minecraft-server
+spec:
+  schedule: "*/3 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: expired-server-cleaner
+              image: curlimages/curl:8.13.0
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -c
+                - curl -X DELETE https://blamedevs.com/mc-server-manager/servers
+          restartPolicy: OnFailure
+          
