@@ -89,7 +89,7 @@ func (s *Service) provisionServer(provisionRequest request) (response, error) {
 
 	server := cluster.ServerRequest{
 		Name:      provisionRequest.Name,
-		Image:     provisionRequest.Image,
+		Image:     "ghcr.io/thijmengthn/papermc:latest",
 		RouteName: route,
 		Env: map[string]string{
 			"EULA": "true",
