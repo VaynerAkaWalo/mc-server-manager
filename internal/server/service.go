@@ -31,7 +31,14 @@ func (s *Service) getActiveServers() ([]response, error) {
 		if erro != nil {
 			return nil, erro
 		}
-		status, _, _ := unstructured.NestedString(item.Object, "status", "status")
+		objectStatus, _, _ := unstructured.NestedString(item.Object, "status", "status")
+
+		var status string
+		if objectStatus != "" {
+			status = objectStatus
+		} else {
+			status = "not ready"
+		}
 
 		activeServers = append(activeServers, response{
 			Name:          item.GetName(),
