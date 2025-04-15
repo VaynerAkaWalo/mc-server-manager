@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/cluster"
+	"github.com/VaynerAkaWalo/mc-server-manager/pkg/server"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"strconv"
 	"time"
@@ -19,13 +20,13 @@ func CreateServerService(clusterService cluster.Service) Service {
 	}
 }
 
-func (s *Service) getActiveServers() ([]response, error) {
+func (s *Service) getActiveServers() ([]server.Response, error) {
 	activeServerResources, err := s.clusterService.GetActiveServers()
 	if err != nil {
 		return nil, err
 	}
 
-	activeServers := make([]response, 0)
+	activeServers := make([]server.Response, 0)
 	for _, item := range activeServerResources.Items {
 		tcpRoute, _, erro := unstructured.NestedString(item.Object, "spec", "routeName")
 		if erro != nil {
@@ -40,7 +41,7 @@ func (s *Service) getActiveServers() ([]response, error) {
 			status = "not ready"
 		}
 
-		activeServers = append(activeServers, response{
+		activeServers = append(activeServers, server.Response{
 			Name:          item.GetName(),
 			IP:            "minecraft.blamedevs.com:" + strconv.Itoa(s.getPortForTCPRoute(tcpRoute)),
 			RemainingTime: getRemainingTime(item.Object).Round(time.Minute).String(),
@@ -61,10 +62,10 @@ func (s *Service) getPortForTCPRoute(tcpRoute string) int {
 	return portMap[tcpRoute]
 }
 
-func (s *Service) provisionServer(provisionRequest request) (response, error) {
+func (s *Service) provisionServer(provisionRequest server.Request) (server.Response, error) {
 	activeRoutes, err := s.clusterService.GetActiveRoutes()
 	if err != nil {
-		return response{}, err
+		return server.Response{}, err
 	}
 
 	availableRoutes := map[string]bool{
@@ -77,16 +78,16 @@ func (s *Service) provisionServer(provisionRequest request) (response, error) {
 	}
 
 	if len(availableRoutes) < 1 {
-		return response{}, errors.New("no TCP routes available")
+		return server.Response{}, errors.New("no TCP routes available")
 	}
 
 	activeServers, err := s.clusterService.GetActiveServers()
 	if err != nil {
-		return response{}, err
+		return server.Response{}, err
 	}
 	for _, item := range activeServers.Items {
 		if item.GetName() == provisionRequest.Name {
-			return response{}, errors.New("server with this name already exists")
+			return server.Response{}, errors.New("server with this name already exists")
 		}
 	}
 
@@ -96,7 +97,7 @@ func (s *Service) provisionServer(provisionRequest request) (response, error) {
 		break
 	}
 
-	server := cluster.ServerRequest{
+	serverRequest := cluster.ServerRequest{
 		Name:      provisionRequest.Name,
 		Image:     "ghcr.io/thijmengthn/papermc:latest",
 		RouteName: route,
@@ -105,12 +106,12 @@ func (s *Service) provisionServer(provisionRequest request) (response, error) {
 		},
 		ExpireAfter: provisionRequest.ExpireAfter,
 	}
-	err = s.clusterService.CreateServerInCluster(server)
+	err = s.clusterService.CreateServerInCluster(serverRequest)
 	if err != nil {
-		return response{}, err
+		return server.Response{}, err
 	}
 
-	res := response{
+	res := server.Response{
 		Name: provisionRequest.Name,
 		IP:   "minecraft.blamedevs.com:" + strconv.Itoa(s.getPortForTCPRoute(route)),
 	}

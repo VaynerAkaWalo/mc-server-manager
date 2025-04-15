@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/web"
+	"github.com/VaynerAkaWalo/mc-server-manager/pkg/server"
 	"net/http"
 )
 
@@ -34,7 +35,7 @@ func (h *Handlers) listServersHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) provisionServer(w http.ResponseWriter, r *http.Request) {
-	var req request
+	var req server.Request
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil || req.Name == "" || req.ExpireAfter == 0 || req.Version == "" {
 		web.SendErrorResponse(w, http.StatusBadRequest, "Invalid json structure")
