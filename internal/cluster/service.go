@@ -9,7 +9,6 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"log"
-	"sigs.k8s.io/gateway-api/apis/v1alpha2"
 	"sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 )
 
@@ -54,9 +53,7 @@ func (s *Service) CreateServerInCluster(serverRequest ServerRequest) error {
 			},
 			"spec": map[string]interface{}{
 				"name":        serverRequest.Name,
-				"port":        25565,
 				"image":       serverRequest.Image,
-				"routeName":   serverRequest.RouteName,
 				"env":         serverRequest.Env,
 				"expireAfter": serverRequest.ExpireAfter,
 			},
@@ -67,7 +64,7 @@ func (s *Service) CreateServerInCluster(serverRequest ServerRequest) error {
 		},
 	}
 
-	log.Printf("Creating new server %s, with route %s, and image %s", serverRequest.Name, serverRequest.RouteName, serverRequest.Image)
+	log.Printf("Creating new server %s, and image %s", serverRequest.Name, serverRequest.Image)
 	_, err := s.dynamicClient.Resource(serverGVR()).Namespace("minecraft-server").Create(context.TODO(), server, metav1.CreateOptions{})
 	if err != nil {
 		log.Println("Failed to create server " + err.Error())
@@ -75,10 +72,6 @@ func (s *Service) CreateServerInCluster(serverRequest ServerRequest) error {
 	}
 
 	return nil
-}
-
-func (s *Service) GetActiveRoutes() (*v1alpha2.TCPRouteList, error) {
-	return s.gatewayClient.GatewayV1alpha2().TCPRoutes("minecraft-server").List(context.TODO(), metav1.ListOptions{})
 }
 
 func (s *Service) DeleteServer(serverName string) {

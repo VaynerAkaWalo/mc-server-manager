@@ -6,7 +6,6 @@ import (
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/cluster"
 	"github.com/VaynerAkaWalo/mc-server-manager/pkg/server"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"strconv"
 	"time"
 )
 
@@ -28,10 +27,6 @@ func (s *Service) getActiveServers() ([]server.Response, error) {
 
 	activeServers := make([]server.Response, 0)
 	for _, item := range activeServerResources.Items {
-		tcpRoute, _, erro := unstructured.NestedString(item.Object, "spec", "routeName")
-		if erro != nil {
-			return nil, erro
-		}
 		objectStatus, _, _ := unstructured.NestedString(item.Object, "status", "status")
 
 		var status string
@@ -43,7 +38,7 @@ func (s *Service) getActiveServers() ([]server.Response, error) {
 
 		activeServers = append(activeServers, server.Response{
 			Name:          item.GetName(),
-			IP:            "minecraft.blamedevs.com:" + strconv.Itoa(s.getPortForTCPRoute(tcpRoute)),
+			IP:            item.GetName() + ".blamedevs.com",
 			RemainingTime: getRemainingTime(item.Object).Round(time.Minute).String(),
 			Status:        status,
 		})
@@ -52,35 +47,7 @@ func (s *Service) getActiveServers() ([]server.Response, error) {
 	return activeServers, nil
 }
 
-func (s *Service) getPortForTCPRoute(tcpRoute string) int {
-	portMap := map[string]int{
-		"tcp-1": 25570,
-		"tcp-2": 25571,
-		"tcp-3": 25572,
-	}
-
-	return portMap[tcpRoute]
-}
-
 func (s *Service) provisionServer(provisionRequest server.Request) (server.Response, error) {
-	activeRoutes, err := s.clusterService.GetActiveRoutes()
-	if err != nil {
-		return server.Response{}, err
-	}
-
-	availableRoutes := map[string]bool{
-		"tcp-1": true,
-		"tcp-2": true,
-		"tcp-3": true,
-	}
-	for _, item := range activeRoutes.Items {
-		delete(availableRoutes, item.GetName())
-	}
-
-	if len(availableRoutes) < 1 {
-		return server.Response{}, errors.New("no TCP routes available")
-	}
-
 	activeServers, err := s.clusterService.GetActiveServers()
 	if err != nil {
 		return server.Response{}, err
@@ -91,16 +58,9 @@ func (s *Service) provisionServer(provisionRequest server.Request) (server.Respo
 		}
 	}
 
-	var route string
-	for key := range availableRoutes {
-		route = key
-		break
-	}
-
 	serverRequest := cluster.ServerRequest{
-		Name:      provisionRequest.Name,
-		Image:     "ghcr.io/thijmengthn/papermc:latest",
-		RouteName: route,
+		Name:  provisionRequest.Name,
+		Image: "ghcr.io/thijmengthn/papermc:latest",
 		Env: map[string]string{
 			"EULA": "true",
 		},
@@ -113,7 +73,7 @@ func (s *Service) provisionServer(provisionRequest server.Request) (server.Respo
 
 	res := server.Response{
 		Name: provisionRequest.Name,
-		IP:   "minecraft.blamedevs.com:" + strconv.Itoa(s.getPortForTCPRoute(route)),
+		IP:   provisionRequest.Name + ".blamedevs.com",
 	}
 	return res, nil
 }
