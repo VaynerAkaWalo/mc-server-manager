@@ -60,7 +60,7 @@ func (s *Service) provisionServer(provisionRequest server.Request) (server.Respo
 
 	serverRequest := cluster.ServerRequest{
 		Name:  provisionRequest.Name,
-		Image: "ghcr.io/thijmengthn/papermc:latest",
+		Image: "itzg/minecraft-server",
 		Env: map[string]string{
 			"EULA": "true",
 		},
