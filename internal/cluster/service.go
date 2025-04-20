@@ -9,20 +9,17 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"log"
-	"sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 )
 
 type Service struct {
 	client        kubernetes.Clientset
 	dynamicClient dynamic.DynamicClient
-	gatewayClient versioned.Clientset
 }
 
-func CreateClusterService(client kubernetes.Clientset, dynamicClient dynamic.DynamicClient, gatewayClient versioned.Clientset) Service {
+func CreateClusterService(client kubernetes.Clientset, dynamicClient dynamic.DynamicClient) Service {
 	return Service{
 		client:        client,
 		dynamicClient: dynamicClient,
-		gatewayClient: gatewayClient,
 	}
 }
 

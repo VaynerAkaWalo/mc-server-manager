@@ -27,12 +27,8 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to create crd cluster client")
 	}
-	gatewayClient, err := clientLoader.GatewayClient()
-	if err != nil {
-		log.Fatal("Failed to create crd cluster client")
-	}
 
-	serverService := server.CreateServerService(cluster.CreateClusterService(*clusterClient, *dynamicClient, *gatewayClient))
+	serverService := server.CreateServerService(cluster.CreateClusterService(*clusterClient, *dynamicClient))
 	serverHandlers := server.NewServerHandlers(serverService)
 	serverHandlers.RegisterServerRoutes(router)
 
