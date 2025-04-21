@@ -62,7 +62,7 @@ func (s *Service) provisionServer(provisionRequest server.Request) (server.Respo
 
 	serverDefinition := definition.ServerDefinition{
 		Name:        provisionRequest.Name,
-		Options:     provisionRequest.OPTS,
+		Options:     provisionRequest.Opts,
 		Quota:       definition.DefaultQuota,
 		ExpireAfter: provisionRequest.ExpireAfter,
 	}

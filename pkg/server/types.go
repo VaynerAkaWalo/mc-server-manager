@@ -12,5 +12,5 @@ type Response struct {
 type Request struct {
 	Name        string                       `json:"name"`
 	ExpireAfter int64                        `json:"expireAfter"`
-	OPTS        map[definition.Option]string `json:"opts"`
+	Opts        map[definition.Option]string `json:"opts"`
 }
