@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/cluster"
-	definition2 "github.com/VaynerAkaWalo/mc-server-manager/internal/definition"
+	definition "github.com/VaynerAkaWalo/mc-server-manager/internal/definition"
 	"github.com/VaynerAkaWalo/mc-server-manager/pkg/server"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"time"
@@ -60,14 +60,14 @@ func (s *Service) provisionServer(provisionRequest server.Request) (server.Respo
 		}
 	}
 
-	definition := definition2.ServerDefinition{
+	serverDefinition := definition.ServerDefinition{
 		Name:        provisionRequest.Name,
-		Options:     map[definition2.Option]string{},
-		Quota:       definition2.DefaultQuota,
+		Options:     provisionRequest.OPTS,
+		Quota:       definition.DefaultQuota,
 		ExpireAfter: provisionRequest.ExpireAfter,
 	}
 
-	serverSpec, err := definition2.TranslateDefinition(context.TODO(), definition)
+	serverSpec, err := definition.TranslateDefinition(context.TODO(), serverDefinition)
 	if err != nil {
 		return server.Response{}, err
 	}

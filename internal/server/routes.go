@@ -37,8 +37,8 @@ func (h *Handlers) listServersHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) provisionServer(w http.ResponseWriter, r *http.Request) {
 	var req server.Request
 	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil || req.Name == "" || req.ExpireAfter == 0 || req.Version == "" {
-		web.SendErrorResponse(w, http.StatusBadRequest, "Invalid json structure")
+	if err != nil || req.Name == "" || req.ExpireAfter == 0 {
+		web.SendErrorResponse(w, http.StatusBadRequest, "Invalid json structure "+err.Error())
 		return
 	}
 

@@ -4,6 +4,8 @@ import (
 	"context"
 )
 
+const adminOp = "554156b6-2a93-3fe2-a63e-45f4fa95ec35,510bd8128b1b4a5cacd80143a76cab51"
+
 type environmentProcessor func(context.Context, map[Option]string) (map[Option]string, error)
 
 func stringifyEnvironment(environment map[Option]string) map[string]string {
@@ -18,7 +20,7 @@ func stringifyEnvironment(environment map[Option]string) map[string]string {
 }
 
 func processEnvironment(ctx context.Context, environment map[Option]string) (map[Option]string, error) {
-	processor := combineProcessors(ensureRequiredOpts)
+	processor := combineProcessors(ensureRequiredOpts, ensureAdminsHaveOperator)
 	return processor(ctx, environment)
 }
 
@@ -44,6 +46,17 @@ func ensureRequiredOpts(ctx context.Context, environment map[Option]string) (map
 		if environmentValue == "" {
 			environment[key] = val
 		}
+	}
+
+	return environment, nil
+}
+
+func ensureAdminsHaveOperator(ctx context.Context, environment map[Option]string) (map[Option]string, error) {
+	currentOps := environment[OPS]
+	if currentOps == "" {
+		environment[OPS] = adminOp
+	} else {
+		environment[OPS] = currentOps + "," + adminOp
 	}
 
 	return environment, nil

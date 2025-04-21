@@ -1,33 +1,29 @@
 package definition
 
-type Option int
+type Option string
 
 const (
-	OPS = iota
-	VERSION
-	EULA
-	ONLINE_MODE
-	TYPE
-	MODT
-	USE_AIKAR_FLAGS
-	MAX_PLAYERS
-	DIFFICULTY
-	SIMULATION_DISTANCE
-	VIEW_DISTANCE
+	OPS             = "OPS"
+	VERSION         = "VERSION"
+	EULA            = "EULA"
+	ONLINE_MODE     = "ONLINE_MODE"
+	TYPE            = "TYPE"
+	MODT            = "MODT"
+	USE_AIKAR_FLAGS = "USE_AIKAR_FLAGS"
+	MAX_PLAYERS     = "MAX_PLAYERS"
+	DIFFICULTY      = "DIFFICULTY"
 )
 
 var optsKeys = map[Option]string{
-	OPS:                 "OPS",
-	VERSION:             "VERSION",
-	EULA:                "EULA",
-	ONLINE_MODE:         "ONLINE_MODE",
-	TYPE:                "TYPE",
-	MODT:                "MODT",
-	USE_AIKAR_FLAGS:     "USE_AIKAR_FLAGS",
-	MAX_PLAYERS:         "MAX_PLAYERS",
-	DIFFICULTY:          "DIFFICULTY",
-	SIMULATION_DISTANCE: "SIMULATION_DISTANCE",
-	VIEW_DISTANCE:       "VIEW_DISTANCE",
+	OPS:             "OPS",
+	VERSION:         "VERSION",
+	EULA:            "EULA",
+	ONLINE_MODE:     "ONLINE_MODE",
+	TYPE:            "TYPE",
+	MODT:            "MODT",
+	USE_AIKAR_FLAGS: "USE_AIKAR_FLAGS",
+	MAX_PLAYERS:     "MAX_PLAYERS",
+	DIFFICULTY:      "DIFFICULTY",
 }
 
 var requiredOpts = map[Option]string{
@@ -39,7 +35,7 @@ var requiredOpts = map[Option]string{
 var DefaultQuota = ResourceQuota{
 	CpuRequest: 3,
 	CpuLimit:   4,
-	MemoryInMb: 7500,
+	MemoryInMb: 7000,
 }
 
 type ResourceQuota struct {

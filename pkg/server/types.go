@@ -1,5 +1,7 @@
 package server
 
+import "github.com/VaynerAkaWalo/mc-server-manager/internal/definition"
+
 type Response struct {
 	Name          string `json:"name"`
 	IP            string `json:"IP"`
@@ -8,7 +10,7 @@ type Response struct {
 }
 
 type Request struct {
-	Name        string `json:"name"`
-	Version     string `json:"version"`
-	ExpireAfter int64  `json:"expireAfter"`
+	Name        string                       `json:"name"`
+	ExpireAfter int64                        `json:"expireAfter"`
+	OPTS        map[definition.Option]string `json:"opts"`
 }
