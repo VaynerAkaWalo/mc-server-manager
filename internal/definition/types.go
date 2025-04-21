@@ -3,33 +3,43 @@ package definition
 type Option string
 
 const (
-	OPS             = "OPS"
-	VERSION         = "VERSION"
-	EULA            = "EULA"
-	ONLINE_MODE     = "ONLINE_MODE"
-	TYPE            = "TYPE"
-	MODT            = "MODT"
-	USE_AIKAR_FLAGS = "USE_AIKAR_FLAGS"
-	MAX_PLAYERS     = "MAX_PLAYERS"
-	DIFFICULTY      = "DIFFICULTY"
+	OPS               = "OPS"
+	VERSION           = "VERSION"
+	EULA              = "EULA"
+	ONLINE_MODE       = "ONLINE_MODE"
+	TYPE              = "TYPE"
+	MODT              = "MODT"
+	USE_AIKAR_FLAGS   = "USE_AIKAR_FLAGS"
+	MAX_PLAYERS       = "MAX_PLAYERS"
+	DIFFICULTY        = "DIFFICULTY"
+	MODRINTH_PROJECTS = "MODRINTH_PROJECTS"
+	MODS              = "MODS"
+	MEMORY            = "MEMORY"
+	JVM_XX_OPTS       = "JVM_XX_OPTS"
 )
 
 var optsKeys = map[Option]string{
-	OPS:             "OPS",
-	VERSION:         "VERSION",
-	EULA:            "EULA",
-	ONLINE_MODE:     "ONLINE_MODE",
-	TYPE:            "TYPE",
-	MODT:            "MODT",
-	USE_AIKAR_FLAGS: "USE_AIKAR_FLAGS",
-	MAX_PLAYERS:     "MAX_PLAYERS",
-	DIFFICULTY:      "DIFFICULTY",
+	OPS:               "OPS",
+	VERSION:           "VERSION",
+	EULA:              "EULA",
+	ONLINE_MODE:       "ONLINE_MODE",
+	TYPE:              "TYPE",
+	MODT:              "MODT",
+	USE_AIKAR_FLAGS:   "USE_AIKAR_FLAGS",
+	MAX_PLAYERS:       "MAX_PLAYERS",
+	DIFFICULTY:        "DIFFICULTY",
+	MODRINTH_PROJECTS: "MODRINTH_PROJECTS",
+	MODS:              "MODS",
+	MEMORY:            "MEMORY",
+	JVM_XX_OPTS:       "JVM_XX_OPTS",
 }
 
 var requiredOpts = map[Option]string{
 	EULA:            "true",
 	USE_AIKAR_FLAGS: "true",
 	DIFFICULTY:      "2",
+	JVM_XX_OPTS:     "-XX:MaxRAMPercentage=75",
+	MEMORY:          "",
 }
 
 var DefaultQuota = ResourceQuota{
@@ -47,8 +57,8 @@ type ResourceQuota struct {
 const defaultImage = "itzg/minecraft-server:latest"
 
 type ServerDefinition struct {
-	Name        string
-	Options     map[Option]string
-	Quota       ResourceQuota
-	ExpireAfter int64
+	Name        string            `json:"name"`
+	Options     map[Option]string `json:"options"`
+	Quota       ResourceQuota     `json:"quota"`
+	ExpireAfter int64             `json:"expireAfter"`
 }
