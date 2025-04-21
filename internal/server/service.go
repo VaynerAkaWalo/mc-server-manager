@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/cluster"
 	"github.com/VaynerAkaWalo/mc-server-manager/pkg/server"
+	serversv1alpha1 "github.com/VaynerAkaWalo/mc-server-operator/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"time"
 )
@@ -58,15 +59,19 @@ func (s *Service) provisionServer(provisionRequest server.Request) (server.Respo
 		}
 	}
 
-	serverRequest := cluster.ServerRequest{
+	serverSpec := serversv1alpha1.McServerSpec{
 		Name:  provisionRequest.Name,
 		Image: "itzg/minecraft-server",
 		Env: map[string]string{
 			"EULA": "true",
 		},
+		CpuRequest:  "3",
+		CpuLimit:    "4",
+		Memory:      "7Gi",
 		ExpireAfter: provisionRequest.ExpireAfter,
 	}
-	err = s.clusterService.CreateServerInCluster(serverRequest)
+
+	err = s.clusterService.DeployServerSpec(serverSpec)
 	if err != nil {
 		return server.Response{}, err
 	}

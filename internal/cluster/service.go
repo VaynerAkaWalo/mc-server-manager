@@ -3,6 +3,7 @@ package cluster
 import (
 	"context"
 	"fmt"
+	serversv1alpha1 "github.com/VaynerAkaWalo/mc-server-operator/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -35,7 +36,7 @@ func (s *Service) GetActiveServers() (*unstructured.UnstructuredList, error) {
 	return s.dynamicClient.Resource(serverGVR()).List(context.TODO(), metav1.ListOptions{})
 }
 
-func (s *Service) CreateServerInCluster(serverRequest ServerRequest) error {
+func (s *Service) DeployServerSpec(serverRequest serversv1alpha1.McServerSpec) error {
 	server := &unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": "servers.blamedevs.com/v1alpha1",
@@ -53,6 +54,9 @@ func (s *Service) CreateServerInCluster(serverRequest ServerRequest) error {
 				"image":       serverRequest.Image,
 				"env":         serverRequest.Env,
 				"expireAfter": serverRequest.ExpireAfter,
+				"cpuRequest":  serverRequest.CpuRequest,
+				"cpuLimit":    serverRequest.CpuLimit,
+				"memory":      serverRequest.Memory,
 			},
 			"status": map[string]interface{}{
 				"status":      "new",
