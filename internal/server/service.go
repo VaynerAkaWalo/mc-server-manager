@@ -1,11 +1,12 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/cluster"
+	definition2 "github.com/VaynerAkaWalo/mc-server-manager/internal/definition"
 	"github.com/VaynerAkaWalo/mc-server-manager/pkg/server"
-	serversv1alpha1 "github.com/VaynerAkaWalo/mc-server-operator/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"time"
 )
@@ -59,19 +60,19 @@ func (s *Service) provisionServer(provisionRequest server.Request) (server.Respo
 		}
 	}
 
-	serverSpec := serversv1alpha1.McServerSpec{
-		Name:  provisionRequest.Name,
-		Image: "itzg/minecraft-server",
-		Env: map[string]string{
-			"EULA": "true",
-		},
-		CpuRequest:  "3",
-		CpuLimit:    "4",
-		Memory:      "7Gi",
+	definition := definition2.ServerDefinition{
+		Name:        provisionRequest.Name,
+		Options:     map[definition2.Option]string{},
+		Quota:       definition2.DefaultQuota,
 		ExpireAfter: provisionRequest.ExpireAfter,
 	}
 
-	err = s.clusterService.DeployServerSpec(serverSpec)
+	serverSpec, err := definition2.TranslateDefinition(context.TODO(), definition)
+	if err != nil {
+		return server.Response{}, err
+	}
+
+	err = s.clusterService.DeployServerSpec(*serverSpec)
 	if err != nil {
 		return server.Response{}, err
 	}

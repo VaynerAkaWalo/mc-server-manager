@@ -4,6 +4,7 @@ type Option int
 
 const (
 	OPS = iota
+	VERSION
 	EULA
 	ONLINE_MODE
 	TYPE
@@ -15,8 +16,9 @@ const (
 	VIEW_DISTANCE
 )
 
-var OPTS = map[Option]string{
+var optsKeys = map[Option]string{
 	OPS:                 "OPS",
+	VERSION:             "VERSION",
 	EULA:                "EULA",
 	ONLINE_MODE:         "ONLINE_MODE",
 	TYPE:                "TYPE",
@@ -28,7 +30,29 @@ var OPTS = map[Option]string{
 	VIEW_DISTANCE:       "VIEW_DISTANCE",
 }
 
+var requiredOpts = map[Option]string{
+	EULA:            "true",
+	USE_AIKAR_FLAGS: "true",
+	DIFFICULTY:      "2",
+}
+
+var DefaultQuota = ResourceQuota{
+	CpuRequest: 3,
+	CpuLimit:   4,
+	MemoryInMb: 7500,
+}
+
+type ResourceQuota struct {
+	CpuRequest int
+	CpuLimit   int
+	MemoryInMb int
+}
+
+const defaultImage = "itzg/minecraft-server:latest"
+
 type ServerDefinition struct {
-	Image   string
-	Options []Option
+	Name        string
+	Options     map[Option]string
+	Quota       ResourceQuota
+	ExpireAfter int64
 }
