@@ -16,6 +16,7 @@ const (
 	MODS              = "MODS"
 	MEMORY            = "MEMORY"
 	JVM_XX_OPTS       = "JVM_XX_OPTS"
+	VIEW_DISTANCE     = "VIEW_DISTANCE"
 )
 
 var optsKeys = map[Option]string{
@@ -32,6 +33,7 @@ var optsKeys = map[Option]string{
 	MODS:              "MODS",
 	MEMORY:            "MEMORY",
 	JVM_XX_OPTS:       "JVM_XX_OPTS",
+	VIEW_DISTANCE:     "VIEW_DISTANCE",
 }
 
 var requiredOpts = map[Option]string{
@@ -40,6 +42,7 @@ var requiredOpts = map[Option]string{
 	DIFFICULTY:      "2",
 	JVM_XX_OPTS:     "-XX:MaxRAMPercentage=75",
 	MEMORY:          "",
+	VIEW_DISTANCE:   "20",
 }
 
 var DefaultQuota = ResourceQuota{
