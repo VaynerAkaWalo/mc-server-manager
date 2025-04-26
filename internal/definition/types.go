@@ -8,7 +8,7 @@ const (
 	EULA              = "EULA"
 	ONLINE_MODE       = "ONLINE_MODE"
 	TYPE              = "TYPE"
-	MODT              = "MODT"
+	MOTD              = "MOTD"
 	USE_AIKAR_FLAGS   = "USE_AIKAR_FLAGS"
 	MAX_PLAYERS       = "MAX_PLAYERS"
 	DIFFICULTY        = "DIFFICULTY"
@@ -24,7 +24,7 @@ var optsKeys = map[Option]string{
 	EULA:              "EULA",
 	ONLINE_MODE:       "ONLINE_MODE",
 	TYPE:              "TYPE",
-	MODT:              "MODT",
+	MOTD:              "MOTD",
 	USE_AIKAR_FLAGS:   "USE_AIKAR_FLAGS",
 	MAX_PLAYERS:       "MAX_PLAYERS",
 	DIFFICULTY:        "DIFFICULTY",
