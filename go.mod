@@ -3,7 +3,7 @@ module github.com/VaynerAkaWalo/mc-server-manager
 go 1.24.2
 
 require (
-	github.com/VaynerAkaWalo/go-toolkit v0.0.2
+	github.com/VaynerAkaWalo/go-toolkit v0.0.3
 	github.com/VaynerAkaWalo/mc-server-operator v0.0.0-20250831200535-bb328a395435
 	k8s.io/apimachinery v0.32.3
 	k8s.io/client-go v0.32.3
