@@ -36,7 +36,7 @@ var optsKeys = map[Option]string{
 	VIEW_DISTANCE:     "VIEW_DISTANCE",
 }
 
-var requiredOpts = map[Option]string{
+var RequiredOpts = map[Option]string{
 	EULA:            "true",
 	USE_AIKAR_FLAGS: "true",
 	DIFFICULTY:      "2",

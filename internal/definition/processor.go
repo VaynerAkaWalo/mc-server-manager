@@ -13,7 +13,8 @@ func TranslateDefinition(ctx context.Context, definition ServerDefinition) (*v1a
 		return nil, err
 	}
 
-	environment, err := processEnvironment(ctx, definition.Options)
+	envCustomizer := NewDefaultEnvCustomizer()
+	environment, err := envCustomizer.Customize(ctx, definition.Options)
 	if err != nil {
 		return nil, err
 	}

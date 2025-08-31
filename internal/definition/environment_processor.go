@@ -41,7 +41,7 @@ func combineProcessors(processors ...environmentProcessor) environmentProcessor 
 }
 
 func ensureRequiredOpts(ctx context.Context, environment map[Option]string) (map[Option]string, error) {
-	for key, val := range requiredOpts {
+	for key, val := range RequiredOpts {
 		environmentValue := environment[key]
 		if environmentValue == "" {
 			environment[key] = val
