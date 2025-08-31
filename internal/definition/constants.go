@@ -36,28 +36,12 @@ var optsKeys = map[Option]string{
 	VIEW_DISTANCE:     "VIEW_DISTANCE",
 }
 
-var requiredOpts = map[Option]string{
-	EULA:            "true",
-	USE_AIKAR_FLAGS: "true",
-	DIFFICULTY:      "2",
-	JVM_XX_OPTS:     "-XX:MaxRAMPercentage=75",
-	MEMORY:          "",
-	VIEW_DISTANCE:   "20",
-}
-
-var DefaultQuota = ResourceQuota{
-	MemoryInMb: 7000,
-}
-
-type ResourceQuota struct {
-	MemoryInMb int
-}
-
 const defaultImage = "itzg/minecraft-server:latest"
 
-type ServerDefinition struct {
-	Name        string            `json:"name"`
-	Options     map[Option]string `json:"options"`
-	Quota       ResourceQuota     `json:"quota"`
-	ExpireAfter int64             `json:"expireAfter"`
-}
+type Tier string
+
+const (
+	Wooden  Tier = "wooden"
+	Iron    Tier = "iron"
+	Diamond Tier = "diamond"
+)

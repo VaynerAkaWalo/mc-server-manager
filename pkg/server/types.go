@@ -10,7 +10,8 @@ type Response struct {
 }
 
 type Request struct {
-	Name        string                       `json:"name"`
-	ExpireAfter int64                        `json:"expireAfter"`
-	Opts        map[definition.Option]string `json:"opts"`
+	Name     string                       `json:"name"`
+	Duration int64                        `json:"duration"`
+	Opts     map[definition.Option]string `json:"opts"`
+	Tier     string                       `json:"tier"`
 }
