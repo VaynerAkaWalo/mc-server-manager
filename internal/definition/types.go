@@ -46,14 +46,10 @@ var requiredOpts = map[Option]string{
 }
 
 var DefaultQuota = ResourceQuota{
-	CpuRequest: 3,
-	CpuLimit:   4,
 	MemoryInMb: 7000,
 }
 
 type ResourceQuota struct {
-	CpuRequest int
-	CpuLimit   int
 	MemoryInMb int
 }
 

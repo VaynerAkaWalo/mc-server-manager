@@ -1,7 +1,7 @@
 github.com/VaynerAkaWalo/go-toolkit v0.0.0-20250831120938-c0799cde1e2d h1:Lgh76Fug3u2fQM8/cnZQ1UEeJoMmm/GjG808mI8zLPk=
 github.com/VaynerAkaWalo/go-toolkit v0.0.0-20250831120938-c0799cde1e2d/go.mod h1:kdLx94lETfezXUvAGiQQ426sekfLcjoW69FALoLbWiQ=
-github.com/VaynerAkaWalo/mc-server-operator v0.0.0-20250421102136-3e478a85f33c h1:SO6zCtN5VQB9STHNUzvHCjbKE2+y8yFUNMXmsjUs8TE=
-github.com/VaynerAkaWalo/mc-server-operator v0.0.0-20250421102136-3e478a85f33c/go.mod h1:RkPhfvM0ph0RNFKfOh+Y8zY2nUR+FbHQXZQCaMGAUJ8=
+github.com/VaynerAkaWalo/mc-server-operator v0.0.0-20250831200535-bb328a395435 h1:+8x0WjWJBNTQg7tcM/FXIfp2YI62MKciFDQt+easwLk=
+github.com/VaynerAkaWalo/mc-server-operator v0.0.0-20250831200535-bb328a395435/go.mod h1:RkPhfvM0ph0RNFKfOh+Y8zY2nUR+FbHQXZQCaMGAUJ8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=

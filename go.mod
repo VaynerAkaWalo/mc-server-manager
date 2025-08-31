@@ -4,7 +4,7 @@ go 1.24.2
 
 require (
 	github.com/VaynerAkaWalo/go-toolkit v0.0.0-20250831120938-c0799cde1e2d
-	github.com/VaynerAkaWalo/mc-server-operator v0.0.0-20250421102136-3e478a85f33c
+	github.com/VaynerAkaWalo/mc-server-operator v0.0.0-20250831200535-bb328a395435
 	k8s.io/apimachinery v0.32.3
 	k8s.io/client-go v0.32.3
 )
