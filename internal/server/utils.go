@@ -2,7 +2,7 @@ package server
 
 import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"log"
+	"log/slog"
 	"time"
 )
 
@@ -17,10 +17,10 @@ func getRemainingTime(server map[string]interface{}) time.Duration {
 
 	serverStartedTime, _, _ := unstructured.NestedString(server, "status", "startedTime")
 	if serverStartedTime == "" && createdTime.Add(10*time.Minute).Before(time.Now()) {
-		log.Println("Started time is null and server was created over 10 minutes ago")
+		slog.Error("Started time is null and server was created over 10 minutes ago")
 		return expireTimeByCreation.Sub(time.Now())
 	} else if serverStartedTime == "" {
-		log.Println("Server is still not ready")
+		slog.Warn("Server is still not ready")
 		return expireIn
 	}
 	startedTime, _ := time.Parse(time.RFC3339, serverStartedTime)

@@ -2,14 +2,13 @@ package cluster
 
 import (
 	"context"
-	"fmt"
 	serversv1alpha1 "github.com/VaynerAkaWalo/mc-server-operator/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
-	"log"
+	"log/slog"
 )
 
 type Service struct {
@@ -65,10 +64,10 @@ func (s *Service) DeployServerSpec(serverRequest serversv1alpha1.McServerSpec) e
 		},
 	}
 
-	log.Printf("Creating new server %s, and image %s", serverRequest.Name, serverRequest.Image)
+	slog.Info("Creating new server %s, and image %s", serverRequest.Name, serverRequest.Image)
 	_, err := s.dynamicClient.Resource(serverGVR()).Namespace("minecraft-server").Create(context.TODO(), server, metav1.CreateOptions{})
 	if err != nil {
-		log.Println("Failed to create server " + err.Error())
+		slog.Info("Failed to create server " + err.Error())
 		return err
 	}
 
@@ -78,6 +77,6 @@ func (s *Service) DeployServerSpec(serverRequest serversv1alpha1.McServerSpec) e
 func (s *Service) DeleteServer(serverName string) {
 	err := s.dynamicClient.Resource(serverGVR()).Namespace("minecraft-server").Delete(context.TODO(), serverName, metav1.DeleteOptions{})
 	if err != nil {
-		fmt.Println("Failed to delete server" + serverName)
+		slog.Error("Failed to delete server" + serverName)
 	}
 }

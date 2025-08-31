@@ -3,11 +3,11 @@ package server
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/cluster"
 	definition "github.com/VaynerAkaWalo/mc-server-manager/internal/definition"
 	"github.com/VaynerAkaWalo/mc-server-manager/pkg/server"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"log/slog"
 	"time"
 )
 
@@ -94,11 +94,11 @@ func (s *Service) shutdownExpiredServers() (expiredServers, error) {
 	for _, server := range activeServerResources.Items {
 		remainingTime := getRemainingTime(server.Object)
 		if remainingTime != remainingTime.Abs() {
-			fmt.Println("Server " + server.GetName() + " expired initiating shutdown")
+			slog.Info("Server " + server.GetName() + " expired initiating shutdown")
 			s.clusterService.DeleteServer(server.GetName())
 			serversExpired = append(serversExpired, server.GetName())
 		} else {
-			fmt.Println("Server " + server.GetName() + " remaining time " + remainingTime.String())
+			slog.Info("Server " + server.GetName() + " remaining time " + remainingTime.String())
 		}
 	}
 
