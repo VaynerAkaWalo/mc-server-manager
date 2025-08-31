@@ -2,7 +2,8 @@ package server
 
 import (
 	"encoding/json"
-	"github.com/VaynerAkaWalo/mc-server-manager/internal/web"
+	"fmt"
+	"github.com/VaynerAkaWalo/go-toolkit/xhttp"
 	"github.com/VaynerAkaWalo/mc-server-manager/pkg/server"
 	"net/http"
 )
@@ -17,49 +18,46 @@ func NewServerHandlers(serverService Service) *Handlers {
 	}
 }
 
-func (h *Handlers) RegisterServerRoutes(router *http.ServeMux) {
-	router.HandleFunc("OPTIONS /servers", h.preFlightHandler)
-	router.HandleFunc("GET /servers", h.listServersHandler)
-	router.HandleFunc("POST /servers", h.provisionServer)
-	router.HandleFunc("DELETE /servers", h.shutdownExpiredServers)
+func (h *Handlers) RegisterRoutes(router *http.ServeMux) {
+	router.Handle("OPTIONS /servers", xhttp.HttpHandler(h.preFlightHandler))
+	router.Handle("GET /servers", xhttp.HttpHandler(h.listServersHandler))
+	router.Handle("POST /servers", xhttp.HttpHandler(h.provisionServer))
+	router.Handle("DELETE /servers", xhttp.HttpHandler(h.shutdownExpiredServers))
 }
 
-func (h *Handlers) listServersHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) listServersHandler(w http.ResponseWriter, r *http.Request) error {
 	servers, err := h.serverService.getActiveServers()
 	if err != nil {
-		web.SendErrorResponse(w, http.StatusInternalServerError, "Failed to get all servers "+err.Error())
-		return
+		return xhttp.NewError("Failed to get all servers "+err.Error(), http.StatusInternalServerError)
 	}
 
-	web.SendJsonResponse(w, http.StatusOK, servers)
+	return xhttp.WriteResponse(w, http.StatusOK, servers)
 }
 
-func (h *Handlers) provisionServer(w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) provisionServer(w http.ResponseWriter, r *http.Request) error {
 	var req server.Request
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil || req.Name == "" || req.ExpireAfter == 0 {
-		web.SendErrorResponse(w, http.StatusBadRequest, "Invalid json structure "+err.Error())
-		return
+		return xhttp.NewError(fmt.Sprintf("Invalid json structure %v", err), http.StatusBadRequest)
 	}
 
 	res, err := h.serverService.provisionServer(req)
 	if err != nil {
-		web.SendErrorResponse(w, http.StatusInternalServerError, err.Error())
-		return
+		return xhttp.NewError(err.Error(), http.StatusInternalServerError)
 	}
 
-	web.SendJsonResponse(w, http.StatusCreated, res)
+	return xhttp.WriteResponse(w, http.StatusCreated, res)
 }
 
-func (h *Handlers) shutdownExpiredServers(w http.ResponseWriter, r *http.Request) {
+func (h *Handlers) shutdownExpiredServers(w http.ResponseWriter, r *http.Request) error {
 	results, err := h.serverService.shutdownExpiredServers()
 	if err != nil {
-		web.SendErrorResponse(w, http.StatusInternalServerError, err.Error())
+		return xhttp.NewError(err.Error(), http.StatusInternalServerError)
 	}
 
-	web.SendJsonResponse(w, http.StatusOK, results)
+	return xhttp.WriteResponse(w, http.StatusOK, results)
 }
 
-func (h *Handlers) preFlightHandler(w http.ResponseWriter, r *http.Request) {
-	web.SendJsonResponse(w, http.StatusOK, nil)
+func (h *Handlers) preFlightHandler(w http.ResponseWriter, r *http.Request) error {
+	return xhttp.WriteResponse(w, http.StatusOK, nil)
 }

@@ -1,7 +1,7 @@
 package healthcheck
 
 import (
-	"github.com/VaynerAkaWalo/mc-server-manager/internal/web"
+	"github.com/VaynerAkaWalo/go-toolkit/xhttp"
 	"net/http"
 )
 
@@ -12,10 +12,10 @@ func NewHealthcheckHandlers() *Handlers {
 	return &Handlers{}
 }
 
-func (h *Handlers) RegisterHealthcheckRoutes(router *http.ServeMux) {
-	router.HandleFunc("GET /health", h.healthcheckHandler)
+func (h *Handlers) RegisterRoutes(router *http.ServeMux) {
+	router.Handle("GET /health", xhttp.HttpHandler(h.healthcheckHandler))
 }
 
-func (h *Handlers) healthcheckHandler(w http.ResponseWriter, r *http.Request) {
-	web.SendJsonResponse(w, http.StatusOK, Response{Status: "OK"})
+func (h *Handlers) healthcheckHandler(w http.ResponseWriter, r *http.Request) error {
+	return xhttp.WriteResponse(w, http.StatusOK, Response{Status: "OK"})
 }

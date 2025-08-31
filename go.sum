@@ -1,5 +1,5 @@
-github.com/VaynerAkaWalo/go-toolkit v0.0.0-20250831120938-c0799cde1e2d h1:Lgh76Fug3u2fQM8/cnZQ1UEeJoMmm/GjG808mI8zLPk=
-github.com/VaynerAkaWalo/go-toolkit v0.0.0-20250831120938-c0799cde1e2d/go.mod h1:kdLx94lETfezXUvAGiQQ426sekfLcjoW69FALoLbWiQ=
+github.com/VaynerAkaWalo/go-toolkit v0.0.0-20250831211526-b0781b76a8c1 h1:Ch1PvDh7X9+CNCq9CalHzNPA903fm5KcSTQBpNwCYEQ=
+github.com/VaynerAkaWalo/go-toolkit v0.0.0-20250831211526-b0781b76a8c1/go.mod h1:niPoRYGXFDUat58tKIe0Izkt8qqcizUvAaLtwiS5dO4=
 github.com/VaynerAkaWalo/mc-server-operator v0.0.0-20250831200535-bb328a395435 h1:+8x0WjWJBNTQg7tcM/FXIfp2YI62MKciFDQt+easwLk=
 github.com/VaynerAkaWalo/mc-server-operator v0.0.0-20250831200535-bb328a395435/go.mod h1:RkPhfvM0ph0RNFKfOh+Y8zY2nUR+FbHQXZQCaMGAUJ8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
