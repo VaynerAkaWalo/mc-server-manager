@@ -12,8 +12,8 @@ func NewHealthcheckHandlers() *Handlers {
 	return &Handlers{}
 }
 
-func (h *Handlers) RegisterRoutes(router *http.ServeMux) {
-	router.Handle("GET /health", xhttp.HttpHandler(h.healthcheckHandler))
+func (h *Handlers) RegisterRoutes(router *xhttp.Router) {
+	router.RegisterHandler("GET /health", h.healthcheckHandler)
 }
 
 func (h *Handlers) healthcheckHandler(w http.ResponseWriter, r *http.Request) error {

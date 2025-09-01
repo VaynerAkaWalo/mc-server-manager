@@ -18,11 +18,10 @@ func NewServerHandlers(serverService Service) *Handlers {
 	}
 }
 
-func (h *Handlers) RegisterRoutes(router *http.ServeMux) {
-	router.Handle("OPTIONS /servers", xhttp.HttpHandler(h.preFlightHandler))
-	router.Handle("GET /servers", xhttp.HttpHandler(h.listServersHandler))
-	router.Handle("POST /servers", xhttp.HttpHandler(h.provisionServer))
-	router.Handle("DELETE /servers", xhttp.HttpHandler(h.shutdownExpiredServers))
+func (h *Handlers) RegisterRoutes(router *xhttp.Router) {
+	router.RegisterHandler("GET /servers", h.listServersHandler)
+	router.RegisterHandler("POST /servers", h.provisionServer)
+	router.RegisterHandler("DELETE /servers", h.shutdownExpiredServers)
 }
 
 func (h *Handlers) listServersHandler(w http.ResponseWriter, r *http.Request) error {
