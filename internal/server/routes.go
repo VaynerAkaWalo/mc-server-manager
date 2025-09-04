@@ -36,7 +36,7 @@ func (h *Handlers) listServersHandler(w http.ResponseWriter, r *http.Request) er
 func (h *Handlers) provisionServer(w http.ResponseWriter, r *http.Request) error {
 	var req server.Request
 	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil || req.Name == "" || req.ExpireAfter == 0 {
+	if err != nil || req.Name == "" || req.Duration == 0 {
 		return xhttp.NewError(fmt.Sprintf("Invalid json structure %v", err), http.StatusBadRequest)
 	}
 
