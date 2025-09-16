@@ -15,6 +15,7 @@ func TranslateDefinition(ctx context.Context, definition ServerDefinition) (*v1a
 		customizeContainer,
 		customizeGameplay,
 		customizeWorldGeneration,
+		saveCustomizer,
 	}
 
 	var err error
@@ -34,6 +35,7 @@ func TranslateDefinition(ctx context.Context, definition ServerDefinition) (*v1a
 		Memory:       instance.memory,
 		InstanceType: instance.instanceType,
 		ExpireAfter:  definition.Duration.Milliseconds(),
+		Volume:       definition.SaveId,
 	}, nil
 }
 

@@ -55,6 +55,7 @@ func (s *Service) DeployServerSpec(serverRequest serversv1alpha1.McServerSpec) e
 				"expireAfter":  serverRequest.ExpireAfter,
 				"memory":       serverRequest.Memory,
 				"instanceType": "shared",
+				"volume":       serverRequest.Volume,
 			},
 			"status": map[string]interface{}{
 				"status":      "new",

@@ -8,5 +8,6 @@ type (
 		Options  map[Option]string `json:"options"`
 		Tier     Tier              `json:"tier"`
 		Duration time.Duration     `json:"duration"`
+		SaveId   string            `json:"saveId,omitempty"`
 	}
 )
