@@ -14,9 +14,9 @@ type serverInstance struct {
 }
 
 const (
-	MemorySmall  string = "3300Mi"
-	MemoryMedium string = "7300Mi"
-	MemoryLarge  string = "15300Mi"
+	MemorySmall  string = "3000Mi"
+	MemoryMedium string = "7000Mi"
+	MemoryLarge  string = "15000Mi"
 	Shared       string = "shared"
 )
 
