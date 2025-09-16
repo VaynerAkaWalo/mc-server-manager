@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -23,5 +24,5 @@ func saveCustomizer(ctx context.Context, definition ServerDefinition) (ServerDef
 
 func getSanitizedName(name string) string {
 	regex, _ := regexp.Compile(AllowedCharsRegex)
-	return regex.ReplaceAllString(name, "-")
+	return strings.ToLower(regex.ReplaceAllString(name, "-"))
 }
