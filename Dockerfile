@@ -1,7 +1,3 @@
-ARG FRONTEND_IMAGE=ghcr.io/vaynerakawalo/mc-hosting-app:latest
-
-FROM ${FRONTEND_IMAGE} AS frontend
-
 FROM --platform=$BUILDPLATFORM golang:1.24.2-alpine AS build
 
 ARG TARGETARCH
@@ -22,6 +18,6 @@ WORKDIR /app
 
 COPY --from=build build/app .
 
-COPY --from=frontend /dist static
+COPY --from=ghcr.io/vaynerakawalo/mc-hosting-app:latest /dist static
 
 ENTRYPOINT ["./app"]

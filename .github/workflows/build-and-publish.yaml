@@ -3,11 +3,7 @@ name: Docker Build and Push
 on:
   push:
     branches: [ main ]
-  repository_dispatch:
-    types: [ frontend-released ]
-
-concurrency:
-  group: docker-publish
+  workflow_dispatch:
 
 jobs:
   build-and-push:
@@ -39,8 +35,6 @@ jobs:
           context: .
           file: Dockerfile
           platforms: linux/amd64,linux/arm64
-          build-args: |
-            ${{ github.event.client_payload.frontend_image && format('FRONTEND_IMAGE={0}', github.event.client_payload.frontend_image) || '' }}
           push: true
           tags: |
             ghcr.io/vaynerakawalo/${{ github.event.repository.name }}:${{ steps.commit_hash.outputs.SHORT_SHA }}
