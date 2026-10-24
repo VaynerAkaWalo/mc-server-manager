@@ -248,11 +248,6 @@ export function ServerCreator() {
                 control={<Checkbox value={Tier.iron} checked={state.tier === Tier.iron} onChange={updateTier}/>}
                 label="Iron"/>
             </Tooltip>
-            <Tooltip title={"Best for large servers with intensive chunk generation"}>
-              <FormControlLabel
-                control={<Checkbox value={Tier.diamond} checked={state.tier === Tier.diamond} onChange={updateTier}/>}
-                label="Diamond"/>
-            </Tooltip>
           </div>
         </div>
         <div>

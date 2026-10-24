@@ -26,9 +26,7 @@ const router = createBrowserRouter([
       }
     ]
   }
-], {
-  basename: "/mc-hosting-app"
-})
+])
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
