@@ -6,6 +6,9 @@ on:
   repository_dispatch:
     types: [ frontend-released ]
 
+concurrency:
+  group: docker-publish
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -36,6 +39,8 @@ jobs:
           context: .
           file: Dockerfile
           platforms: linux/amd64,linux/arm64
+          build-args: |
+            ${{ github.event.client_payload.frontend_image && format('FRONTEND_IMAGE={0}', github.event.client_payload.frontend_image) || '' }}
           push: true
           tags: |
             ghcr.io/vaynerakawalo/${{ github.event.repository.name }}:${{ steps.commit_hash.outputs.SHORT_SHA }}

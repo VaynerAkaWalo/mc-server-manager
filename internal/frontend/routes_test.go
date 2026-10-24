@@ -17,6 +17,8 @@ func TestServeApp(t *testing.T) {
 	mux := http.NewServeMux()
 	NewFrontendHandlers(files).RegisterRoutes(&xhttp.Router{ServeMux: mux})
 
+	indexPaths := map[string]bool{"/": true, "/server-creator": true, "/assets": true}
+
 	tests := map[string]string{
 		"/":               "app",
 		"/server-creator": "app",
@@ -30,6 +32,10 @@ func TestServeApp(t *testing.T) {
 
 		if rec.Code != http.StatusOK || rec.Body.String() != want {
 			t.Errorf("GET %s = %d %q, want 200 %q", url, rec.Code, rec.Body.String(), want)
+		}
+
+		if got := rec.Header().Get("Cache-Control"); indexPaths[url] != (got == "no-cache") {
+			t.Errorf("GET %s Cache-Control = %q", url, got)
 		}
 	}
 }

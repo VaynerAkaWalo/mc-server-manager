@@ -26,11 +26,13 @@ func (h *Handlers) RegisterRoutes(router *xhttp.Router) {
 
 func (h *Handlers) serveApp(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimPrefix(path.Clean(r.URL.Path), "/")
-	if name == "" || h.isFile(name) {
+	if h.isFile(name) {
 		h.fileServer.ServeHTTP(w, r)
 		return
 	}
 
+	// Hashed assets from older builds disappear on deploy, so browsers must revalidate the index that references them.
+	w.Header().Set("Cache-Control", "no-cache")
 	http.ServeFileFS(w, r, h.files, "index.html")
 }
 
