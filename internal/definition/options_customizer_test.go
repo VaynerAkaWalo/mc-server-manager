@@ -23,7 +23,7 @@ func TestCustomizeOptions(t *testing.T) {
 			DIFFICULTY:  "hard",
 			MAX_PLAYERS: "10",
 			ONLINE_MODE: "false",
-			OPS:         "Steve,Alex",
+			OPS:         "Steve, Alex",
 		}, false},
 		{"unknown mod url", map[Option]string{MODS: "https://evil.example/mod.jar"}, true},
 		{"approved and unknown mod url", map[Option]string{MODS: approvedModUrls[0] + ",https://evil.example/mod.jar"}, true},

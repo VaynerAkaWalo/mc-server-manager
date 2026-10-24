@@ -11,7 +11,7 @@ import (
 type optionValidator func(value string) bool
 
 var freeText = regexp.MustCompile(`^[\p{L}\p{N} _.,:'!?-]*$`).MatchString
-var identifierList = regexp.MustCompile(`^[a-zA-Z0-9_.:,-]*$`).MatchString
+var identifierList = regexp.MustCompile(`^[a-zA-Z0-9_.:, -]*$`).MatchString
 
 var serverTypes = []string{"VANILLA", "PAPER", "FABRIC", "FORGE", "NEOFORGE", "QUILT"}
 
