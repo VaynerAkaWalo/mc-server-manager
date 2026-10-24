@@ -14,4 +14,5 @@ type Request struct {
 	Duration int64                        `json:"duration"`
 	Opts     map[definition.Option]string `json:"opts"`
 	Tier     string                       `json:"tier"`
+	Preset   string                       `json:"preset,omitempty"`
 }
