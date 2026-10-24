@@ -55,7 +55,7 @@ export function ServerCreator() {
   const [activeTab, setActiveTab] = useState<CreatorTab>(CreatorTab.BASIC)
   const [state, dispatch] = useReducer(serverReducer, initialServer)
   const {setNotificationMessage} = UpdateNotification()
-  const {templateName, templateOps} = useLocation().state || {}
+  const {templateName, templatePreset, templateOps} = useLocation().state || {}
   const navigate = useNavigate()
 
   function isTemplated(): boolean {
@@ -288,6 +288,7 @@ export function ServerCreator() {
       duration: state.duration,
       opts: sanitizedOpts,
       tier: state.tier,
+      preset: templatePreset,
     }
 
     await ManagerClient.createServer(request).catch(err => {

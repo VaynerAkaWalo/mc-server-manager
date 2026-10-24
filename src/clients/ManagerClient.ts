@@ -5,7 +5,8 @@ export interface CreateServerRequest {
   name: string,
   opts: Opts,
   duration: number,
-  tier: Tier
+  tier: Tier,
+  preset?: string
 }
 
 export interface Opts {
@@ -14,10 +15,8 @@ export interface Opts {
   MAX_PLAYERS?: string
   VERSION?: string
   TYPE?: string
-  MODS?: string
   MOTD?: string
   OPS?: string
-  MODRINTH_PROJECTS?: string
 }
 
 export enum Tier {

@@ -5,14 +5,15 @@ import {Opts} from "../clients/ManagerClient.ts";
 export interface template {
   name: string
   description: string
+  preset: string
   opts: Opts
 }
 
-export function Template({name, description, opts}: template) {
+export function Template({name, description, preset, opts}: template) {
   const navigate = useNavigate()
 
   const handleCreateServerFromTemplate = () => {
-    navigate("/server-creator", { state: { templateName: name, templateOps: opts } } )
+    navigate("/server-creator", { state: { templateName: name, templatePreset: preset, templateOps: opts } } )
   }
 
   return (

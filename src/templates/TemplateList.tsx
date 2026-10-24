@@ -10,11 +10,9 @@ export function TemplateList() {
       {
         name: "Lockout",
         description: "Compete in bingo challenges to claim victory! This gameplay focuses on team-based objective completion.",
+        preset: "lockout",
         opts: {
           VERSION: "1.21.3",
-          TYPE: "FABRIC",
-          MODRINTH_PROJECTS: "fabric-api,lithium",
-          MODS: "https://github.com/marin774/lockout-fabric/releases/download/v0.9.3/lockout-fabric-0.9.3.jar",
         }
       }
     ])
@@ -23,7 +21,7 @@ export function TemplateList() {
   return (
     <ul className="flex flex-col min-w-1/4 max-w-5/12 h-2/3 justify-evenly">
       {templates.map((template) => (
-        <Template name={template.name} description={template.description} opts={template.opts}/>
+        <Template name={template.name} description={template.description} preset={template.preset} opts={template.opts}/>
       ))}
     </ul>
   )
