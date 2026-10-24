@@ -36,7 +36,7 @@ var optsKeys = map[Option]string{
 	VIEW_DISTANCE:     "VIEW_DISTANCE",
 }
 
-const defaultImage = "itzg/minecraft-server:latest"
+const defaultImage = "docker.io/itzg/minecraft-server:latest"
 
 type Tier string
 
