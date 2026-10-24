@@ -21,8 +21,7 @@ export interface Opts {
 
 export enum Tier {
   wooden = "wooden",
-  iron = "iron",
-  diamond = "diamond"
+  iron = "iron"
 }
 
 export interface ServerResponse {
@@ -33,19 +32,12 @@ export interface ServerResponse {
 }
 
 class ServerManager {
-  private readonly baseUrl: string;
-
-
-  constructor() {
-    this.baseUrl = "https://blamedevs.com/mc-server-manager";
-  }
-
   public createServer = (request: CreateServerRequest): Promise<AxiosPromise<ServerResponse>> => {
-    return HTTPClient.post(this.baseUrl + "/servers", request)
+    return HTTPClient.post("/servers", request)
   }
 
   public listServers = async (): Promise<AxiosPromise<ServerResponse[]>> => {
-    return HTTPClient.get(this.baseUrl + "/servers")
+    return HTTPClient.get("/servers")
   }
 }
 
