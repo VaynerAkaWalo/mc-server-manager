@@ -4,6 +4,9 @@ on:
   push:
     branches: [ main ]
 
+concurrency:
+  group: docker-publish
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -29,6 +32,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build and push Docker image
+        id: push
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -43,4 +47,4 @@ jobs:
       - name: Rebuild mc-server-manager
         env:
           GH_TOKEN: ${{ secrets.MANAGER_DISPATCH_TOKEN }}
-        run: gh api repos/VaynerAkaWalo/mc-server-manager/dispatches -f event_type=frontend-released
+        run: gh api repos/VaynerAkaWalo/mc-server-manager/dispatches -f event_type=frontend-released -f "client_payload[frontend_image]=ghcr.io/vaynerakawalo/${{ github.event.repository.name }}@${{ steps.push.outputs.digest }}"
