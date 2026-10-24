@@ -64,6 +64,7 @@ func (s *Service) provisionServer(provisionRequest server.Request) (server.Respo
 		Name:     provisionRequest.Name,
 		Options:  provisionRequest.Opts,
 		Tier:     definition.Tier(provisionRequest.Tier),
+		Preset:   provisionRequest.Preset,
 		Duration: time.Duration(provisionRequest.Duration) * time.Millisecond,
 	}
 
