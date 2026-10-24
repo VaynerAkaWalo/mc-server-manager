@@ -18,4 +18,6 @@ WORKDIR /app
 
 COPY --from=build build/app .
 
+COPY --from=ghcr.io/vaynerakawalo/mc-hosting-app:latest /dist static
+
 ENTRYPOINT ["./app"]
