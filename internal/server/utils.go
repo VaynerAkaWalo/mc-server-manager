@@ -28,3 +28,7 @@ func getRemainingTime(server map[string]interface{}) time.Duration {
 
 	return expireTimeByStartedTime.Sub(time.Now())
 }
+
+func serverAddress(serverName string) string {
+	return serverName + ".mc-server.blamedevs.com"
+}

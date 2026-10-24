@@ -40,7 +40,7 @@ func (s *Service) getActiveServers() ([]server.Response, error) {
 
 		activeServers = append(activeServers, server.Response{
 			Name:          item.GetName(),
-			IP:            item.GetName() + ".blamedevs.com",
+			IP:            serverAddress(item.GetName()),
 			RemainingTime: getRemainingTime(item.Object).Round(time.Minute).String(),
 			Status:        status,
 		})
@@ -80,7 +80,7 @@ func (s *Service) provisionServer(provisionRequest server.Request) (server.Respo
 
 	res := server.Response{
 		Name: provisionRequest.Name,
-		IP:   provisionRequest.Name + ".blamedevs.com",
+		IP:   serverAddress(provisionRequest.Name),
 	}
 	return res, nil
 }
