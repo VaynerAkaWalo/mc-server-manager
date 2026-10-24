@@ -9,6 +9,7 @@ type customizer func(ctx context.Context, definition ServerDefinition) (ServerDe
 
 func TranslateDefinition(ctx context.Context, definition ServerDefinition) (*v1alpha1.McServerSpec, error) {
 	customizers := []customizer{
+		customizeOptions,
 		customizeName,
 		customizeDuration,
 		customizeOperators,
