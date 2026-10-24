@@ -4,6 +4,7 @@ import (
 	"github.com/VaynerAkaWalo/go-toolkit/xhttp"
 	"github.com/VaynerAkaWalo/go-toolkit/xlog"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/cluster"
+	"github.com/VaynerAkaWalo/mc-server-manager/internal/frontend"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/healthcheck"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/server"
 	"log/slog"
@@ -29,10 +30,11 @@ func main() {
 	serverHandlers := server.NewServerHandlers(serverService)
 
 	healthcheckHandlers := healthcheck.NewHealthcheckHandlers()
+	frontendHandlers := frontend.NewFrontendHandlers(os.DirFS("static"))
 
 	httpServer := xhttp.Server{
 		Addr:     ":8080",
-		Handlers: []xhttp.RouteHandler{healthcheckHandlers, serverHandlers},
+		Handlers: []xhttp.RouteHandler{healthcheckHandlers, serverHandlers, frontendHandlers},
 	}
 
 	slog.Error(httpServer.ListenAndServe().Error())
