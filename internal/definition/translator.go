@@ -28,7 +28,10 @@ func TranslateDefinition(ctx context.Context, definition ServerDefinition) (*v1a
 		}
 	}
 
-	instance := translateTier(ctx, definition.Tier)
+	instance, err := translateTier(ctx, definition.Tier)
+	if err != nil {
+		return nil, err
+	}
 
 	return &v1alpha1.McServerSpec{
 		Name:         definition.Name,

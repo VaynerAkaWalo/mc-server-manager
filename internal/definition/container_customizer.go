@@ -1,6 +1,9 @@
 package definition
 
-import "context"
+import (
+	"context"
+	"fmt"
+)
 
 var containerEnforcedOpts = map[Option]string{
 	MEMORY:          "",
@@ -13,17 +16,16 @@ type serverInstance struct {
 	instanceType string
 }
 
+// Game nodes have about 6.5Gi allocatable, so two wooden servers share a node and an iron server takes a whole one.
 const (
 	MemorySmall  string = "3000Mi"
-	MemoryMedium string = "7000Mi"
-	MemoryLarge  string = "15000Mi"
+	MemoryMedium string = "6000Mi"
 	Shared       string = "shared"
 )
 
 var tierMapping = map[Tier]serverInstance{
-	Wooden:  {memory: MemorySmall, instanceType: Shared},
-	Iron:    {memory: MemoryMedium, instanceType: Shared},
-	Diamond: {memory: MemoryLarge, instanceType: Shared},
+	Wooden: {memory: MemorySmall, instanceType: Shared},
+	Iron:   {memory: MemoryMedium, instanceType: Shared},
 }
 
 func customizeContainer(ctx context.Context, definition ServerDefinition) (ServerDefinition, error) {
@@ -34,6 +36,11 @@ func customizeContainer(ctx context.Context, definition ServerDefinition) (Serve
 	return definition, nil
 }
 
-func translateTier(ctx context.Context, tier Tier) serverInstance {
-	return tierMapping[tier]
+func translateTier(ctx context.Context, tier Tier) (serverInstance, error) {
+	instance, found := tierMapping[tier]
+	if !found {
+		return serverInstance{}, fmt.Errorf("tier %s is not available", tier)
+	}
+
+	return instance, nil
 }
