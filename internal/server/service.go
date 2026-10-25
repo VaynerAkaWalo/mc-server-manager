@@ -83,8 +83,8 @@ func (s *Service) provisionServer(provisionRequest server.Request) (server.Respo
 	}
 
 	record, err := s.store.CreateServer(context.TODO(), store.NewServer{
-		Name:       provisionRequest.Name,
-		Hostname:   serverAddress(provisionRequest.Name),
+		Name:       serverSpec.Name,
+		Hostname:   serverAddress(serverSpec.Name),
 		Definition: serverDefinition,
 		ExpiresAt:  time.Now().Add(serverDefinition.Duration),
 	})
@@ -94,8 +94,10 @@ func (s *Service) provisionServer(provisionRequest server.Request) (server.Respo
 
 	err = s.clusterService.DeployServerSpec(*serverSpec)
 	if err != nil {
-		if deleteErr := s.store.DeleteServer(context.TODO(), record.ID); deleteErr != nil {
-			slog.Error("Failed to remove record of server that was not deployed " + record.ID.String() + ": " + deleteErr.Error())
+		if rejectedByCluster(err) {
+			if deleteErr := s.store.DeleteServer(context.TODO(), record.ID); deleteErr != nil {
+				slog.Error("Failed to remove record of server that was not deployed " + record.ID.String() + ": " + deleteErr.Error())
+			}
 		}
 		return server.Response{}, err
 	}
