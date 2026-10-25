@@ -21,16 +21,16 @@ func (s *memoryStore) CreateServer(_ context.Context, input store.NewServer) (st
 		return store.ServerRecord{}, err
 	}
 
-	record := store.ServerRecord{ID: uuid.New(), Name: input.Name, Hostname: input.Hostname, Definition: definition, CreatedAt: time.Now(), ExpiresAt: input.ExpiresAt}
+	record := store.ServerRecord{ID: uuid.New(), Name: input.Name, Hostname: input.Hostname, Definition: definition, CreatedAt: time.Now(), ExpiresAt: input.ExpiresAt, Status: "provisioning"}
 	s.records = append([]store.ServerRecord{record}, s.records...)
 	return record, nil
 }
 
 func (s *memoryStore) DeleteServer(context.Context, uuid.UUID) error { return nil }
-func (s *memoryStore) CountServers(context.Context) (store.ServerCounts, error) {
+func (s *memoryStore) CountServers(context.Context, store.ServerFilter) (store.ServerCounts, error) {
 	return store.ServerCounts{}, nil
 }
-func (s *memoryStore) ListServers(context.Context) ([]store.ServerRecord, error) {
+func (s *memoryStore) ListServers(context.Context, store.ServerQuery) ([]store.ServerRecord, error) {
 	return s.records, nil
 }
 
@@ -44,16 +44,16 @@ func TestProvisionAndListUseSameRepresentation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	listed, err := svc.listServers(context.Background())
+	listed, err := svc.listServers(context.Background(), store.ServerQuery{Limit: 20})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed) != 1 {
+	if len(listed.Items) != 1 {
 		t.Fatalf("listed = %+v", listed)
 	}
 
 	createdJSON, _ := json.Marshal(created)
-	listedJSON, _ := json.Marshal(listed[0])
+	listedJSON, _ := json.Marshal(listed.Items[0])
 	if string(createdJSON) != string(listedJSON) {
 		t.Fatalf("created %s differs from listed %s", createdJSON, listedJSON)
 	}
@@ -67,14 +67,15 @@ func TestProvisionAndListUseSameRepresentation(t *testing.T) {
 
 func TestListUsesOnlyDatabase(t *testing.T) {
 	record := testRecord(time.Now().Add(time.Hour))
+	record.Status = "provisioning"
 	db := &memoryStore{records: []store.ServerRecord{record}}
 	svc := CreateServerService(nil, db)
 
-	listed, err := svc.listServers(context.Background())
+	listed, err := svc.listServers(context.Background(), store.ServerQuery{Limit: 20})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed) != 1 || listed[0].ID != record.ID || listed[0].Status != server.StatusProvisioning || !listed[0].ExpiresAt.Equal(record.ExpiresAt) {
+	if len(listed.Items) != 1 || listed.Items[0].ID != record.ID || listed.Items[0].Status != server.StatusProvisioning || !listed.Items[0].ExpiresAt.Equal(record.ExpiresAt) {
 		t.Fatalf("listed = %+v", listed)
 	}
 }

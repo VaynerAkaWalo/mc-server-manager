@@ -33,3 +33,8 @@ type Request struct {
 	Preset     string            `json:"preset,omitempty"`
 	Options    map[string]string `json:"options"`
 }
+
+type Collection struct {
+	Items      []Response `json:"items"`
+	NextCursor string     `json:"nextCursor"`
+}

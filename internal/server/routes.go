@@ -30,7 +30,11 @@ func (h *Handlers) RegisterRoutes(router *xhttp.Router) {
 }
 
 func (h *Handlers) listServersHandler(w http.ResponseWriter, r *http.Request) error {
-	servers, err := h.serverService.listServers(r.Context())
+	query, err := parseCollectionQuery(r.URL.Query())
+	if err != nil {
+		return problem.Write(w, http.StatusBadRequest, err.Error())
+	}
+	servers, err := h.serverService.listServers(r.Context(), query)
 	if err != nil {
 		return internalFailure(w, r, "Failed to get all servers", err)
 	}
@@ -39,7 +43,11 @@ func (h *Handlers) listServersHandler(w http.ResponseWriter, r *http.Request) er
 }
 
 func (h *Handlers) statsHandler(w http.ResponseWriter, r *http.Request) error {
-	res, err := h.serverService.getStats(r.Context())
+	filter, err := parseFilter(r.URL.Query())
+	if err != nil {
+		return problem.Write(w, http.StatusBadRequest, err.Error())
+	}
+	res, err := h.serverService.getStats(r.Context(), filter)
 	if err != nil {
 		return internalFailure(w, r, "Failed to get stats", err)
 	}

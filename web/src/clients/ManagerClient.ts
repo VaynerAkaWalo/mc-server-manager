@@ -38,6 +38,11 @@ export interface ServerResponse {
   expiresAt: string
 }
 
+export interface ServerCollection {
+  items: ServerResponse[],
+  nextCursor: string
+}
+
 export interface StatsResponse {
   online: number,
   created: number
@@ -61,12 +66,13 @@ class ServerManager {
     return HTTPClient.post("/api/v1/servers", request)
   }
 
-  public listServers = async (): Promise<AxiosPromise<ServerResponse[]>> => {
-    return HTTPClient.get("/api/v1/servers")
+  public listServers = async (cursor?: string): Promise<AxiosPromise<ServerCollection>> => {
+    const query = new URLSearchParams(cursor ? {cursor} : {})
+    return HTTPClient.get(`/api/v1/servers?${query}`)
   }
 
   public getStats = async (): Promise<AxiosPromise<StatsResponse>> => {
-    return HTTPClient.get("/api/v1/servers/stats")
+    return HTTPClient.get("/api/v1/servers/stats?status=all")
   }
 }
 

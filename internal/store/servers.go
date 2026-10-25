@@ -9,6 +9,7 @@ import (
 )
 
 type ServerRecord struct {
+	Status     string
 	ID         uuid.UUID
 	Name       string
 	Hostname   string
@@ -39,9 +40,9 @@ func (s *Store) CreateServer(ctx context.Context, server NewServer) (ServerRecor
 	err = s.pool.QueryRow(ctx,
 		`INSERT INTO mc_servers (name, hostname, definition, expires_at)
 		 VALUES ($1, $2, $3, $4)
-		 RETURNING id, created_at`,
+		 RETURNING id, created_at, status`,
 		record.Name, record.Hostname, record.Definition, record.ExpiresAt,
-	).Scan(&record.ID, &record.CreatedAt)
+	).Scan(&record.ID, &record.CreatedAt, &record.Status)
 	if err != nil {
 		return ServerRecord{}, fmt.Errorf("insert server: %w", err)
 	}
@@ -60,43 +61,4 @@ func (s *Store) DeleteServer(ctx context.Context, id uuid.UUID) error {
 type ServerCounts struct {
 	Online  int
 	Created int
-}
-
-func (s *Store) CountServers(ctx context.Context) (ServerCounts, error) {
-	var counts ServerCounts
-	err := s.pool.QueryRow(ctx,
-		`SELECT count(*) FILTER (WHERE expires_at > now()), count(*) FROM mc_servers`,
-	).Scan(&counts.Online, &counts.Created)
-	if err != nil {
-		return ServerCounts{}, fmt.Errorf("count servers: %w", err)
-	}
-
-	return counts, nil
-}
-
-func (s *Store) ListServers(ctx context.Context) ([]ServerRecord, error) {
-	rows, err := s.pool.Query(ctx,
-		`SELECT id, name, hostname, definition, created_at, expires_at
-		 FROM mc_servers
-		 WHERE expires_at > now()
-		 ORDER BY created_at DESC, id DESC`,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("list servers: %w", err)
-	}
-	defer rows.Close()
-
-	records := make([]ServerRecord, 0)
-	for rows.Next() {
-		var record ServerRecord
-		if err := rows.Scan(&record.ID, &record.Name, &record.Hostname, &record.Definition, &record.CreatedAt, &record.ExpiresAt); err != nil {
-			return nil, fmt.Errorf("scan server: %w", err)
-		}
-		records = append(records, record)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("list servers: %w", err)
-	}
-
-	return records, nil
 }

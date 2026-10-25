@@ -21,8 +21,8 @@ var ErrNameInUse = errors.New("a server with this name already exists")
 type serverStore interface {
 	CreateServer(ctx context.Context, server store.NewServer) (store.ServerRecord, error)
 	DeleteServer(ctx context.Context, id uuid.UUID) error
-	CountServers(ctx context.Context) (store.ServerCounts, error)
-	ListServers(ctx context.Context) ([]store.ServerRecord, error)
+	CountServers(ctx context.Context, filter store.ServerFilter) (store.ServerCounts, error)
+	ListServers(ctx context.Context, query store.ServerQuery) ([]store.ServerRecord, error)
 }
 
 type clusterService interface {
@@ -43,30 +43,32 @@ func CreateServerService(clusterService clusterService, store serverStore) Servi
 	}
 }
 
-func (s *Service) listServers(ctx context.Context) ([]server.Response, error) {
-	records, err := s.store.ListServers(ctx)
+func (s *Service) listServers(ctx context.Context, query store.ServerQuery) (server.Collection, error) {
+	records, err := s.store.ListServers(ctx, query)
 	if err != nil {
-		return nil, err
+		return server.Collection{}, err
 	}
 
-	servers := make([]server.Response, 0, len(records))
+	result := server.Collection{Items: make([]server.Response, 0, len(records))}
+	if len(records) > query.Limit {
+		records = records[:query.Limit]
+		result.NextCursor = encodeCursor(query, records[len(records)-1])
+	}
 	for _, record := range records {
-		response, err := newResponse(record, server.StatusProvisioning)
+		response, err := newResponse(record, server.Status(record.Status))
 		if err != nil {
-			return nil, err
+			return server.Collection{}, err
 		}
-		servers = append(servers, response)
+		result.Items = append(result.Items, response)
 	}
-
-	return servers, nil
+	return result, nil
 }
 
-func (s *Service) getStats(ctx context.Context) (stats, error) {
-	counts, err := s.store.CountServers(ctx)
+func (s *Service) getStats(ctx context.Context, filter store.ServerFilter) (stats, error) {
+	counts, err := s.store.CountServers(ctx, filter)
 	if err != nil {
 		return stats{}, err
 	}
-
 	return stats{Online: counts.Online, Created: counts.Created}, nil
 }
 

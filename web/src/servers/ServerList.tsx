@@ -38,8 +38,15 @@ export function ServerList() {
   useEffect(() => {
     const loadServers = async () => {
       try {
-        const {data} = await ManagerClient.listServers()
-        setServers(data.filter(server => activeStatuses.includes(server.status)))
+        const items: ServerResponse[] = []
+        let cursor: string | undefined
+        do {
+          const {data} = await ManagerClient.listServers(cursor)
+          items.push(...data.items)
+          cursor = data.nextCursor || undefined
+        } while (cursor)
+
+        setServers(items.filter(server => activeStatuses.includes(server.status)))
       } catch {
         // keep the last known list, the next poll retries
       }
