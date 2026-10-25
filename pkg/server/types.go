@@ -21,24 +21,24 @@ type Players struct {
 }
 
 type Response struct {
-	ID        uuid.UUID         `json:"id"`
-	Name      string            `json:"name"`
-	Hostname  string            `json:"hostname"`
-	Status    Status            `json:"status"`
-	Players   *Players          `json:"players"`
-	Tier      string            `json:"tier"`
-	Preset    string            `json:"preset,omitempty"`
-	Options   map[string]string `json:"options"`
-	CreatedAt time.Time         `json:"createdAt"`
-	ExpiresAt time.Time         `json:"expiresAt"`
+	ID             uuid.UUID         `json:"id"`
+	Name           string            `json:"name"`
+	Hostname       string            `json:"hostname"`
+	Status         Status            `json:"status"`
+	Players        *Players          `json:"players"`
+	Tier           string            `json:"tier"`
+	Preset         string            `json:"preset,omitempty"`
+	Options        map[string]string `json:"options"`
+	CreatedAt      time.Time         `json:"createdAt"`
+	ExpiresAt      time.Time         `json:"expiresAt"`
+	IdleShutdownAt *time.Time        `json:"idleShutdownAt"`
 }
 
 type Request struct {
-	Name       string            `json:"name"`
-	DurationMs int64             `json:"durationMs"`
-	Tier       string            `json:"tier"`
-	Preset     string            `json:"preset,omitempty"`
-	Options    map[string]string `json:"options"`
+	Name    string            `json:"name"`
+	Tier    string            `json:"tier"`
+	Preset  string            `json:"preset,omitempty"`
+	Options map[string]string `json:"options"`
 }
 
 type Collection struct {

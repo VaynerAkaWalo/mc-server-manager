@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/VaynerAkaWalo/mc-server-manager/internal/store"
 	serversv1alpha1 "github.com/VaynerAkaWalo/mc-server-operator/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
@@ -69,5 +70,50 @@ func TestShutdownExpiredReportsFailedDeletes(t *testing.T) {
 	names, err := svc.ShutdownExpired()
 	if err == nil || len(names) != 0 {
 		t.Fatalf("names = %v, err = %v", names, err)
+	}
+}
+
+func idleRecord(name string, idleFor time.Duration) store.ServerRecord {
+	record := testRecord(time.Now().Add(time.Hour))
+	record.Name = name
+	record.Status = "running"
+	lastActive := time.Now().Add(-idleFor)
+	record.LastActiveAt = &lastActive
+
+	return record
+}
+
+func TestShutdownExpiredStopsIdleServers(t *testing.T) {
+	cl := &fakeCluster{
+		items:   []unstructured.Unstructured{serverResource("idle-server", time.Minute), serverResource("busy-server", time.Minute)},
+		deleted: map[string]types.UID{},
+	}
+	db := &memoryStore{records: []store.ServerRecord{idleRecord("idle-server", 31*time.Minute), idleRecord("busy-server", time.Minute)}}
+	svc := CreateServerService(cl, db, testVersions)
+
+	names, err := svc.ShutdownExpired()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(names) != 1 || names[0] != "idle-server" || cl.deleted["idle-server"] != "idle-server-uid" {
+		t.Fatalf("names = %v, deleted = %v", names, cl.deleted)
+	}
+	if db.records[0].Status != "expired" || db.records[1].Status != "running" {
+		t.Fatalf("statuses = %s, %s", db.records[0].Status, db.records[1].Status)
+	}
+}
+
+func TestShutdownExpiredExpiresIdleServersMissingFromCluster(t *testing.T) {
+	cl := &fakeCluster{deleted: map[string]types.UID{}}
+	db := &memoryStore{records: []store.ServerRecord{idleRecord("gone-server", time.Hour)}}
+	svc := CreateServerService(cl, db, testVersions)
+
+	if _, err := svc.ShutdownExpired(); err != nil {
+		t.Fatal(err)
+	}
+
+	if db.records[0].Status != "expired" {
+		t.Fatalf("status = %s", db.records[0].Status)
 	}
 }

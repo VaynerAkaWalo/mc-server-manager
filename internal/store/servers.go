@@ -19,13 +19,14 @@ var (
 )
 
 type ServerRecord struct {
-	Status     string
-	ID         uuid.UUID
-	Name       string
-	Hostname   string
-	Definition json.RawMessage
-	CreatedAt  time.Time
-	ExpiresAt  time.Time
+	Status       string
+	ID           uuid.UUID
+	Name         string
+	Hostname     string
+	Definition   json.RawMessage
+	CreatedAt    time.Time
+	ExpiresAt    time.Time
+	LastActiveAt *time.Time
 }
 
 type NewServer struct {
@@ -80,8 +81,8 @@ type ServerCounts struct {
 func (s *Store) GetServer(ctx context.Context, id uuid.UUID) (ServerRecord, error) {
 	var record ServerRecord
 	err := s.pool.QueryRow(ctx,
-		`SELECT id, name, hostname, definition, created_at, expires_at, status FROM mc_servers WHERE id = $1`, id,
-	).Scan(&record.ID, &record.Name, &record.Hostname, &record.Definition, &record.CreatedAt, &record.ExpiresAt, &record.Status)
+		`SELECT id, name, hostname, definition, created_at, expires_at, last_active_at, status FROM mc_servers WHERE id = $1`, id,
+	).Scan(&record.ID, &record.Name, &record.Hostname, &record.Definition, &record.CreatedAt, &record.ExpiresAt, &record.LastActiveAt, &record.Status)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ServerRecord{}, ErrNotFound
 	}
@@ -118,9 +119,54 @@ func (s *Store) ListMonitoredServers(ctx context.Context) ([]ServerRecord, error
 
 func (s *Store) MarkRunning(ctx context.Context, id uuid.UUID) error {
 	if _, err := s.pool.Exec(ctx,
-		`UPDATE mc_servers SET status = 'running' WHERE id = $1 AND status IN ('new', 'degraded')`, id,
+		`UPDATE mc_servers SET status = 'running', last_active_at = COALESCE(last_active_at, now())
+		 WHERE id = $1 AND status IN ('new', 'degraded')`, id,
 	); err != nil {
 		return fmt.Errorf("mark server running: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Store) MarkActive(ctx context.Context, id uuid.UUID) error {
+	if _, err := s.pool.Exec(ctx, `UPDATE mc_servers SET last_active_at = now() WHERE id = $1`, id); err != nil {
+		return fmt.Errorf("mark server active: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Store) ListIdleServers(ctx context.Context, idleFor time.Duration) ([]ServerRecord, error) {
+	rows, err := s.pool.Query(ctx,
+		`SELECT id, name, status FROM mc_servers
+		 WHERE status IN ('running', 'degraded') AND last_active_at <= now() - make_interval(secs => $1)`,
+		idleFor.Seconds(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list idle servers: %w", err)
+	}
+	defer rows.Close()
+
+	records := make([]ServerRecord, 0)
+	for rows.Next() {
+		var record ServerRecord
+		if err := rows.Scan(&record.ID, &record.Name, &record.Status); err != nil {
+			return nil, fmt.Errorf("scan idle server: %w", err)
+		}
+		records = append(records, record)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list idle servers: %w", err)
+	}
+
+	return records, nil
+}
+
+func (s *Store) ExpireServer(ctx context.Context, id uuid.UUID) error {
+	if _, err := s.pool.Exec(ctx,
+		`UPDATE mc_servers SET status = 'expired' WHERE id = $1 AND status IN ('new', 'running', 'degraded')`, id,
+	); err != nil {
+		return fmt.Errorf("expire server: %w", err)
 	}
 
 	return nil

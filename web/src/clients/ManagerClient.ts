@@ -4,7 +4,6 @@ import {AxiosPromise, AxiosResponse, isAxiosError} from "axios";
 export interface CreateServerRequest {
   name: string,
   options: Opts,
-  durationMs: number,
   tier: Tier,
   preset?: string
 }
@@ -30,7 +29,6 @@ export interface CatalogResponse {
   tiers: { id: Tier, name: string, description: string, default: boolean }[],
   presets: { id: string, name: string, description: string, options: Opts }[],
   options: { id: string, values?: string[] }[],
-  durationMs: { min: number, max: number },
   versions: Record<string, { latestRelease: string, items: GameVersion[] }>
 }
 
@@ -46,7 +44,8 @@ export interface ServerResponse {
   preset?: string,
   options: Opts,
   createdAt: string,
-  expiresAt: string
+  expiresAt: string,
+  idleShutdownAt: string | null
 }
 
 export interface ServerCollection {

@@ -68,7 +68,39 @@ func (s *memoryStore) ListMonitoredServers(context.Context) ([]store.ServerRecor
 }
 
 func (s *memoryStore) MarkRunning(_ context.Context, id uuid.UUID) error {
+	for i := range s.records {
+		if s.records[i].ID == id && s.records[i].LastActiveAt == nil {
+			now := time.Now()
+			s.records[i].LastActiveAt = &now
+		}
+	}
 	s.setStatus(id, []string{"new", "degraded"}, "running")
+	return nil
+}
+
+func (s *memoryStore) MarkActive(_ context.Context, id uuid.UUID) error {
+	for i := range s.records {
+		if s.records[i].ID == id {
+			now := time.Now()
+			s.records[i].LastActiveAt = &now
+		}
+	}
+	return nil
+}
+
+func (s *memoryStore) ListIdleServers(_ context.Context, idleFor time.Duration) ([]store.ServerRecord, error) {
+	idle := make([]store.ServerRecord, 0)
+	for _, record := range s.records {
+		active := record.Status == "running" || record.Status == "degraded"
+		if active && record.LastActiveAt != nil && time.Since(*record.LastActiveAt) >= idleFor {
+			idle = append(idle, record)
+		}
+	}
+	return idle, nil
+}
+
+func (s *memoryStore) ExpireServer(_ context.Context, id uuid.UUID) error {
+	s.setStatus(id, []string{"new", "running", "degraded"}, "expired")
 	return nil
 }
 
@@ -101,7 +133,7 @@ func TestProvisionAndListUseSameRepresentation(t *testing.T) {
 	cl := &fakeCluster{}
 	db := &memoryStore{}
 	svc := CreateServerService(cl, db, testVersions)
-	request := server.Request{Name: "my-server", DurationMs: time.Hour.Milliseconds(), Tier: "wooden", Options: map[string]string{"MOTD": "hello", "VERSION": "1.21.3"}}
+	request := server.Request{Name: "my-server", Tier: "wooden", Options: map[string]string{"MOTD": "hello", "VERSION": "1.21.3"}}
 
 	created, err := svc.provisionServer(context.Background(), request)
 	if err != nil {
@@ -123,8 +155,8 @@ func TestProvisionAndListUseSameRepresentation(t *testing.T) {
 	if created.ID == uuid.Nil || created.Options["MOTD"] != "hello" || len(created.Options) != 2 {
 		t.Fatalf("created = %+v", created)
 	}
-	if created.ExpiresAt.Sub(created.CreatedAt).Round(time.Second) != time.Hour {
-		t.Fatalf("durationMs did not set expiry: %+v", created)
+	if created.ExpiresAt.Sub(created.CreatedAt).Round(time.Second) != definition.MaxServerLifetime {
+		t.Fatalf("expiry is not the server lifetime: %+v", created)
 	}
 }
 
@@ -148,7 +180,7 @@ func TestListUsesOnlyDatabase(t *testing.T) {
 
 func TestProvisionRejectsActiveName(t *testing.T) {
 	svc := CreateServerService(&fakeCluster{}, &memoryStore{}, testVersions)
-	request := server.Request{Name: "my-server", DurationMs: time.Hour.Milliseconds(), Tier: "wooden", Options: map[string]string{"VERSION": "1.21.3"}}
+	request := server.Request{Name: "my-server", Tier: "wooden", Options: map[string]string{"VERSION": "1.21.3"}}
 
 	if _, err := svc.provisionServer(context.Background(), request); err != nil {
 		t.Fatal(err)
@@ -209,7 +241,7 @@ var testVersions = definition.VersionSet{
 
 func TestProvisionRejectsUnknownVersion(t *testing.T) {
 	svc := CreateServerService(&fakeCluster{}, &memoryStore{}, testVersions)
-	request := server.Request{Name: "my-server", DurationMs: time.Hour.Milliseconds(), Tier: "wooden", Options: map[string]string{"VERSION": "latest"}}
+	request := server.Request{Name: "my-server", Tier: "wooden", Options: map[string]string{"VERSION": "latest"}}
 
 	_, err := svc.provisionServer(context.Background(), request)
 

@@ -30,6 +30,9 @@ type serverStore interface {
 	GetServer(ctx context.Context, id uuid.UUID) (store.ServerRecord, error)
 	ListMonitoredServers(ctx context.Context) ([]store.ServerRecord, error)
 	MarkRunning(ctx context.Context, id uuid.UUID) error
+	MarkActive(ctx context.Context, id uuid.UUID) error
+	ListIdleServers(ctx context.Context, idleFor time.Duration) ([]store.ServerRecord, error)
+	ExpireServer(ctx context.Context, id uuid.UUID) error
 	MarkDegraded(ctx context.Context, id uuid.UUID) error
 	MarkStopped(ctx context.Context, id uuid.UUID) error
 	MarkExpired(ctx context.Context) error
@@ -94,7 +97,7 @@ func (s *Service) provisionServer(ctx context.Context, provisionRequest server.R
 		Options:  toOptions(provisionRequest.Options),
 		Tier:     definition.Tier(provisionRequest.Tier),
 		Preset:   provisionRequest.Preset,
-		Duration: time.Duration(provisionRequest.DurationMs) * time.Millisecond,
+		Duration: definition.MaxServerLifetime,
 	}
 
 	// Translation mutates options, so preserve the requested definition.
@@ -210,20 +213,49 @@ func (s *Service) ShutdownExpired() ([]string, error) {
 		return nil, err
 	}
 
+	idleServers, err := s.store.ListIdleServers(context.TODO(), idleTimeout)
+	if err != nil {
+		return nil, err
+	}
+	idleByName := make(map[string]store.ServerRecord, len(idleServers))
+	for _, record := range idleServers {
+		idleByName[record.Name] = record
+	}
+
 	serversExpired := make([]string, 0)
 	var failures []error
 	for _, server := range activeServerResources.Items {
+		idleRecord, idle := idleByName[server.GetName()]
 		remainingTime := getRemainingTime(server.Object)
-		if remainingTime != remainingTime.Abs() {
-			slog.Info("Server " + server.GetName() + " expired initiating shutdown")
-			if err := s.clusterService.DeleteServer(server.GetName(), server.GetUID()); err != nil {
-				slog.Error("Failed to delete expired server " + server.GetName() + ": " + err.Error())
-				failures = append(failures, err)
-				continue
-			}
-			serversExpired = append(serversExpired, server.GetName())
-		} else {
+		expired := remainingTime != remainingTime.Abs()
+		if !idle && !expired {
 			slog.Info("Server " + server.GetName() + " remaining time " + remainingTime.String())
+			continue
+		}
+
+		if idle {
+			slog.Info("Server " + server.GetName() + " has no players for " + idleTimeout.String() + " initiating shutdown")
+		} else {
+			slog.Info("Server " + server.GetName() + " expired initiating shutdown")
+		}
+		if err := s.clusterService.DeleteServer(server.GetName(), server.GetUID()); err != nil {
+			slog.Error("Failed to delete expired server " + server.GetName() + ": " + err.Error())
+			failures = append(failures, err)
+			continue
+		}
+		serversExpired = append(serversExpired, server.GetName())
+		delete(idleByName, server.GetName())
+
+		if idle {
+			if err := s.store.ExpireServer(context.TODO(), idleRecord.ID); err != nil {
+				failures = append(failures, err)
+			}
+		}
+	}
+
+	for _, record := range idleByName {
+		if err := s.store.ExpireServer(context.TODO(), record.ID); err != nil {
+			failures = append(failures, err)
 		}
 	}
 

@@ -2,6 +2,8 @@ package definition
 
 import "time"
 
+const MaxServerLifetime = 7 * 24 * time.Hour
+
 type (
 	ServerDefinition struct {
 		Name     string            `json:"name"`

@@ -3,11 +3,10 @@ package definition
 import "slices"
 
 type Catalog struct {
-	Tiers      []CatalogTier   `json:"tiers"`
-	Presets    []CatalogPreset `json:"presets"`
-	Options    []CatalogOption `json:"options"`
-	DurationMs DurationLimits  `json:"durationMs"`
-	Versions   VersionSet      `json:"versions"`
+	Tiers    []CatalogTier   `json:"tiers"`
+	Presets  []CatalogPreset `json:"presets"`
+	Options  []CatalogOption `json:"options"`
+	Versions VersionSet      `json:"versions"`
 }
 
 type CatalogTier struct {
@@ -29,11 +28,6 @@ type CatalogOption struct {
 	Values []string `json:"values,omitempty"`
 }
 
-type DurationLimits struct {
-	Min int64 `json:"min"`
-	Max int64 `json:"max"`
-}
-
 func BuildCatalog(versions VersionSet) Catalog {
 	if versions == nil {
 		versions = VersionSet{}
@@ -44,10 +38,6 @@ func BuildCatalog(versions VersionSet) Catalog {
 		Tiers:    catalogTiers(),
 		Presets:  catalogPresets(),
 		Options:  catalogOptions(),
-		DurationMs: DurationLimits{
-			Min: MinServerDuration.Milliseconds(),
-			Max: MaxServerDuration.Milliseconds(),
-		},
 	}
 }
 

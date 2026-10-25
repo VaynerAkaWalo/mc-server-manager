@@ -105,3 +105,49 @@ func TestServerHidingPlayersIsRunningWithUnknownPlayers(t *testing.T) {
 		t.Fatal("players should be unknown")
 	}
 }
+
+func TestEmptyServerStaysIdle(t *testing.T) {
+	svc, db, _ := monitoredService("running", answering(&mcping.Players{Online: 0, Max: 10}))
+	lastActive := time.Now().Add(-time.Hour)
+	db.records[0].LastActiveAt = &lastActive
+
+	svc.checkServers(context.Background())
+
+	if !db.records[0].LastActiveAt.Equal(lastActive) {
+		t.Fatalf("last active = %v", db.records[0].LastActiveAt)
+	}
+}
+
+func TestServerWithPlayersIsActive(t *testing.T) {
+	svc, db, _ := monitoredService("running", answering(&mcping.Players{Online: 1, Max: 10}))
+	lastActive := time.Now().Add(-time.Hour)
+	db.records[0].LastActiveAt = &lastActive
+
+	svc.checkServers(context.Background())
+
+	if time.Since(*db.records[0].LastActiveAt) > time.Minute {
+		t.Fatalf("last active = %v", db.records[0].LastActiveAt)
+	}
+}
+
+func TestServerHidingPlayersNeverGoesIdle(t *testing.T) {
+	svc, db, _ := monitoredService("running", answering(nil))
+	lastActive := time.Now().Add(-time.Hour)
+	db.records[0].LastActiveAt = &lastActive
+
+	svc.checkServers(context.Background())
+
+	if time.Since(*db.records[0].LastActiveAt) > time.Minute {
+		t.Fatalf("last active = %v", db.records[0].LastActiveAt)
+	}
+}
+
+func TestStartedServerBecomesActive(t *testing.T) {
+	svc, db, _ := monitoredService("new", answering(&mcping.Players{Online: 0, Max: 10}))
+
+	svc.checkServers(context.Background())
+
+	if db.records[0].LastActiveAt == nil {
+		t.Fatal("a server that started should count as active")
+	}
+}

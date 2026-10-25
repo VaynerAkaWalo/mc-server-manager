@@ -3,8 +3,17 @@ import {Link} from "react-router-dom";
 import {ManagerClient, ServerResponse, ServerStatus} from "../clients/ManagerClient.ts";
 import {UpdateNotification} from "../App.tsx";
 
-function formatRemainingTime(expiresAt: string) {
-  const remainingMs = new Date(expiresAt).getTime() - Date.now()
+function shutdownTime(server: ServerResponse) {
+  const expiresAt = new Date(server.expiresAt).getTime()
+  if (!server.idleShutdownAt || server.players?.online) {
+    return expiresAt
+  }
+
+  return Math.min(expiresAt, new Date(server.idleShutdownAt).getTime())
+}
+
+function formatRemainingTime(shutdownAt: number) {
+  const remainingMs = shutdownAt - Date.now()
   if (remainingMs <= 0) {
     return "expiring"
   }
@@ -88,7 +97,7 @@ export function ServerList() {
                 <h3 className="font-pixel text-base wrap-anywhere">{server.name}</h3>
                 <div className="flex flex-wrap gap-x-4 text-content-muted">
                   <span>{server.options.VERSION ?? "Unknown version"}</span>
-                  <span title="Remaining time">{formatRemainingTime(server.expiresAt)}</span>
+                  <span title="Shuts down after 30 minutes without players">{formatRemainingTime(shutdownTime(server))}</span>
                 </div>
               </div>
 
