@@ -2,7 +2,6 @@ package definition
 
 import (
 	"context"
-	"fmt"
 )
 
 // Mods are arbitrary code, so they only come from presets reviewed here and never from user options.
@@ -22,7 +21,7 @@ func customizePreset(ctx context.Context, definition ServerDefinition) (ServerDe
 
 	presetOpts, found := presets[definition.Preset]
 	if !found {
-		return definition, fmt.Errorf("preset %s does not exist", definition.Preset)
+		return definition, invalidf("preset %s does not exist", definition.Preset)
 	}
 
 	for key, value := range presetOpts {

@@ -2,9 +2,12 @@ package server
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"github.com/VaynerAkaWalo/go-toolkit/xhttp"
+	"github.com/VaynerAkaWalo/mc-server-manager/internal/definition"
+	"github.com/VaynerAkaWalo/mc-server-manager/internal/problem"
 	"github.com/VaynerAkaWalo/mc-server-manager/pkg/server"
+	"log/slog"
 	"net/http"
 )
 
@@ -28,7 +31,7 @@ func (h *Handlers) RegisterRoutes(router *xhttp.Router) {
 func (h *Handlers) listServersHandler(w http.ResponseWriter, r *http.Request) error {
 	servers, err := h.serverService.getActiveServers()
 	if err != nil {
-		return xhttp.NewError("Failed to get all servers "+err.Error(), http.StatusInternalServerError)
+		return internalFailure(w, r, "Failed to get all servers", err)
 	}
 
 	return xhttp.WriteResponse(w, http.StatusOK, servers)
@@ -37,7 +40,7 @@ func (h *Handlers) listServersHandler(w http.ResponseWriter, r *http.Request) er
 func (h *Handlers) statsHandler(w http.ResponseWriter, r *http.Request) error {
 	res, err := h.serverService.getStats(r.Context())
 	if err != nil {
-		return xhttp.NewError("Failed to get stats "+err.Error(), http.StatusInternalServerError)
+		return internalFailure(w, r, "Failed to get stats", err)
 	}
 
 	return xhttp.WriteResponse(w, http.StatusOK, res)
@@ -46,13 +49,13 @@ func (h *Handlers) statsHandler(w http.ResponseWriter, r *http.Request) error {
 func (h *Handlers) provisionServer(w http.ResponseWriter, r *http.Request) error {
 	var req server.Request
 	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil || req.Name == "" || req.Duration == 0 {
-		return xhttp.NewError(fmt.Sprintf("Invalid json structure %v", err), http.StatusBadRequest)
+	if err != nil {
+		return problem.Write(w, http.StatusBadRequest, "The request body is not valid JSON for a server")
 	}
 
 	res, err := h.serverService.provisionServer(req)
 	if err != nil {
-		return xhttp.NewError(err.Error(), http.StatusInternalServerError)
+		return provisionFailure(w, r, err)
 	}
 
 	return xhttp.WriteResponse(w, http.StatusCreated, res)
@@ -61,7 +64,7 @@ func (h *Handlers) provisionServer(w http.ResponseWriter, r *http.Request) error
 func (h *Handlers) shutdownExpiredServers(w http.ResponseWriter, r *http.Request) error {
 	results, err := h.serverService.shutdownExpiredServers()
 	if err != nil {
-		return xhttp.NewError(err.Error(), http.StatusInternalServerError)
+		return internalFailure(w, r, "Failed to shut down expired servers", err)
 	}
 
 	return xhttp.WriteResponse(w, http.StatusOK, results)
@@ -69,4 +72,22 @@ func (h *Handlers) shutdownExpiredServers(w http.ResponseWriter, r *http.Request
 
 func (h *Handlers) preFlightHandler(w http.ResponseWriter, r *http.Request) error {
 	return xhttp.WriteResponse(w, http.StatusOK, nil)
+}
+
+func provisionFailure(w http.ResponseWriter, r *http.Request, err error) error {
+	var invalid definition.InvalidDefinitionError
+	switch {
+	case errors.As(err, &invalid):
+		return problem.Write(w, http.StatusUnprocessableEntity, invalid.Error())
+	case errors.Is(err, ErrNameInUse):
+		return problem.Write(w, http.StatusConflict, ErrNameInUse.Error())
+	}
+
+	return internalFailure(w, r, "Failed to provision server", err)
+}
+
+func internalFailure(w http.ResponseWriter, r *http.Request, message string, err error) error {
+	slog.ErrorContext(r.Context(), message+": "+err.Error())
+
+	return problem.Write(w, http.StatusInternalServerError, "Something went wrong, try again later")
 }

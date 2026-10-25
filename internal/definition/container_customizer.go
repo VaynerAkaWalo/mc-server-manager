@@ -2,7 +2,6 @@ package definition
 
 import (
 	"context"
-	"fmt"
 )
 
 var containerEnforcedOpts = map[Option]string{
@@ -39,7 +38,7 @@ func customizeContainer(ctx context.Context, definition ServerDefinition) (Serve
 func translateTier(ctx context.Context, tier Tier) (serverInstance, error) {
 	instance, found := tierMapping[tier]
 	if !found {
-		return serverInstance{}, fmt.Errorf("tier %s is not available", tier)
+		return serverInstance{}, invalidf("tier %s is not available", tier)
 	}
 
 	return instance, nil
