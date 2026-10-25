@@ -65,15 +65,20 @@ func TestProvisionServerRejectsMalformedBody(t *testing.T) {
 
 func TestProvisionServerRejectsTrailingData(t *testing.T) {
 	h := NewServerHandlers(Service{})
-	rec := httptest.NewRecorder()
-	body := `{"name":"my-server","duration":120000,"tier":"wooden"} garbage`
-	req := httptest.NewRequest(http.MethodPost, "/servers", strings.NewReader(body))
+	valid := `{"name":"my-server","duration":120000,"tier":"wooden"}`
 
-	if err := h.provisionServer(rec, req); err != nil {
-		t.Fatal(err)
-	}
+	for _, suffix := range []string{" garbage", "}", "]", valid} {
+		t.Run(suffix, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodPost, "/servers", strings.NewReader(valid+suffix))
 
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d", rec.Code)
+			if err := h.provisionServer(rec, req); err != nil {
+				t.Fatal(err)
+			}
+
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d", rec.Code)
+			}
+		})
 	}
 }

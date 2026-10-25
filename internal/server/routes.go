@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"github.com/VaynerAkaWalo/go-toolkit/xhttp"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/definition"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/problem"
@@ -50,7 +51,7 @@ func (h *Handlers) provisionServer(w http.ResponseWriter, r *http.Request) error
 	var req server.Request
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&req)
-	if err == nil && decoder.More() {
+	if err == nil && decoder.Decode(&struct{}{}) != io.EOF {
 		err = errors.New("unexpected data after the JSON object")
 	}
 	if err != nil {
