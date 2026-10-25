@@ -1,6 +1,8 @@
 package server
 
 import (
+	"errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"log/slog"
 	"time"
@@ -31,4 +33,15 @@ func getRemainingTime(server map[string]interface{}) time.Duration {
 
 func serverAddress(serverName string) string {
 	return serverName + ".mc-server.blamedevs.com"
+}
+
+// Timeouts and connection failures may still have created the resource, so only an explicit client error proves it was not.
+func rejectedByCluster(err error) bool {
+	var status apierrors.APIStatus
+	if !errors.As(err, &status) {
+		return false
+	}
+
+	code := status.Status().Code
+	return code >= 400 && code < 500 && code != 408 && code != 429
 }
