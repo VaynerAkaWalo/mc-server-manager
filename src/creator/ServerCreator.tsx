@@ -290,7 +290,7 @@ export function ServerCreator() {
       setNotificationMessage("Failed to create server with unknown error " + err)
     }).then(() => {
       setNotificationMessage("Your server will be started shortly")
-      navigate("/")
+      navigate("/servers")
     })
   }
 

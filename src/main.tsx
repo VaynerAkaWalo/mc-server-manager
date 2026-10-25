@@ -6,6 +6,7 @@ import {createBrowserRouter, RouterProvider} from "react-router-dom";
 import {ServerList} from "./servers/ServerList.tsx";
 import {ServerCreator} from "./creator/ServerCreator.tsx";
 import {TemplateList} from "./templates/TemplateList.tsx";
+import {Home} from "./home/Home.tsx";
 
 const router = createBrowserRouter([
   {
@@ -14,6 +15,10 @@ const router = createBrowserRouter([
     children: [
       {
         path: "/",
+        element: <Home/>
+      },
+      {
+        path: "/servers",
         element: <ServerList/>
       },
       {
