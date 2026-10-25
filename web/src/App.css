@@ -9,25 +9,30 @@
 }
 
 @theme {
-  --color-surface: var(--color-stone-800);
-  --color-surface-hover: var(--color-stone-700);
-  --color-edge: var(--color-zinc-500);
-  --color-action: var(--color-zinc-500);
-  --color-action-hover: var(--color-zinc-600);
-  --color-content: var(--color-zinc-300);
-}
+  --font-pixel: Minecraft, serif;
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
 
-@utility mc-bevel {
-  border-color: var(--color-edge);
-  border-style: solid;
-  border-top-width: 2px;
-  border-left-width: 2px;
-  border-bottom-width: 4px;
-  border-right-width: 4px;
+  --color-surface: #20251f;
+  --color-surface-hover: #30382a;
+  --color-inset: #191d18;
+  --color-edge: #3d4438;
+  --color-edge-strong: #495044;
+  --color-content: #edf0e9;
+  --color-content-muted: #a5ada3;
+
+  --color-action: #60833f;
+  --color-action-hover: #73954d;
+  --color-action-shade: #354a24;
+  --color-action-content: #c5d9ae;
+
+  --color-online: #a6d77b;
+  --color-starting: #8bbfe7;
+  --color-warning: #efb76d;
 }
 
 @utility mc-panel {
-  @apply mc-bevel bg-surface text-content;
+  @apply bg-surface text-content border border-edge-strong;
 }
 
 @layer components {
@@ -40,15 +45,15 @@
   }
 
   .mc-notification {
-    @apply mc-panel fixed bottom-5 right-5 w-96 max-w-[calc(100vw-2.5rem)] h-24 flex justify-center items-center text-zinc-200;
+    @apply mc-panel fixed bottom-5 right-5 w-96 max-w-[calc(100vw-2.5rem)] px-4 py-3 font-sans text-sm;
   }
 
   .mc-input {
-    @apply mc-bevel bg-surface p-1;
+    @apply bg-inset border border-edge p-1 focus:outline-none focus:border-action-content;
   }
 
   .mc-button {
-    @apply bg-action hover:bg-action-hover text-content hover:text-gray-200 py-2 px-8 text-center;
+    @apply bg-action hover:bg-action-hover border-b-3 border-action-shade text-white font-pixel py-2 px-4 text-center;
   }
 
   .mc-tab {
@@ -57,7 +62,11 @@
   }
 
   .mc-nav-link {
-    @apply inline-block bg-surface text-content hover:bg-surface-hover;
-    padding: 8px clamp(8px, 2vw, 32px);
+    @apply inline-block font-pixel text-content-muted hover:text-content;
+    padding: 12px clamp(8px, 2vw, 32px);
+  }
+
+  .mc-nav-link.active {
+    @apply text-content;
   }
 }

@@ -22,6 +22,12 @@ function formatRemainingTime(expiresAt: string) {
 
 const activeStatuses: ServerStatus[] = ["new", "running", "degraded"]
 
+const statusDots: Partial<Record<ServerStatus, string>> = {
+  new: "bg-starting motion-safe:animate-pulse",
+  running: "bg-online",
+  degraded: "bg-warning"
+}
+
 const statusLabels: Record<ServerStatus, string> = {
   new: "Starting",
   running: "Online",
@@ -66,49 +72,50 @@ export function ServerList() {
   }, [])
 
   return (
-    <div className="mc-panel w-4/5 max-w-4xl max-h-full overflow-y-auto p-4">
-      <div className="flex flex-col gap-3 mb-4 sm:flex-row sm:justify-between sm:items-center">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <h2 className="text-xl">Servers</h2>
-          <Link className="mc-button shrink-0" to="/server-creator">Create server</Link>
-        </div>
-      </div>
+    <section className="mc-panel w-[min(60rem,calc(100%-2rem))] my-6 p-[clamp(1rem,3vw,2rem)] font-sans text-sm">
+      <header className="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <h2 className="font-pixel text-2xl">Servers</h2>
+        <Link className="mc-button" to="/server-creator">Create server</Link>
+      </header>
 
-      <div className="h-[33rem] overflow-auto">
-        {servers === null ? null : servers.length === 0 ? (
-          <p className="text-center py-8">No servers running right now. Create one to get started.</p>
-        ) : (
-          <table className="w-full text-left">
-            <thead>
-              <tr>
-                <th className="p-2">Name</th>
-                <th className="p-2">Version</th>
-                <th className="p-2">Status</th>
-                <th className="p-2">Players</th>
-                <th className="p-2">Remaining time</th>
-                <th className="p-2">Hostname</th>
-              </tr>
-            </thead>
-            <tbody>
-              {servers.map(server => (
-                <tr key={server.id}>
-                  <td className="p-2 max-w-48 truncate" title={server.name}>{server.name}</td>
-                  <td className="p-2">{server.options.VERSION ?? "-"}</td>
-                  <td className="p-2">{statusLabels[server.status] ?? server.status}</td>
-                  <td className="p-2">{server.players ? `${server.players.online}/${server.players.max}` : "-"}</td>
-                  <td className="p-2">{formatRemainingTime(server.expiresAt)}</td>
-                  <td className="p-2">
-                    <button className="max-w-64 truncate cursor-pointer" title={`Copy ${server.hostname}`}
-                            onClick={() => copyHostname(server.hostname)}>
-                      {server.hostname}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      {servers === null ? null : servers.length === 0 ? (
+        <p className="py-8 text-content-muted">No servers running right now. Create one to get started.</p>
+      ) : (
+        <ul>
+          {servers.map(server => (
+            <li key={server.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-2 py-4 px-1 border-t border-edge">
+              <div className="min-w-0">
+                <h3 className="font-pixel text-base wrap-anywhere">{server.name}</h3>
+                <div className="flex flex-wrap gap-x-4 text-content-muted">
+                  <span>{server.options.VERSION ?? "Unknown version"}</span>
+                  <span title="Remaining time">{formatRemainingTime(server.expiresAt)}</span>
+                </div>
+              </div>
+
+              <ServerPresence server={server}/>
+
+              <button className="col-span-full flex items-center justify-between gap-4 px-3 py-2 bg-inset hover:bg-surface-hover text-left cursor-pointer"
+                      aria-label={`Copy hostname ${server.hostname}`}
+                      onClick={() => copyHostname(server.hostname)}>
+                <span className="font-mono text-xs text-content-muted wrap-anywhere">{server.hostname}</span>
+                <span className="shrink-0 text-xs text-action-content">Copy</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+function ServerPresence({server}: { server: ServerResponse }) {
+  const label = statusLabels[server.status] ?? server.status
+  const players = server.status === "running" && server.players
+
+  return (
+    <div className="flex items-center gap-2 self-start pt-1 text-xs" title={label}>
+      <span className={`size-2 shrink-0 ${statusDots[server.status] ?? "bg-content-muted"}`} role="img" aria-label={label}/>
+      <span>{players ? `${players.online}/${players.max}` : label}</span>
     </div>
   )
 }
