@@ -17,17 +17,25 @@ function formatRemainingTime(remainingTime: string) {
 
 export function ServerList() {
   const {setNotificationMessage} = UpdateNotification()
-  const [servers, setServers] = useState<ServerResponse[]>([])
+  const [servers, setServers] = useState<ServerResponse[] | null>(null)
 
   const copyHostname = async (hostname: string) => {
-    await navigator.clipboard.writeText(hostname)
-    setNotificationMessage("Hostname copied to clipboard")
+    try {
+      await navigator.clipboard.writeText(hostname)
+      setNotificationMessage("Hostname copied to clipboard")
+    } catch {
+      setNotificationMessage("Could not copy hostname")
+    }
   }
 
   useEffect(() => {
     const loadServers = async () => {
-      const {data} = await ManagerClient.listServers()
-      setServers(data)
+      try {
+        const {data} = await ManagerClient.listServers()
+        setServers(data)
+      } catch {
+        // keep the last known list, the next poll retries
+      }
     }
 
     loadServers()
@@ -42,7 +50,7 @@ export function ServerList() {
         <Link className="mc-button" to="/server-creator">Create server</Link>
       </div>
 
-      {servers.length === 0 ? (
+      {servers === null ? null : servers.length === 0 ? (
         <p className="text-center py-8">No servers running right now. Create one to get started.</p>
       ) : (
         <table className="w-full text-left">
