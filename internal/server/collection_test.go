@@ -48,7 +48,7 @@ func TestCollectionCursorRoundTrip(t *testing.T) {
 		if sort == "expiresAt" || sort == "-expiresAt" {
 			value = record.ExpiresAt
 		}
-		if !next.Filter.AsOf.Equal(query.Filter.AsOf) || next.After.ID != record.ID || !next.After.Value.Equal(value) {
+		if next.After.ID != record.ID || !next.After.Value.Equal(value) {
 			t.Fatalf("next = %+v", next)
 		}
 		if _, err := parseCollectionQuery(url.Values{"sort": {sort}, "status": {"running"}, "cursor": {raw}}); err == nil {

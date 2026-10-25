@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/store"
 	"github.com/google/uuid"
@@ -17,7 +16,6 @@ type collectionCursor struct {
 	Version  int                  `json:"v"`
 	Status   string               `json:"status"`
 	Sort     string               `json:"sort"`
-	AsOf     time.Time            `json:"asOf"`
 	Boundary store.ServerBoundary `json:"boundary"`
 }
 
@@ -28,7 +26,7 @@ func parseFilter(values url.Values) (store.ServerFilter, error) {
 	}
 	switch status {
 	case "active", "all", "provisioning", "running", "stopped", "expired":
-		return store.ServerFilter{Status: status, AsOf: time.Now().UTC().Truncate(time.Microsecond)}, nil
+		return store.ServerFilter{Status: status}, nil
 	default:
 		return store.ServerFilter{}, errors.New("status must be active, all, provisioning, running, stopped or expired")
 	}
@@ -57,10 +55,9 @@ func parseCollectionQuery(values url.Values) (store.ServerQuery, error) {
 	if raw := values.Get("cursor"); raw != "" {
 		cursor := collectionCursor{}
 		body, err := base64.RawURLEncoding.DecodeString(raw)
-		if len(raw) > 4096 || err != nil || json.Unmarshal(body, &cursor) != nil || cursor.Version != 1 || cursor.AsOf.IsZero() || cursor.Boundary.Value.IsZero() || cursor.Boundary.ID == uuid.Nil || cursor.Status != query.Filter.Status || cursor.Sort != query.Sort {
+		if len(raw) > 4096 || err != nil || json.Unmarshal(body, &cursor) != nil || cursor.Version != 1 || cursor.Boundary.Value.IsZero() || cursor.Boundary.ID == uuid.Nil || cursor.Status != query.Filter.Status || cursor.Sort != query.Sort {
 			return store.ServerQuery{}, errors.New("cursor is invalid or does not match the status and sort")
 		}
-		query.Filter.AsOf = cursor.AsOf
 		query.After = &cursor.Boundary
 	}
 	return query, nil
@@ -71,7 +68,7 @@ func encodeCursor(query store.ServerQuery, last store.ServerRecord) string {
 	if strings.TrimPrefix(query.Sort, "-") == "expiresAt" {
 		value = last.ExpiresAt
 	}
-	cursor := collectionCursor{Version: 1, Status: query.Filter.Status, Sort: query.Sort, AsOf: query.Filter.AsOf, Boundary: store.ServerBoundary{Value: value, ID: last.ID}}
+	cursor := collectionCursor{Version: 1, Status: query.Filter.Status, Sort: query.Sort, Boundary: store.ServerBoundary{Value: value, ID: last.ID}}
 	body, _ := json.Marshal(cursor)
 	return base64.RawURLEncoding.EncodeToString(body)
 }

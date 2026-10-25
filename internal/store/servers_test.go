@@ -74,7 +74,7 @@ func TestCountServers(t *testing.T) {
 	s := connectTestStore(t)
 	ctx := context.Background()
 
-	before, err := s.CountServers(ctx, ServerFilter{Status: "all", AsOf: time.Now()})
+	before, err := s.CountServers(ctx, ServerFilter{Status: "all"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +92,7 @@ func TestCountServers(t *testing.T) {
 		_ = s.DeleteServer(ctx, expired.ID)
 	})
 
-	after, err := s.CountServers(ctx, ServerFilter{Status: "all", AsOf: time.Now()})
+	after, err := s.CountServers(ctx, ServerFilter{Status: "all"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +120,7 @@ func TestListServers(t *testing.T) {
 	latestRun := create("list-reused", -time.Hour)
 	gone := create("list-gone", -time.Hour)
 
-	records, err := s.ListServers(ctx, ServerQuery{Filter: ServerFilter{Status: "active", AsOf: time.Now()}, Sort: "-createdAt", Limit: 20})
+	records, err := s.ListServers(ctx, ServerQuery{Filter: ServerFilter{Status: "active"}, Sort: "-createdAt", Limit: 20})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +168,7 @@ func TestServerCollectionPaginationAndFilters(t *testing.T) {
 
 	for _, sort := range []string{"createdAt", "-createdAt", "expiresAt", "-expiresAt"} {
 		t.Run(sort, func(t *testing.T) {
-			query := ServerQuery{Filter: ServerFilter{Status: "all", AsOf: now}, Sort: sort, Limit: 2}
+			query := ServerQuery{Filter: ServerFilter{Status: "all"}, Sort: sort, Limit: 2}
 			seen := map[string]bool{}
 			var previous *ServerRecord
 			for page := 0; ; page++ {
@@ -225,7 +225,7 @@ func TestServerCollectionPaginationAndFilters(t *testing.T) {
 	}
 
 	for _, status := range []string{"active", "all", "provisioning", "running", "stopped", "expired"} {
-		filter := ServerFilter{Status: status, AsOf: now}
+		filter := ServerFilter{Status: status}
 		records, err := s.ListServers(ctx, ServerQuery{Filter: filter, Sort: "-createdAt", Limit: 100})
 		if err != nil {
 			t.Fatal(err)
