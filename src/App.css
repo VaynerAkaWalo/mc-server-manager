@@ -40,7 +40,7 @@
   }
 
   .mc-notification {
-    @apply mc-panel fixed bottom-5 right-5 w-96 max-w-[calc(100vw-2.5rem)] h-24 flex justify-center items-center;
+    @apply mc-panel fixed bottom-5 right-5 w-96 max-w-[calc(100vw-2.5rem)] h-24 flex justify-center items-center text-zinc-200;
   }
 
   .mc-input {
@@ -48,7 +48,7 @@
   }
 
   .mc-button {
-    @apply bg-action hover:bg-action-hover text-content py-2 px-8 text-center;
+    @apply bg-action hover:bg-action-hover text-content hover:text-gray-200 py-2 px-8 text-center;
   }
 
   .mc-tab {
