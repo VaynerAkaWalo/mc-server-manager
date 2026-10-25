@@ -7,8 +7,8 @@ const stats = {
 }
 
 const features = [
-  {title: "Play with friends", text: "Spin up your own Minecraft server in a minute and share the IP with your friends."},
-  {title: "Free to start", text: "Some server templates are free, so you can try it out without paying anything."},
+  {title: "Play with friends", text: "Share the IP and jump into your own world together."},
+  {title: "Ready in a minute", text: "Pick a template and your server is up in no time, no setup on your side."},
   {title: "Your rules", text: "Pick a template, tune the settings in the creator and shut it down whenever you like."},
 ]
 
@@ -26,7 +26,7 @@ export function Home() {
     <div className="flex flex-col items-center gap-8 w-full max-w-3xl p-4 my-auto">
       <div className="mc-panel w-full flex flex-col items-center gap-4 py-8 px-4 text-center">
         <h1 className="text-3xl sm:text-4xl text-gray-200">Host your own Minecraft server</h1>
-        <p>Create a server to play with your friends, in some cases for free.</p>
+        <p>Create a server in a minute and play with your friends.</p>
         <Link className="mc-button" to="/server-creator">Get started</Link>
       </div>
 
