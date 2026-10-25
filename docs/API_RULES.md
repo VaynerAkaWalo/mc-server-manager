@@ -5,7 +5,7 @@ The goal is a small, generic API that many clients can reuse, not an endpoint pe
 ## Public and internal API
 
 - The public API listens on `:8080` and is the only port exposed through the Ingress. It serves `/api/v1/...` and the frontend.
-- The internal API listens on `:8081` behind a ClusterIP Service only. It serves `/health`, `/ready` and `/internal/v1/...`. The cluster network (flannel) has no NetworkPolicy, so the only protection is that this port is never exposed on the public load balancer. Treat every in-cluster caller as trusted and keep destructive operations idempotent.
+- The internal API listens on `:8081` behind a ClusterIP Service only. It serves `/health`, `/ready` and `/internal/v1/...`. Any pod in the cluster can reach it, and it is never exposed on the public load balancer. Every in-cluster caller is trusted, so destructive operations are idempotent.
 - Both share the domain services but have their own handlers and response types. When shared behaviour changes (validation, defaults, lifecycle), keep both contracts working.
 - The public API exposes resources. Operations such as jobs and admin actions belong to the internal API.
 
