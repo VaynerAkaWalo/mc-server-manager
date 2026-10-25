@@ -21,11 +21,17 @@ export interface Opts {
 
 export type Tier = string
 
+export interface GameVersion {
+  id: string,
+  kind: "release" | "snapshot"
+}
+
 export interface CatalogResponse {
   tiers: { id: Tier, name: string, description: string, default: boolean }[],
   presets: { id: string, name: string, description: string, options: Opts }[],
   options: { id: string, values?: string[] }[],
-  durationMs: { min: number, max: number }
+  durationMs: { min: number, max: number },
+  versions: Record<string, { latestRelease: string, items: GameVersion[] }>
 }
 
 export type ServerStatus = "new" | "running" | "stopped" | "expired"

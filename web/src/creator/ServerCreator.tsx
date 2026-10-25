@@ -21,6 +21,8 @@ interface Server {
   tier: Tier,
 }
 
+const DEFAULT_SERVER_TYPE = "VANILLA"
+
 const initialServer: Server = {
   name: "",
   opts: {
@@ -58,11 +60,15 @@ export function ServerCreator() {
   const {templateName, templatePreset, templateOps} = useLocation().state || {}
   const navigate = useNavigate()
   const [catalog, setCatalog] = useState<CatalogResponse | null>(null)
+  const [showSnapshots, setShowSnapshots] = useState(false)
 
   useEffect(() => {
     ManagerClient.getCatalog().then(({data}) => {
       setCatalog(data)
       dispatch({type: "UPDATE_TIER", payload: (data.tiers.find(tier => tier.default) ?? data.tiers[0])?.id ?? ""})
+      if (!isTemplated()) {
+        dispatch({type: "UPDATE_OPTS", payload: {VERSION: data.versions[DEFAULT_SERVER_TYPE]?.latestRelease}})
+      }
     }).catch(err => setNotificationMessage("Failed to load server options: " + problemMessage(err)))
   }, []);
 
@@ -102,21 +108,28 @@ export function ServerCreator() {
       dispatch({type: "UPDATE_NAME", payload: sanitizeString(rawName)})
     }
 
-    function getVersion(): string {
-      if (isTemplated()) {
-        return templateName + "-" + templateOps.VERSION
-      }
+    const serverVersions = catalog?.versions[state.opts.TYPE ?? DEFAULT_SERVER_TYPE]
+    const versionOptions = (serverVersions?.items ?? [])
+      .filter(version => showSnapshots || version.kind === "release")
+      .map(version => ({
+        value: version.id,
+        label: version.id === serverVersions?.latestRelease ? `${version.id} (latest)` : version.id
+      }))
 
-      return state.opts.VERSION || ""
+    const selectedVersion = isTemplated()
+      ? {value: templateOps.VERSION, label: templateName + "-" + templateOps.VERSION}
+      : versionOptions.find(option => option.value === state.opts.VERSION) ?? null
+
+    const updateVersion = (selected: SingleValue<{ value: string }>) => {
+      dispatch({type: "UPDATE_OPTS", payload: {VERSION: selected?.value}})
     }
 
-    const updateVersion = (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (isTemplated()) {
-        setNotificationMessage("Version is locked for this template")
-        return
+    const updateShowSnapshots = () => {
+      const isSnapshot = serverVersions?.items.find(version => version.id === state.opts.VERSION)?.kind === "snapshot"
+      if (showSnapshots && isSnapshot) {
+        dispatch({type: "UPDATE_OPTS", payload: {VERSION: serverVersions?.latestRelease}})
       }
-      const version = e.target.value
-      dispatch({type: "UPDATE_OPTS", payload: {VERSION: version}})
+      setShowSnapshots(!showSnapshots)
     }
 
     const updateReservationTime = (selectedReservationTime: SingleValue<{ value: number }>) => {
@@ -131,10 +144,13 @@ export function ServerCreator() {
                  value={state.name} onChange={updateName}/>
         </div>
 
-        <div className="flex flex-col w-3/4">
+        <div className={"w-3/4"}>
           <label htmlFor="server-version">Server version</label>
-          <input className="mc-input" id="server-version" type="text" placeholder="Latest Version"
-                 value={getVersion()} onChange={updateVersion}/>
+          <Select inputId="server-version" className={"text-zinc-800"} options={versionOptions}
+                  placeholder={"Select a version"} isDisabled={isTemplated()}
+                  onChange={updateVersion} value={selectedVersion}/>
+          <FormControlLabel control={<Checkbox checked={showSnapshots} disabled={isTemplated()} onChange={updateShowSnapshots}/>}
+                            label="Show snapshots"/>
         </div>
 
         <div className={"w-3/4"}>
@@ -257,6 +273,11 @@ export function ServerCreator() {
   const createServer = async () => {
     if (state.name === "" || state.name.length < 3 || state.name.length > 25) {
       setNotificationMessage("Server name must have between 3 and 25 characters")
+      return
+    }
+
+    if (!isTemplated() && !state.opts.VERSION) {
+      setNotificationMessage("Server version must be selected")
       return
     }
 

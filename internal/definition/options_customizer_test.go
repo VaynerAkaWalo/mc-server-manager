@@ -65,3 +65,18 @@ func TestCustomizeOptionsWithoutVersionList(t *testing.T) {
 		t.Fatalf("got error %v", err)
 	}
 }
+
+func TestVersionIsRequiredUnlessPresetSetsIt(t *testing.T) {
+	_, err := customizeVersionRequired(context.Background(), ServerDefinition{Options: map[Option]string{}})
+	if err == nil {
+		t.Fatal("definition without version was accepted")
+	}
+
+	withPreset, err := customizePreset(context.Background(), ServerDefinition{Preset: "lockout", Options: map[Option]string{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := customizeVersionRequired(context.Background(), withPreset); err != nil {
+		t.Fatalf("preset version was rejected: %v", err)
+	}
+}
