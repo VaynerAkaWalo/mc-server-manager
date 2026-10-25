@@ -93,6 +93,14 @@
     @apply bg-edge!;
   }
 
+  .mc-select__control--is-disabled {
+    @apply opacity-60 cursor-not-allowed;
+  }
+
+  .mc-select__single-value--is-disabled, .mc-select__control--is-disabled .mc-select__indicator {
+    @apply text-content-muted!;
+  }
+
   .mc-select__menu {
     @apply bg-surface! border border-edge-strong rounded-none! shadow-lg!;
   }

@@ -159,7 +159,7 @@ export function ServerCreator() {
 
         <div className="flex flex-col">
           <label className="mc-label" htmlFor={"server-reservation-time-select"}>Reservation time</label>
-          <Select id={"server-reservation-time-select"} classNamePrefix="mc-select" options={reservationTimeOptions}
+          <Select inputId={"server-reservation-time-select"} classNamePrefix="mc-select" options={reservationTimeOptions}
                   onChange={updateReservationTime}
                   value={reservationTimeOptions.find(option => option.value === state.duration)}/>
         </div>
@@ -191,7 +191,7 @@ export function ServerCreator() {
 
         <div className="flex flex-col">
           <label className="mc-label" htmlFor={"server-difficulty"}>Server difficulty</label>
-          <Select id={"server-difficulty"} classNamePrefix="mc-select" options={difficultOptions}
+          <Select inputId={"server-difficulty"} classNamePrefix="mc-select" options={difficultOptions}
                   onChange={updateDifficulty}
                   value={difficultOptions.find(option => option.value === state.opts.DIFFICULTY)}/>
         </div>
@@ -318,18 +318,31 @@ export function ServerCreator() {
     {tab: CreatorTab.PLAYERS, label: "Players"},
   ]
 
+  const selectTabWithArrows = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const step = {ArrowRight: 1, ArrowLeft: -1}[e.key]
+    if (!step) return
+
+    const index = tabs.findIndex(({tab}) => tab === activeTab)
+    const next = tabs[(index + step + tabs.length) % tabs.length].tab
+    setActiveTab(next)
+    document.getElementById(`creator-tab-${next}`)?.focus()
+  }
+
   return (
     <div className="mc-modal">
-      <div className="flex flex-row flex-wrap justify-evenly border-b border-edge" role="tablist">
+      <div className="flex flex-row flex-wrap justify-evenly border-b border-edge" role="tablist"
+           onKeyDown={selectTabWithArrows}>
         {tabs.map(({tab, label}) => (
-          <button key={tab} className={`mc-tab ${activeTab === tab ? "active" : ""}`} role="tab"
-                  aria-selected={activeTab === tab} onClick={() => setActiveTab(tab)}>
+          <button key={tab} id={`creator-tab-${tab}`} className={`mc-tab ${activeTab === tab ? "active" : ""}`}
+                  role="tab" aria-selected={activeTab === tab} aria-controls="creator-tab-panel"
+                  tabIndex={activeTab === tab ? 0 : -1} onClick={() => setActiveTab(tab)}>
             {label}
           </button>
         ))}
       </div>
 
-      <div className="flex flex-1 flex-col gap-5 p-6">
+      <div className="flex flex-1 flex-col gap-5 p-6" id="creator-tab-panel" role="tabpanel"
+           aria-labelledby={`creator-tab-${activeTab}`}>
         {activeTab === CreatorTab.BASIC && basicSettings()}
         {activeTab === CreatorTab.ADVANCED && advancedSettings()}
         {activeTab === CreatorTab.PLAYERS && playerSettings()}
