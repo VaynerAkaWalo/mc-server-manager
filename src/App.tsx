@@ -35,7 +35,7 @@ function App() {
   return (
     <>
       <ThemeProvider theme={theme}>
-        <div className="min-h-screen flex flex-col text-gray-700">
+        <div className="h-screen flex flex-col text-gray-700">
           <Header/>
           <div className="flex h-full justify-center items-center">
             <Outlet context={{ setNotificationMessage } satisfies NotificationContext } />

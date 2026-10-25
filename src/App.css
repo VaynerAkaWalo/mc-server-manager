@@ -27,7 +27,7 @@
   left: 50%;
   transform: translate(-50%, -50%);
   width: min(32rem, 92vw);
-  min-height: 22rem;
+  min-height: min(22rem, 92vh);
   max-height: 92vh;
   overflow-y: auto;
 
