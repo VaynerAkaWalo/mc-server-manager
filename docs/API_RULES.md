@@ -6,7 +6,7 @@ The goal is a small, generic API that many clients can reuse, not an endpoint pe
 
 - The public API listens on `:8080` and is the only port exposed through the Ingress. It serves `/api/v1/...` and the frontend.
 - The internal API listens on `:8081` behind a ClusterIP Service only. It serves `/health`, `/ready` and `/internal/v1/...`, and is restricted with a NetworkPolicy.
-- Both share the domain services but have their own handlers and response types, so changing one never breaks consumers of the other.
+- Both share the domain services but have their own handlers and response types. When shared behaviour changes (validation, defaults, lifecycle), keep both contracts working.
 - The public API exposes resources. Operations such as jobs and admin actions belong to the internal API.
 
 ## Resources
@@ -27,6 +27,7 @@ The goal is a small, generic API that many clients can reuse, not an endpoint pe
 ## Collections
 
 - Lists support filtering, sorting and pagination through query params: `?status=running&sort=-createdAt&limit=20&cursor=...`.
+- `limit` has a default and a maximum, and every sort ends with `id` as a tie-breaker so pages never skip or repeat items.
 - Lists return an object, `{"items": [...], "nextCursor": "..."}`, so metadata can be added without breaking clients.
 - Aggregates live next to the collection they describe (`/servers/stats`) and take the same filters, plus `groupBy` when needed.
 
@@ -38,4 +39,7 @@ The goal is a small, generic API that many clients can reuse, not an endpoint pe
 
 ## Versioning
 
-- Paths are versioned (`/api/v1`, `/internal/v1`). Adding fields or optional params is not a breaking change. Removing or renaming anything is, and needs a new version or a migration of all clients first.
+- Paths are versioned (`/api/v1`, `/internal/v1`).
+- A change is breaking when a request or client behaviour that works today stops working: removing or renaming fields, changing defaults, status codes or the meaning of a field.
+- Adding response fields, optional params and enum values is allowed, so clients must ignore unknown fields and handle unknown enum values.
+- Breaking changes need a new version, or a migration of every client first. Consumers outside this repo, like the cleanup CronJob in the deployments repo, keep their old route until they have been switched over.
