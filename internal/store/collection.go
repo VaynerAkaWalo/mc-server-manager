@@ -25,33 +25,15 @@ type ServerBoundary struct {
 	ID    uuid.UUID
 }
 
-func serverPredicate(filter ServerFilter) (string, []any) {
-	active := "status IN ('new', 'running') AND expires_at > now()"
-	predicate := active
-	switch filter.Status {
-	case "all":
-		predicate = "TRUE"
-	case "new", "running":
-		predicate = "status = $1 AND expires_at > now()"
-	case "stopped":
-		predicate = "status = $1"
-	case "expired":
-		predicate = "(status = 'expired' OR (status IN ('new', 'running') AND expires_at <= now()))"
-	}
-
-	args := []any{}
-	if strings.Contains(predicate, "$1") {
-		args = append(args, filter.Status)
-	}
-	return "(" + predicate + ")", args
-}
+const serverFilterSQL = `($1 = 'all'
+ OR ($1 = 'active' AND status IN ('new', 'running') AND expires_at > now())
+ OR status = $1)`
 
 func (s *Store) CountServers(ctx context.Context, filter ServerFilter) (ServerCounts, error) {
-	predicate, args := serverPredicate(filter)
 	var counts ServerCounts
 	err := s.pool.QueryRow(ctx,
 		`SELECT count(*) FILTER (WHERE status IN ('new', 'running') AND expires_at > now()), count(*)
-   FROM mc_servers WHERE `+predicate, args...,
+   FROM mc_servers WHERE `+serverFilterSQL, filter.Status,
 	).Scan(&counts.Online, &counts.Created)
 	if err != nil {
 		return ServerCounts{}, fmt.Errorf("count servers: %w", err)
@@ -69,17 +51,17 @@ func (s *Store) ListServers(ctx context.Context, query ServerQuery) ([]ServerRec
 		direction, comparison = "DESC", "<"
 	}
 
-	predicate, args := serverPredicate(query.Filter)
+	var afterValue any
+	var afterID any
 	if query.After != nil {
-		predicate += fmt.Sprintf(" AND (%s, id) %s ($%d, $%d)", column, comparison, len(args)+1, len(args)+2)
-		args = append(args, query.After.Value, query.After.ID)
+		afterValue, afterID = query.After.Value, query.After.ID
 	}
-	args = append(args, query.Limit+1)
-	statement := fmt.Sprintf(`SELECT id, name, hostname, definition, created_at, expires_at,
-  CASE WHEN status IN ('new', 'running') AND expires_at <= now() THEN 'expired' ELSE status END
-  FROM mc_servers WHERE %s ORDER BY %s %s, id %s LIMIT $%d`, predicate, column, direction, direction, len(args))
+	statement := fmt.Sprintf(`SELECT id, name, hostname, definition, created_at, expires_at, status
+  FROM mc_servers
+  WHERE %s AND ($2::timestamptz IS NULL OR (%s, id) %s ($2, $3::uuid))
+  ORDER BY %s %s, id %s LIMIT $4`, serverFilterSQL, column, comparison, column, direction, direction)
 
-	rows, err := s.pool.Query(ctx, statement, args...)
+	rows, err := s.pool.Query(ctx, statement, query.Filter.Status, afterValue, afterID, query.Limit+1)
 	if err != nil {
 		return nil, fmt.Errorf("list servers: %w", err)
 	}

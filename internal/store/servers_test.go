@@ -189,6 +189,9 @@ func TestServerCollectionPaginationAndFilters(t *testing.T) {
 						t.Fatalf("duplicate ID %s", id)
 					}
 					seen[id] = true
+					if stored, ok := ids[id]; ok && record.Status != stored {
+						t.Fatalf("status = %s, want stored %s", record.Status, stored)
+					}
 					if previous != nil {
 						before, after := previous.CreatedAt, record.CreatedAt
 						if sort == "expiresAt" || sort == "-expiresAt" {
@@ -240,6 +243,9 @@ func TestServerCollectionPaginationAndFilters(t *testing.T) {
 		for _, record := range records {
 			if status != "active" && status != "all" && record.Status != status {
 				t.Fatalf("%s filter returned %s", status, record.Status)
+			}
+			if status == "active" && !record.ExpiresAt.After(time.Now()) {
+				t.Fatalf("active returned expired record %s", record.ID)
 			}
 			if status == "active" && record.Status != "running" && record.Status != "new" {
 				t.Fatalf("active returned %s", record.Status)
