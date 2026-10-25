@@ -3,8 +3,8 @@ import {AxiosPromise, isAxiosError} from "axios";
 
 export interface CreateServerRequest {
   name: string,
-  opts: Opts,
-  duration: number,
+  options: Opts,
+  durationMs: number,
   tier: Tier,
   preset?: string
 }
@@ -24,13 +24,18 @@ export enum Tier {
   iron = "iron"
 }
 
+export type ServerStatus = "provisioning" | "running" | "stopped" | "expired"
+
 export interface ServerResponse {
+  id: string,
   name: string,
-  IP: string,
-  remainingTime: string,
-  status: string,
-  version?: string,
-  maxPlayers?: number
+  hostname: string,
+  status: ServerStatus,
+  tier: Tier,
+  preset?: string,
+  options: Opts,
+  createdAt: string,
+  expiresAt: string
 }
 
 export interface StatsResponse {
@@ -53,15 +58,15 @@ export const problemMessage = (err: unknown): string => {
 
 class ServerManager {
   public createServer = (request: CreateServerRequest): Promise<AxiosPromise<ServerResponse>> => {
-    return HTTPClient.post("/servers", request)
+    return HTTPClient.post("/api/v1/servers", request)
   }
 
   public listServers = async (): Promise<AxiosPromise<ServerResponse[]>> => {
-    return HTTPClient.get("/servers")
+    return HTTPClient.get("/api/v1/servers")
   }
 
   public getStats = async (): Promise<AxiosPromise<StatsResponse>> => {
-    return HTTPClient.get("/servers/stats")
+    return HTTPClient.get("/api/v1/servers/stats")
   }
 }
 

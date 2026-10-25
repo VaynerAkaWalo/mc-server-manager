@@ -46,3 +46,14 @@ func customizeOptions(ctx context.Context, definition ServerDefinition) (ServerD
 func isServerType(value string) bool {
 	return slices.Contains(serverTypes, value)
 }
+
+func UserOptions(options map[Option]string) map[string]string {
+	visible := make(map[string]string, len(options))
+	for key, value := range options {
+		if _, settable := userSettableOpts[key]; settable {
+			visible[string(key)] = value
+		}
+	}
+
+	return visible
+}

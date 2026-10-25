@@ -1,18 +1,35 @@
 package server
 
-import "github.com/VaynerAkaWalo/mc-server-manager/internal/definition"
+import (
+	"github.com/google/uuid"
+	"time"
+)
+
+type Status string
+
+const (
+	StatusProvisioning Status = "provisioning"
+	StatusRunning      Status = "running"
+	StatusStopped      Status = "stopped"
+	StatusExpired      Status = "expired"
+)
 
 type Response struct {
-	Name          string `json:"name"`
-	IP            string `json:"IP"`
-	RemainingTime string `json:"remainingTime"`
-	Status        string `json:"status"`
+	ID        uuid.UUID         `json:"id"`
+	Name      string            `json:"name"`
+	Hostname  string            `json:"hostname"`
+	Status    Status            `json:"status"`
+	Tier      string            `json:"tier"`
+	Preset    string            `json:"preset,omitempty"`
+	Options   map[string]string `json:"options"`
+	CreatedAt time.Time         `json:"createdAt"`
+	ExpiresAt time.Time         `json:"expiresAt"`
 }
 
 type Request struct {
-	Name     string                       `json:"name"`
-	Duration int64                        `json:"duration"`
-	Opts     map[definition.Option]string `json:"opts"`
-	Tier     string                       `json:"tier"`
-	Preset   string                       `json:"preset,omitempty"`
+	Name       string            `json:"name"`
+	DurationMs int64             `json:"durationMs"`
+	Tier       string            `json:"tier"`
+	Preset     string            `json:"preset,omitempty"`
+	Options    map[string]string `json:"options"`
 }

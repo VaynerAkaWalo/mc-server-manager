@@ -23,14 +23,14 @@ func NewServerHandlers(serverService Service) *Handlers {
 }
 
 func (h *Handlers) RegisterRoutes(router *xhttp.Router) {
-	router.RegisterHandler("GET /servers", h.listServersHandler)
-	router.RegisterHandler("POST /servers", h.provisionServer)
+	router.RegisterHandler("GET /api/v1/servers", h.listServersHandler)
+	router.RegisterHandler("POST /api/v1/servers", h.provisionServer)
+	router.RegisterHandler("GET /api/v1/servers/stats", h.statsHandler)
 	router.RegisterHandler("DELETE /servers", h.shutdownExpiredServers)
-	router.RegisterHandler("GET /servers/stats", h.statsHandler)
 }
 
 func (h *Handlers) listServersHandler(w http.ResponseWriter, r *http.Request) error {
-	servers, err := h.serverService.getActiveServers()
+	servers, err := h.serverService.listServers(r.Context())
 	if err != nil {
 		return internalFailure(w, r, "Failed to get all servers", err)
 	}

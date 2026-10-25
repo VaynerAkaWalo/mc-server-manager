@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"log/slog"
+	"maps"
 	"time"
 )
 
@@ -21,6 +22,7 @@ type serverStore interface {
 	CreateServer(ctx context.Context, server store.NewServer) (store.ServerRecord, error)
 	DeleteServer(ctx context.Context, id uuid.UUID) error
 	CountServers(ctx context.Context) (store.ServerCounts, error)
+	ListServers(ctx context.Context, clusterNames []string) ([]store.ServerRecord, error)
 }
 
 type clusterService interface {
@@ -41,32 +43,39 @@ func CreateServerService(clusterService clusterService, store serverStore) Servi
 	}
 }
 
-func (s *Service) getActiveServers() ([]server.Response, error) {
-	activeServerResources, err := s.clusterService.GetActiveServers()
+func (s *Service) listServers(ctx context.Context) ([]server.Response, error) {
+	resources, err := s.clusterService.GetActiveServers()
 	if err != nil {
 		return nil, err
 	}
 
-	activeServers := make([]server.Response, 0)
-	for _, item := range activeServerResources.Items {
-		objectStatus, _, _ := unstructured.NestedString(item.Object, "status", "status")
-
-		var status string
-		if objectStatus != "" {
-			status = objectStatus
-		} else {
-			status = "not ready"
-		}
-
-		activeServers = append(activeServers, server.Response{
-			Name:          item.GetName(),
-			IP:            serverAddress(item.GetName()),
-			RemainingTime: getRemainingTime(item.Object).Round(time.Minute).String(),
-			Status:        status,
-		})
+	resourcesByName := make(map[string]*unstructured.Unstructured, len(resources.Items))
+	names := make([]string, 0, len(resources.Items))
+	for i := range resources.Items {
+		resourcesByName[resources.Items[i].GetName()] = &resources.Items[i]
+		names = append(names, resources.Items[i].GetName())
 	}
 
-	return activeServers, nil
+	records, err := s.store.ListServers(ctx, names)
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+	servers := make([]server.Response, 0, len(records))
+	for _, record := range records {
+		// Records are newest first, so a resource belongs to the first record with its name.
+		resource := resourcesByName[record.Name]
+		delete(resourcesByName, record.Name)
+
+		response, err := observedResponse(record, resource, now)
+		if err != nil {
+			return nil, err
+		}
+		servers = append(servers, response)
+	}
+
+	return servers, nil
 }
 
 func (s *Service) getStats(ctx context.Context) (stats, error) {
@@ -91,13 +100,16 @@ func (s *Service) provisionServer(provisionRequest server.Request) (server.Respo
 
 	serverDefinition := definition.ServerDefinition{
 		Name:     provisionRequest.Name,
-		Options:  provisionRequest.Opts,
+		Options:  toOptions(provisionRequest.Options),
 		Tier:     definition.Tier(provisionRequest.Tier),
 		Preset:   provisionRequest.Preset,
-		Duration: time.Duration(provisionRequest.Duration) * time.Millisecond,
+		Duration: time.Duration(provisionRequest.DurationMs) * time.Millisecond,
 	}
 
-	serverSpec, err := definition.TranslateDefinition(context.TODO(), serverDefinition)
+	// Translation mutates options, so preserve the requested definition.
+	translated := serverDefinition
+	translated.Options = maps.Clone(serverDefinition.Options)
+	serverSpec, err := definition.TranslateDefinition(context.TODO(), translated)
 	if err != nil {
 		return server.Response{}, err
 	}
@@ -130,11 +142,16 @@ func (s *Service) provisionServer(provisionRequest server.Request) (server.Respo
 		return server.Response{}, err
 	}
 
-	res := server.Response{
-		Name: provisionRequest.Name,
-		IP:   serverAddress(provisionRequest.Name),
+	return newResponse(record, server.StatusProvisioning, record.ExpiresAt)
+}
+
+func toOptions(options map[string]string) map[definition.Option]string {
+	converted := make(map[definition.Option]string, len(options))
+	for key, value := range options {
+		converted[definition.Option(key)] = value
 	}
-	return res, nil
+
+	return converted
 }
 
 func (s *Service) shutdownExpiredServers() (expiredServers, error) {

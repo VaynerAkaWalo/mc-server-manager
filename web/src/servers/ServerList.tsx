@@ -1,19 +1,26 @@
 import {useEffect, useState} from "react";
 import {Link} from "react-router-dom";
-import {ManagerClient, ServerResponse} from "../clients/ManagerClient.ts";
+import {ManagerClient, ServerResponse, ServerStatus} from "../clients/ManagerClient.ts";
 import {UpdateNotification} from "../App.tsx";
 
-function formatRemainingTime(remainingTime: string) {
-  if (!remainingTime || remainingTime === "0s") {
-    return "soon"
-  }
-
-  if (remainingTime.startsWith("-")) {
+function formatRemainingTime(expiresAt: string) {
+  const remainingMs = new Date(expiresAt).getTime() - Date.now()
+  if (remainingMs <= 0) {
     return "expiring"
   }
 
-  return remainingTime.replace("0s", "")
+  const minutes = Math.round(remainingMs / 60_000)
+  if (minutes < 1) {
+    return "soon"
+  }
+
+  const days = Math.floor(minutes / 1440)
+  const hours = Math.floor((minutes % 1440) / 60)
+  const parts = [days && `${days}d`, hours && `${hours}h`, minutes % 60 && `${minutes % 60}m`]
+  return parts.filter(Boolean).join(" ")
 }
+
+const activeStatuses: ServerStatus[] = ["provisioning", "running"]
 
 export function ServerList() {
   const {setNotificationMessage} = UpdateNotification()
@@ -32,7 +39,7 @@ export function ServerList() {
     const loadServers = async () => {
       try {
         const {data} = await ManagerClient.listServers()
-        setServers(data)
+        setServers(data.filter(server => activeStatuses.includes(server.status)))
       } catch {
         // keep the last known list, the next poll retries
       }
@@ -68,15 +75,15 @@ export function ServerList() {
             </thead>
             <tbody>
               {servers.map(server => (
-                <tr key={server.name}>
+                <tr key={server.id}>
                   <td className="p-2 max-w-48 truncate" title={server.name}>{server.name}</td>
-                  <td className="p-2">{server.version ?? "-"}</td>
-                  <td className="p-2">{server.maxPlayers ?? "-"}</td>
-                  <td className="p-2">{formatRemainingTime(server.remainingTime)}</td>
+                  <td className="p-2">{server.options.VERSION ?? "-"}</td>
+                  <td className="p-2">{server.options.MAX_PLAYERS ?? "-"}</td>
+                  <td className="p-2">{formatRemainingTime(server.expiresAt)}</td>
                   <td className="p-2">
-                    <button className="max-w-64 truncate cursor-pointer" title={`Copy ${server.IP}`}
-                            onClick={() => copyHostname(server.IP)}>
-                      {server.IP}
+                    <button className="max-w-64 truncate cursor-pointer" title={`Copy ${server.hostname}`}
+                            onClick={() => copyHostname(server.hostname)}>
+                      {server.hostname}
                     </button>
                   </td>
                 </tr>

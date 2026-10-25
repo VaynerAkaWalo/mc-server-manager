@@ -276,12 +276,12 @@ export function ServerCreator() {
       return
     }
 
-    const sanitizedOpts = Object.fromEntries(Object.entries(state.opts).filter(([_, v]) => v !== ""));
+    const sanitizedOpts = Object.fromEntries(Object.entries(state.opts).filter(([, value]) => value !== ""));
 
     const request: CreateServerRequest = {
       name: state.name,
-      duration: state.duration,
-      opts: sanitizedOpts,
+      durationMs: state.duration,
+      options: sanitizedOpts,
       tier: state.tier,
       preset: templatePreset,
     }
