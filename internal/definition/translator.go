@@ -11,6 +11,7 @@ func TranslateDefinition(ctx context.Context, definition ServerDefinition, versi
 	customizers := []customizer{
 		customizeOptions(versions),
 		customizePreset,
+		customizeVersionRequired,
 		customizeName,
 		customizeDuration,
 		customizeOperators,

@@ -34,7 +34,7 @@
   .mc-modal {
     @apply mc-panel absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col;
     width: min(32rem, 92vw);
-    min-height: min(22rem, 92vh);
+    min-height: min(28rem, 92vh);
     max-height: 92vh;
     overflow-y: auto;
   }

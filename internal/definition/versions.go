@@ -61,3 +61,11 @@ func validateVersion(ctx context.Context, source VersionSource, options map[Opti
 
 	return nil
 }
+
+func customizeVersionRequired(ctx context.Context, definition ServerDefinition) (ServerDefinition, error) {
+	if definition.Options[VERSION] == "" {
+		return definition, invalidf("a game version is required")
+	}
+
+	return definition, nil
+}

@@ -119,7 +119,7 @@ func TestListUsesOnlyDatabase(t *testing.T) {
 
 func TestProvisionRejectsActiveName(t *testing.T) {
 	svc := CreateServerService(&fakeCluster{}, &memoryStore{}, testVersions)
-	request := server.Request{Name: "my-server", DurationMs: time.Hour.Milliseconds(), Tier: "wooden"}
+	request := server.Request{Name: "my-server", DurationMs: time.Hour.Milliseconds(), Tier: "wooden", Options: map[string]string{"VERSION": "1.21.3"}}
 
 	if _, err := svc.provisionServer(context.Background(), request); err != nil {
 		t.Fatal(err)
