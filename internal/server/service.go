@@ -5,19 +5,28 @@ import (
 	"errors"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/cluster"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/definition"
+	"github.com/VaynerAkaWalo/mc-server-manager/internal/store"
 	"github.com/VaynerAkaWalo/mc-server-manager/pkg/server"
+	"github.com/google/uuid"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"log/slog"
 	"time"
 )
 
-type Service struct {
-	clusterService cluster.Service
+type serverStore interface {
+	CreateServer(ctx context.Context, server store.NewServer) (store.ServerRecord, error)
+	DeleteServer(ctx context.Context, id uuid.UUID) error
 }
 
-func CreateServerService(clusterService cluster.Service) Service {
+type Service struct {
+	clusterService cluster.Service
+	store          serverStore
+}
+
+func CreateServerService(clusterService cluster.Service, store serverStore) Service {
 	return Service{
 		clusterService: clusterService,
+		store:          store,
 	}
 }
 
@@ -73,8 +82,21 @@ func (s *Service) provisionServer(provisionRequest server.Request) (server.Respo
 		return server.Response{}, err
 	}
 
+	record, err := s.store.CreateServer(context.TODO(), store.NewServer{
+		Name:       provisionRequest.Name,
+		Hostname:   serverAddress(provisionRequest.Name),
+		Definition: serverDefinition,
+		ExpiresAt:  time.Now().Add(serverDefinition.Duration),
+	})
+	if err != nil {
+		return server.Response{}, err
+	}
+
 	err = s.clusterService.DeployServerSpec(*serverSpec)
 	if err != nil {
+		if deleteErr := s.store.DeleteServer(context.TODO(), record.ID); deleteErr != nil {
+			slog.Error("Failed to remove record of server that was not deployed " + record.ID.String() + ": " + deleteErr.Error())
+		}
 		return server.Response{}, err
 	}
 

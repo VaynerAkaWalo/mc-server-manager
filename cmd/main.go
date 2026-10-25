@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"github.com/VaynerAkaWalo/go-toolkit/xhttp"
 	"github.com/VaynerAkaWalo/go-toolkit/xlog"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/cluster"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/frontend"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/healthcheck"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/server"
+	"github.com/VaynerAkaWalo/mc-server-manager/internal/store"
 	"log/slog"
 	"os"
 )
@@ -26,7 +28,25 @@ func main() {
 		os.Exit(-1)
 	}
 
-	serverService := server.CreateServerService(cluster.CreateClusterService(*clusterClient, *dynamicClient))
+	dbURL := os.Getenv("DB_URL")
+	if dbURL == "" {
+		slog.Error("DB_URL is not set")
+		os.Exit(-1)
+	}
+	serverStore, err := store.Connect(context.Background(), dbURL)
+	if err != nil {
+		slog.Error("Failed to connect to database: " + err.Error())
+		os.Exit(-1)
+	}
+	defer serverStore.Close()
+
+	err = serverStore.Migrate(context.Background())
+	if err != nil {
+		slog.Error("Failed to migrate database: " + err.Error())
+		os.Exit(-1)
+	}
+
+	serverService := server.CreateServerService(cluster.CreateClusterService(*clusterClient, *dynamicClient), serverStore)
 	serverHandlers := server.NewServerHandlers(serverService)
 
 	healthcheckHandlers := healthcheck.NewHealthcheckHandlers()
