@@ -20,7 +20,15 @@ function formatRemainingTime(expiresAt: string) {
   return parts.filter(Boolean).join(" ")
 }
 
-const activeStatuses: ServerStatus[] = ["new", "running"]
+const activeStatuses: ServerStatus[] = ["new", "running", "degraded"]
+
+const statusLabels: Record<ServerStatus, string> = {
+  new: "Starting",
+  running: "Online",
+  degraded: "Not responding",
+  stopped: "Stopped",
+  expired: "Expired"
+}
 
 export function ServerList() {
   const {setNotificationMessage} = UpdateNotification()
@@ -75,7 +83,8 @@ export function ServerList() {
               <tr>
                 <th className="p-2">Name</th>
                 <th className="p-2">Version</th>
-                <th className="p-2">Max players</th>
+                <th className="p-2">Status</th>
+                <th className="p-2">Players</th>
                 <th className="p-2">Remaining time</th>
                 <th className="p-2">Hostname</th>
               </tr>
@@ -85,7 +94,8 @@ export function ServerList() {
                 <tr key={server.id}>
                   <td className="p-2 max-w-48 truncate" title={server.name}>{server.name}</td>
                   <td className="p-2">{server.options.VERSION ?? "-"}</td>
-                  <td className="p-2">{server.options.MAX_PLAYERS ?? "-"}</td>
+                  <td className="p-2">{statusLabels[server.status] ?? server.status}</td>
+                  <td className="p-2">{server.players ? `${server.players.online}/${server.players.max}` : "-"}</td>
                   <td className="p-2">{formatRemainingTime(server.expiresAt)}</td>
                   <td className="p-2">
                     <button className="max-w-64 truncate cursor-pointer" title={`Copy ${server.hostname}`}

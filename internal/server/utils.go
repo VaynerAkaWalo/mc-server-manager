@@ -5,6 +5,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"log/slog"
+	"net"
 	"time"
 )
 
@@ -33,6 +34,10 @@ func getRemainingTime(server map[string]interface{}) time.Duration {
 
 func serverAddress(serverName string) string {
 	return serverName + ".mc-server.blamedevs.com"
+}
+
+func clusterAddress(serverName string) string {
+	return net.JoinHostPort(serverName+".minecraft-server.svc", "25565")
 }
 
 // Timeouts and connection failures may still have created the resource, so only an explicit client error proves it was not.

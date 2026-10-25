@@ -25,10 +25,10 @@ func parseFilter(values url.Values) (store.ServerFilter, error) {
 		status = "active"
 	}
 	switch status {
-	case "active", "all", "new", "running", "stopped", "expired":
+	case "active", "all", "new", "running", "degraded", "stopped", "expired":
 		return store.ServerFilter{Status: status}, nil
 	default:
-		return store.ServerFilter{}, errors.New("status must be active, all, new, running, stopped or expired")
+		return store.ServerFilter{}, errors.New("status must be active, all, new, running, degraded, stopped or expired")
 	}
 }
 

@@ -28,13 +28,14 @@ export interface CatalogResponse {
   durationMs: { min: number, max: number }
 }
 
-export type ServerStatus = "new" | "running" | "stopped" | "expired"
+export type ServerStatus = "new" | "running" | "degraded" | "stopped" | "expired"
 
 export interface ServerResponse {
   id: string,
   name: string,
   hostname: string,
   status: ServerStatus,
+  players: { online: number, max: number } | null,
   tier: Tier,
   preset?: string,
   options: Opts,
