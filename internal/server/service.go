@@ -16,13 +16,19 @@ import (
 	"time"
 )
 
-var ErrNameInUse = errors.New("a server with this name already exists")
+var (
+	ErrNameInUse = errors.New("a server with this name already exists")
+	ErrNotFound  = errors.New("server not found")
+)
 
 type serverStore interface {
 	CreateServer(ctx context.Context, server store.NewServer) (store.ServerRecord, error)
 	DeleteServer(ctx context.Context, id uuid.UUID) error
 	CountServers(ctx context.Context, filter store.ServerFilter) (store.ServerCounts, error)
 	ListServers(ctx context.Context, query store.ServerQuery) ([]store.ServerRecord, error)
+	GetServer(ctx context.Context, id uuid.UUID) (store.ServerRecord, error)
+	MarkStopped(ctx context.Context, id uuid.UUID) error
+	MarkExpired(ctx context.Context) error
 }
 
 type clusterService interface {
@@ -73,16 +79,6 @@ func (s *Service) getStats(ctx context.Context, filter store.ServerFilter) (stat
 }
 
 func (s *Service) provisionServer(provisionRequest server.Request) (server.Response, error) {
-	activeServers, err := s.clusterService.GetActiveServers()
-	if err != nil {
-		return server.Response{}, err
-	}
-	for _, item := range activeServers.Items {
-		if item.GetName() == provisionRequest.Name {
-			return server.Response{}, ErrNameInUse
-		}
-	}
-
 	serverDefinition := definition.ServerDefinition{
 		Name:     provisionRequest.Name,
 		Options:  toOptions(provisionRequest.Options),
@@ -105,6 +101,9 @@ func (s *Service) provisionServer(provisionRequest server.Request) (server.Respo
 		Definition: serverDefinition,
 		ExpiresAt:  time.Now().Add(serverDefinition.Duration),
 	})
+	if errors.Is(err, store.ErrActiveNameTaken) {
+		return server.Response{}, ErrNameInUse
+	}
 	if err != nil {
 		return server.Response{}, err
 	}
@@ -128,6 +127,50 @@ func (s *Service) provisionServer(provisionRequest server.Request) (server.Respo
 	}
 
 	return newResponse(record, server.StatusNew)
+}
+
+func (s *Service) getServer(ctx context.Context, id uuid.UUID) (server.Response, error) {
+	record, err := s.store.GetServer(ctx, id)
+	if errors.Is(err, store.ErrNotFound) {
+		return server.Response{}, ErrNotFound
+	}
+	if err != nil {
+		return server.Response{}, err
+	}
+
+	return newResponse(record, server.Status(record.Status))
+}
+
+func (s *Service) deleteServer(ctx context.Context, id uuid.UUID) error {
+	record, err := s.store.GetServer(ctx, id)
+	if errors.Is(err, store.ErrNotFound) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+	if !isActive(record.Status) {
+		return nil
+	}
+
+	resources, err := s.clusterService.GetActiveServers()
+	if err != nil {
+		return err
+	}
+	for _, resource := range resources.Items {
+		if resource.GetName() != record.Name {
+			continue
+		}
+		if err := s.clusterService.DeleteServer(resource.GetName(), resource.GetUID()); err != nil {
+			return err
+		}
+	}
+
+	return s.store.MarkStopped(ctx, id)
+}
+
+func isActive(status string) bool {
+	return status == string(server.StatusNew) || status == string(server.StatusRunning)
 }
 
 func toOptions(options map[string]string) map[definition.Option]string {
@@ -169,6 +212,10 @@ func (s *Service) ShutdownExpired() ([]string, error) {
 		} else {
 			slog.Info("Server " + server.GetName() + " remaining time " + remainingTime.String())
 		}
+	}
+
+	if err := s.store.MarkExpired(context.TODO()); err != nil {
+		failures = append(failures, err)
 	}
 
 	return serversExpired, errors.Join(failures...)

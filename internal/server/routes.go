@@ -7,6 +7,7 @@ import (
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/definition"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/problem"
 	"github.com/VaynerAkaWalo/mc-server-manager/pkg/server"
+	"github.com/google/uuid"
 	"io"
 	"log/slog"
 	"net/http"
@@ -26,6 +27,8 @@ func (h *Handlers) RegisterRoutes(router *xhttp.Router) {
 	router.RegisterHandler("GET /api/v1/servers", h.listServersHandler)
 	router.RegisterHandler("POST /api/v1/servers", h.provisionServer)
 	router.RegisterHandler("GET /api/v1/servers/stats", h.statsHandler)
+	router.RegisterHandler("GET /api/v1/servers/{id}", h.getServerHandler)
+	router.RegisterHandler("DELETE /api/v1/servers/{id}", h.deleteServerHandler)
 	router.RegisterHandler("DELETE /servers", h.shutdownExpiredServers)
 }
 
@@ -40,6 +43,34 @@ func (h *Handlers) listServersHandler(w http.ResponseWriter, r *http.Request) er
 	}
 
 	return xhttp.WriteResponse(w, http.StatusOK, servers)
+}
+
+func (h *Handlers) getServerHandler(w http.ResponseWriter, r *http.Request) error {
+	id, found := serverID(r)
+	if !found {
+		return problem.Write(w, http.StatusNotFound, ErrNotFound.Error())
+	}
+
+	res, err := h.serverService.getServer(r.Context(), id)
+	if err != nil {
+		return resourceFailure(w, r, "Failed to get server", err)
+	}
+
+	return xhttp.WriteResponse(w, http.StatusOK, res)
+}
+
+func (h *Handlers) deleteServerHandler(w http.ResponseWriter, r *http.Request) error {
+	id, found := serverID(r)
+	if !found {
+		return problem.Write(w, http.StatusNotFound, ErrNotFound.Error())
+	}
+
+	if err := h.serverService.deleteServer(r.Context(), id); err != nil {
+		return resourceFailure(w, r, "Failed to delete server", err)
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+	return nil
 }
 
 func (h *Handlers) statsHandler(w http.ResponseWriter, r *http.Request) error {
@@ -103,4 +134,17 @@ func internalFailure(w http.ResponseWriter, r *http.Request, message string, err
 	slog.ErrorContext(r.Context(), message+": "+err.Error())
 
 	return problem.Write(w, http.StatusInternalServerError, "Something went wrong, try again later")
+}
+
+func serverID(r *http.Request) (uuid.UUID, bool) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	return id, err == nil
+}
+
+func resourceFailure(w http.ResponseWriter, r *http.Request, message string, err error) error {
+	if errors.Is(err, ErrNotFound) {
+		return problem.Write(w, http.StatusNotFound, ErrNotFound.Error())
+	}
+
+	return internalFailure(w, r, message, err)
 }

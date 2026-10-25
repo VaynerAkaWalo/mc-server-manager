@@ -2,6 +2,9 @@ package store
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"github.com/google/uuid"
 	"os"
 	"testing"
 	"time"
@@ -105,20 +108,23 @@ func TestListServers(t *testing.T) {
 	s := connectTestStore(t)
 	ctx := context.Background()
 
-	create := func(name string, expiresIn time.Duration) ServerRecord {
+	create := func(name string, expiresIn time.Duration, status string) ServerRecord {
 		t.Helper()
 		record, err := s.CreateServer(ctx, NewServer{Name: name, Hostname: name, Definition: map[string]any{}, ExpiresAt: time.Now().Add(expiresIn)})
 		if err != nil {
 			t.Fatal(err)
 		}
 		t.Cleanup(func() { _ = s.DeleteServer(ctx, record.ID) })
+		if _, err := s.pool.Exec(ctx, "UPDATE mc_servers SET status = $1 WHERE id = $2", status, record.ID); err != nil {
+			t.Fatal(err)
+		}
 		return record
 	}
 
-	active := create("list-active", time.Hour)
-	oldRun := create("list-reused", -2*time.Hour)
-	latestRun := create("list-reused", -time.Hour)
-	gone := create("list-gone", -time.Hour)
+	active := create("list-active", time.Hour, "running")
+	oldRun := create("list-reused", -2*time.Hour, "expired")
+	latestRun := create("list-reused", -time.Hour, "expired")
+	gone := create("list-gone", -time.Hour, "new")
 
 	records, err := s.ListServers(ctx, ServerQuery{Filter: ServerFilter{Status: "active"}, Sort: "-createdAt", Limit: 20})
 	if err != nil {
@@ -148,7 +154,7 @@ func TestServerCollectionPaginationAndFilters(t *testing.T) {
 	ids := make(map[string]string)
 	for _, status := range []string{"new", "running", "stopped", "expired"} {
 		for i := 0; i < 3; i++ {
-			record, err := s.CreateServer(ctx, NewServer{Name: "collection-" + status, Hostname: "test", Definition: map[string]any{}, ExpiresAt: now.Add(time.Hour)})
+			record, err := s.CreateServer(ctx, NewServer{Name: fmt.Sprintf("collection-%s-%d", status, i), Hostname: "test", Definition: map[string]any{}, ExpiresAt: now.Add(time.Hour)})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -251,5 +257,58 @@ func TestServerCollectionPaginationAndFilters(t *testing.T) {
 				t.Fatalf("active returned %s", record.Status)
 			}
 		}
+	}
+}
+
+func TestActiveNamesAreUnique(t *testing.T) {
+	s := connectTestStore(t)
+	ctx := context.Background()
+	input := NewServer{Name: "unique-name", Hostname: "u", Definition: map[string]any{}, ExpiresAt: time.Now().Add(time.Hour)}
+
+	first, err := s.CreateServer(ctx, input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.DeleteServer(ctx, first.ID) })
+
+	if _, err := s.CreateServer(ctx, input); !errors.Is(err, ErrActiveNameTaken) {
+		t.Fatalf("err = %v", err)
+	}
+
+	if err := s.MarkStopped(ctx, first.ID); err != nil {
+		t.Fatal(err)
+	}
+	second, err := s.CreateServer(ctx, input)
+	if err != nil {
+		t.Fatalf("name was not released: %v", err)
+	}
+	t.Cleanup(func() { _ = s.DeleteServer(ctx, second.ID) })
+
+	stopped, err := s.GetServer(ctx, first.ID)
+	if err != nil || stopped.Status != "stopped" {
+		t.Fatalf("status = %q, err = %v", stopped.Status, err)
+	}
+	if _, err := s.GetServer(ctx, uuid.New()); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestMarkExpiredReleasesName(t *testing.T) {
+	s := connectTestStore(t)
+	ctx := context.Background()
+
+	old, err := s.CreateServer(ctx, NewServer{Name: "expiring-name", Hostname: "e", Definition: map[string]any{}, ExpiresAt: time.Now().Add(-time.Minute)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.DeleteServer(ctx, old.ID) })
+
+	if err := s.MarkExpired(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	record, err := s.GetServer(ctx, old.ID)
+	if err != nil || record.Status != "expired" {
+		t.Fatalf("status = %q, err = %v", record.Status, err)
 	}
 }
