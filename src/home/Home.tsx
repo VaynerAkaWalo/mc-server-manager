@@ -10,7 +10,7 @@ function Stat({label, value}: { label: string, value?: number }) {
   return (
     <div className="mc-panel flex-1 flex flex-col items-center py-4 px-6">
       {value === undefined
-        ? <span className="text-4xl h-10 w-16 my-0.5 rounded-sm bg-stone-600 motion-safe:animate-pulse" aria-label="Loading"/>
+        ? <span className="text-4xl text-gray-200 motion-safe:animate-pulse" aria-label="Loading">...</span>
         : <span className="text-4xl text-gray-200">{value}</span>}
       <span>{label}</span>
     </div>
