@@ -1,4 +1,3 @@
-// Package mcping implements the Minecraft Server List Ping, the same request the game launcher sends to show a server in its list.
 package mcping
 
 import (
