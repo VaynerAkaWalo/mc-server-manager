@@ -3,6 +3,7 @@ import {useEffect, useState} from "react";
 import {ManagerClient, StatsResponse} from "../clients/ManagerClient.ts";
 
 const news = [
+  {date: "2026-10-25", title: "No time limit", text: "Servers stay up while you play and stop 30 minutes after the last player leaves."},
   {date: "2026-10-25", title: "Server status", text: "My servers now show whether a server is online and how many players are connected."},
   {date: "2026-10-25", title: "Alpha 0.0.1", text: "We are now in alpha 0.0.1 and available at mc-server.blamedevs.com."},
 ]

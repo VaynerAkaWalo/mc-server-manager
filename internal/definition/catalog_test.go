@@ -31,9 +31,6 @@ func TestCatalogMatchesDefinitions(t *testing.T) {
 	if catalog.Versions["VANILLA"].LatestRelease != "1.21.10" {
 		t.Fatalf("versions = %+v", catalog.Versions)
 	}
-	if catalog.DurationMs.Min != 120000 || catalog.DurationMs.Max != 1209600000 {
-		t.Fatalf("duration = %+v", catalog.DurationMs)
-	}
 }
 
 func TestCatalogDoesNotExposeEnforcedOptions(t *testing.T) {

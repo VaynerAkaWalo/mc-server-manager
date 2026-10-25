@@ -13,12 +13,10 @@ func TranslateDefinition(ctx context.Context, definition ServerDefinition, versi
 		customizePreset,
 		customizeVersionRequired,
 		customizeName,
-		customizeDuration,
 		customizeOperators,
 		customizeContainer,
 		customizeGameplay,
 		customizeWorldGeneration,
-		saveCustomizer,
 	}
 
 	var err error

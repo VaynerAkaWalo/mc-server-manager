@@ -3,8 +3,18 @@ import {Link} from "react-router-dom";
 import {ManagerClient, ServerResponse, ServerStatus} from "../clients/ManagerClient.ts";
 import {UpdateNotification} from "../App.tsx";
 
-function formatRemainingTime(expiresAt: string) {
-  const remainingMs = new Date(expiresAt).getTime() - Date.now()
+function shutdownTime(server: ServerResponse) {
+  const expiresAt = new Date(server.expiresAt).getTime()
+  const playersMayBeOnline = server.status === "running" && (!server.players || server.players.online > 0)
+  if (!server.idleShutdownAt || playersMayBeOnline) {
+    return expiresAt
+  }
+
+  return Math.min(expiresAt, new Date(server.idleShutdownAt).getTime())
+}
+
+function formatRemainingTime(shutdownAt: number) {
+  const remainingMs = shutdownAt - Date.now()
   if (remainingMs <= 0) {
     return "expiring"
   }
@@ -20,18 +30,20 @@ function formatRemainingTime(expiresAt: string) {
   return parts.filter(Boolean).join(" ")
 }
 
-const activeStatuses: ServerStatus[] = ["new", "running", "degraded"]
+const activeStatuses: ServerStatus[] = ["new", "running", "degraded", "expiring"]
 
 const statusDots: Partial<Record<ServerStatus, string>> = {
   new: "bg-starting motion-safe:animate-pulse",
   running: "bg-online",
-  degraded: "bg-warning"
+  degraded: "bg-warning",
+  expiring: "bg-warning"
 }
 
 const statusLabels: Record<ServerStatus, string> = {
   new: "Starting",
   running: "Online",
   degraded: "Not responding",
+  expiring: "Shutting down soon",
   stopped: "Stopped",
   expired: "Expired"
 }
@@ -88,7 +100,7 @@ export function ServerList() {
                 <h3 className="font-pixel text-base wrap-anywhere">{server.name}</h3>
                 <div className="flex flex-wrap gap-x-4 text-content-muted">
                   <span>{server.options.VERSION ?? "Unknown version"}</span>
-                  <span title="Remaining time">{formatRemainingTime(server.expiresAt)}</span>
+                  <span title="Shuts down after 30 minutes without players">{formatRemainingTime(shutdownTime(server))}</span>
                 </div>
               </div>
 

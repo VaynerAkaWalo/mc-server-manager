@@ -18,6 +18,12 @@ const (
 	maxConcurrentPings = 20
 )
 
+var idleTimeouts = store.IdleTimeouts{
+	Expiring: 15 * time.Minute,
+	Expired:  30 * time.Minute,
+	Startup:  time.Hour,
+}
+
 type pingFunc func(ctx context.Context, address string) (*mcping.Players, error)
 
 type playerCache struct {
@@ -107,6 +113,7 @@ func (s *Service) checkServers(ctx context.Context) {
 	wg.Wait()
 
 	s.players.retain(monitored)
+	s.record(s.store.MarkIdle(ctx, idleTimeouts))
 }
 
 func (s *Service) checkServer(ctx context.Context, record store.ServerRecord) {
@@ -128,9 +135,13 @@ func (s *Service) checkServer(ctx context.Context, record store.ServerRecord) {
 	} else {
 		s.players.forget(record.ID)
 	}
-	if record.Status != string(server.StatusRunning) {
+	if record.Status == string(server.StatusNew) || record.Status == string(server.StatusDegraded) {
 		slog.Info("Server " + record.Name + " is responding")
 		s.record(s.store.MarkRunning(ctx, record.ID))
+	}
+	// Mods can hide player counts, so a server that hides them never counts as idle.
+	if players == nil || players.Online > 0 {
+		s.record(s.store.MarkActive(ctx, record.ID))
 	}
 }
 

@@ -105,3 +105,109 @@ func TestServerHidingPlayersIsRunningWithUnknownPlayers(t *testing.T) {
 		t.Fatal("players should be unknown")
 	}
 }
+
+func TestEmptyServerStaysIdle(t *testing.T) {
+	svc, db, _ := monitoredService("running", answering(&mcping.Players{Online: 0, Max: 10}))
+	lastActive := time.Now().Add(-time.Hour)
+	db.records[0].LastActiveAt = &lastActive
+
+	svc.checkServers(context.Background())
+
+	if !db.records[0].LastActiveAt.Equal(lastActive) {
+		t.Fatalf("last active = %v", db.records[0].LastActiveAt)
+	}
+}
+
+func TestServerWithPlayersIsActive(t *testing.T) {
+	svc, db, _ := monitoredService("running", answering(&mcping.Players{Online: 1, Max: 10}))
+	lastActive := time.Now().Add(-time.Hour)
+	db.records[0].LastActiveAt = &lastActive
+
+	svc.checkServers(context.Background())
+
+	if time.Since(*db.records[0].LastActiveAt) > time.Minute {
+		t.Fatalf("last active = %v", db.records[0].LastActiveAt)
+	}
+}
+
+func TestServerHidingPlayersNeverGoesIdle(t *testing.T) {
+	svc, db, _ := monitoredService("running", answering(nil))
+	lastActive := time.Now().Add(-time.Hour)
+	db.records[0].LastActiveAt = &lastActive
+
+	svc.checkServers(context.Background())
+
+	if time.Since(*db.records[0].LastActiveAt) > time.Minute {
+		t.Fatalf("last active = %v", db.records[0].LastActiveAt)
+	}
+}
+
+func TestStartedServerBecomesActive(t *testing.T) {
+	svc, db, _ := monitoredService("new", answering(&mcping.Players{Online: 0, Max: 10}))
+
+	svc.checkServers(context.Background())
+
+	if db.records[0].LastActiveAt == nil {
+		t.Fatal("a server that started should count as active")
+	}
+}
+
+func idleFor(db *memoryStore, duration time.Duration) {
+	lastActive := time.Now().Add(-duration)
+	db.records[0].LastActiveAt = &lastActive
+}
+
+func TestServerWithoutPlayersBecomesExpiring(t *testing.T) {
+	svc, db, _ := monitoredService("running", answering(&mcping.Players{Max: 10}))
+	idleFor(db, 16*time.Minute)
+
+	svc.checkServers(context.Background())
+
+	if db.records[0].Status != "expiring" {
+		t.Fatalf("status = %s", db.records[0].Status)
+	}
+}
+
+func TestExpiringServerWithoutPlayersExpires(t *testing.T) {
+	svc, db, _ := monitoredService("expiring", answering(&mcping.Players{Max: 10}))
+	idleFor(db, 31*time.Minute)
+
+	svc.checkServers(context.Background())
+
+	if db.records[0].Status != "expired" {
+		t.Fatalf("status = %s", db.records[0].Status)
+	}
+}
+
+func TestExpiringServerRunsAgainWhenPlayersJoin(t *testing.T) {
+	svc, db, _ := monitoredService("expiring", answering(&mcping.Players{Online: 1, Max: 10}))
+	idleFor(db, 20*time.Minute)
+
+	svc.checkServers(context.Background())
+
+	if db.records[0].Status != "running" {
+		t.Fatalf("status = %s", db.records[0].Status)
+	}
+}
+
+func TestExpiringServerStaysExpiringWhileEmpty(t *testing.T) {
+	svc, db, _ := monitoredService("expiring", answering(&mcping.Players{Max: 10}))
+	idleFor(db, 20*time.Minute)
+
+	svc.checkServers(context.Background())
+
+	if db.records[0].Status != "expiring" {
+		t.Fatalf("status = %s", db.records[0].Status)
+	}
+}
+
+func TestServerThatNeverStartsExpires(t *testing.T) {
+	svc, db, _ := monitoredService("new", silent)
+	db.records[0].CreatedAt = time.Now().Add(-61 * time.Minute)
+
+	svc.checkServers(context.Background())
+
+	if db.records[0].Status != "expired" {
+		t.Fatalf("status = %s", db.records[0].Status)
+	}
+}

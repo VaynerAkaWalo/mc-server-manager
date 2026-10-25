@@ -30,6 +30,8 @@ type serverStore interface {
 	GetServer(ctx context.Context, id uuid.UUID) (store.ServerRecord, error)
 	ListMonitoredServers(ctx context.Context) ([]store.ServerRecord, error)
 	MarkRunning(ctx context.Context, id uuid.UUID) error
+	MarkActive(ctx context.Context, id uuid.UUID) error
+	MarkIdle(ctx context.Context, timeouts store.IdleTimeouts) error
 	MarkDegraded(ctx context.Context, id uuid.UUID) error
 	MarkStopped(ctx context.Context, id uuid.UUID) error
 	MarkExpired(ctx context.Context) error
@@ -94,7 +96,7 @@ func (s *Service) provisionServer(ctx context.Context, provisionRequest server.R
 		Options:  toOptions(provisionRequest.Options),
 		Tier:     definition.Tier(provisionRequest.Tier),
 		Preset:   provisionRequest.Preset,
-		Duration: time.Duration(provisionRequest.DurationMs) * time.Millisecond,
+		Duration: definition.MaxServerLifetime,
 	}
 
 	// Translation mutates options, so preserve the requested definition.
@@ -192,7 +194,7 @@ func (s *Service) deleteServer(ctx context.Context, id uuid.UUID) error {
 }
 
 func isActive(status string) bool {
-	return status == string(server.StatusNew) || status == string(server.StatusRunning) || status == string(server.StatusDegraded)
+	return status == string(server.StatusNew) || status == string(server.StatusRunning) || status == string(server.StatusDegraded) || status == string(server.StatusExpiring)
 }
 
 func toOptions(options map[string]string) map[definition.Option]string {
@@ -205,30 +207,39 @@ func toOptions(options map[string]string) map[definition.Option]string {
 }
 
 func (s *Service) ShutdownExpired() ([]string, error) {
+	if err := s.store.MarkExpired(context.TODO()); err != nil {
+		return nil, err
+	}
+
+	// Provisioning inserts the record before deploying, so listing the cluster first means every listed resource already has its record.
 	activeServerResources, err := s.clusterService.GetActiveServers()
 	if err != nil {
 		return nil, err
 	}
 
+	activeRecords, err := s.store.ListMonitoredServers(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+	active := make(map[string]bool, len(activeRecords))
+	for _, record := range activeRecords {
+		active[record.Name] = true
+	}
+
 	serversExpired := make([]string, 0)
 	var failures []error
 	for _, server := range activeServerResources.Items {
-		remainingTime := getRemainingTime(server.Object)
-		if remainingTime != remainingTime.Abs() {
-			slog.Info("Server " + server.GetName() + " expired initiating shutdown")
-			if err := s.clusterService.DeleteServer(server.GetName(), server.GetUID()); err != nil {
-				slog.Error("Failed to delete expired server " + server.GetName() + ": " + err.Error())
-				failures = append(failures, err)
-				continue
-			}
-			serversExpired = append(serversExpired, server.GetName())
-		} else {
-			slog.Info("Server " + server.GetName() + " remaining time " + remainingTime.String())
+		if active[server.GetName()] {
+			continue
 		}
-	}
 
-	if err := s.store.MarkExpired(context.TODO()); err != nil {
-		failures = append(failures, err)
+		slog.Info("Server " + server.GetName() + " expired initiating shutdown")
+		if err := s.clusterService.DeleteServer(server.GetName(), server.GetUID()); err != nil {
+			slog.Error("Failed to delete expired server " + server.GetName() + ": " + err.Error())
+			failures = append(failures, err)
+			continue
+		}
+		serversExpired = append(serversExpired, server.GetName())
 	}
 
 	return serversExpired, errors.Join(failures...)

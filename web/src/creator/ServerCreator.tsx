@@ -17,7 +17,6 @@ enum CreatorTab {
 interface Server {
   name: string
   opts: Opts
-  duration: number
   tier: Tier,
 }
 
@@ -30,13 +29,11 @@ const initialServer: Server = {
     MAX_PLAYERS: "20",
     DIFFICULTY: "normal"
   },
-  duration: 2_700_000,
   tier: "",
 }
 
 type ServerUpdateAction =
   | { type: 'UPDATE_NAME'; payload: string }
-  | { type: 'UPDATE_EXPIRE_TIME'; payload: number }
   | { type: 'UPDATE_OPTS'; payload: Partial<Opts> }
   | { type: 'UPDATE_TIER'; payload: Tier }
 
@@ -44,8 +41,6 @@ function serverReducer(state: Server, action: ServerUpdateAction): Server {
   switch (action.type) {
     case "UPDATE_NAME":
       return {...state, name: action.payload}
-    case "UPDATE_EXPIRE_TIME":
-      return {...state, duration: action.payload}
     case "UPDATE_OPTS":
       return {...state, opts: {...state.opts, ...action.payload}}
     case "UPDATE_TIER":
@@ -83,25 +78,6 @@ export function ServerCreator() {
   }, []);
 
   const basicSettings = () => {
-    const reservationTimeOptions = [
-      {
-        value: 1_200_000,
-        label: "20min"
-      },
-      {
-        value: 2_700_000,
-        label: "45min"
-      },
-      {
-        value: 14_400_000,
-        label: "4h"
-      },
-      {
-        value: 43_200_000,
-        label: "12h"
-      }
-    ]
-
     const updateName = (e: React.ChangeEvent<HTMLInputElement>) => {
       const rawName = e.target.value
 
@@ -132,10 +108,6 @@ export function ServerCreator() {
       setShowSnapshots(!showSnapshots)
     }
 
-    const updateReservationTime = (selectedReservationTime: SingleValue<{ value: number }>) => {
-      dispatch({type: "UPDATE_EXPIRE_TIME", payload: selectedReservationTime?.value || 0})
-    }
-
     return (
       <>
         <div className="flex flex-col">
@@ -157,12 +129,7 @@ export function ServerCreator() {
                   onChange={updateVersion} value={selectedVersion}/>
         </div>
 
-        <div className="flex flex-col">
-          <label className="mc-label" htmlFor={"server-reservation-time-select"}>Reservation time</label>
-          <Select inputId={"server-reservation-time-select"} classNamePrefix="mc-select" options={reservationTimeOptions}
-                  onChange={updateReservationTime}
-                  value={reservationTimeOptions.find(option => option.value === state.duration)}/>
-        </div>
+        <p className="text-sm text-content-muted">The server shuts down after 30 minutes without players.</p>
       </>
     )
   }
@@ -285,16 +252,10 @@ export function ServerCreator() {
       return
     }
 
-    if (state.duration === 0) {
-      setNotificationMessage("Reservation time must be selected")
-      return
-    }
-
     const sanitizedOpts = Object.fromEntries(Object.entries(state.opts).filter(([, value]) => value !== ""));
 
     const request: CreateServerRequest = {
       name: state.name,
-      durationMs: state.duration,
       options: sanitizedOpts,
       tier: state.tier,
       preset: templatePreset,
