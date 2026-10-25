@@ -18,7 +18,7 @@ const (
 	maxConcurrentPings = 20
 )
 
-type pingFunc func(ctx context.Context, address string) (mcping.Players, error)
+type pingFunc func(ctx context.Context, address string) (*mcping.Players, error)
 
 type playerCache struct {
 	mu      sync.RWMutex
@@ -123,7 +123,11 @@ func (s *Service) checkServer(ctx context.Context, record store.ServerRecord) {
 		return
 	}
 
-	s.players.set(record.ID, server.Players{Online: players.Online, Max: players.Max})
+	if players != nil {
+		s.players.set(record.ID, server.Players{Online: players.Online, Max: players.Max})
+	} else {
+		s.players.forget(record.ID)
+	}
 	if record.Status != string(server.StatusRunning) {
 		slog.Info("Server " + record.Name + " is responding")
 		s.record(s.store.MarkRunning(ctx, record.ID))

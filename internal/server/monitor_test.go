@@ -21,16 +21,16 @@ func monitoredService(status string, ping pingFunc) (*Service, *memoryStore, sto
 	return &svc, db, record
 }
 
-func answering(players mcping.Players) pingFunc {
-	return func(context.Context, string) (mcping.Players, error) { return players, nil }
+func answering(players *mcping.Players) pingFunc {
+	return func(context.Context, string) (*mcping.Players, error) { return players, nil }
 }
 
-func silent(context.Context, string) (mcping.Players, error) {
-	return mcping.Players{}, errors.New("connection refused")
+func silent(context.Context, string) (*mcping.Players, error) {
+	return nil, errors.New("connection refused")
 }
 
 func TestNewServerBecomesRunningAndReportsPlayers(t *testing.T) {
-	svc, db, record := monitoredService("new", answering(mcping.Players{Online: 2, Max: 10}))
+	svc, db, record := monitoredService("new", answering(&mcping.Players{Online: 2, Max: 10}))
 
 	svc.checkServers(context.Background())
 
@@ -57,7 +57,7 @@ func TestNewServerThatDoesNotAnswerStaysNew(t *testing.T) {
 }
 
 func TestRunningServerThatStopsAnsweringIsDegraded(t *testing.T) {
-	svc, db, record := monitoredService("running", answering(mcping.Players{Online: 1, Max: 10}))
+	svc, db, record := monitoredService("running", answering(&mcping.Players{Online: 1, Max: 10}))
 	svc.checkServers(context.Background())
 
 	svc.ping = silent
@@ -72,7 +72,7 @@ func TestRunningServerThatStopsAnsweringIsDegraded(t *testing.T) {
 }
 
 func TestDegradedServerRecoversWhenItAnswersAgain(t *testing.T) {
-	svc, db, _ := monitoredService("degraded", answering(mcping.Players{Max: 10}))
+	svc, db, _ := monitoredService("degraded", answering(&mcping.Players{Max: 10}))
 
 	svc.checkServers(context.Background())
 
@@ -82,7 +82,7 @@ func TestDegradedServerRecoversWhenItAnswersAgain(t *testing.T) {
 }
 
 func TestPlayersOfInactiveServersAreDropped(t *testing.T) {
-	svc, db, record := monitoredService("running", answering(mcping.Players{Online: 1, Max: 10}))
+	svc, db, record := monitoredService("running", answering(&mcping.Players{Online: 1, Max: 10}))
 	svc.checkServers(context.Background())
 
 	db.records[0].Status = "stopped"
@@ -90,5 +90,18 @@ func TestPlayersOfInactiveServersAreDropped(t *testing.T) {
 
 	if svc.players.get(record.ID) != nil {
 		t.Fatal("players of a stopped server should be dropped")
+	}
+}
+
+func TestServerHidingPlayersIsRunningWithUnknownPlayers(t *testing.T) {
+	svc, db, record := monitoredService("new", answering(nil))
+
+	svc.checkServers(context.Background())
+
+	if db.records[0].Status != "running" {
+		t.Fatalf("status = %s", db.records[0].Status)
+	}
+	if svc.players.get(record.ID) != nil {
+		t.Fatal("players should be unknown")
 	}
 }

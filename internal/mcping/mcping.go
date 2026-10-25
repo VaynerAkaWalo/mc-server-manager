@@ -28,20 +28,21 @@ type Players struct {
 	Max    int
 }
 
-func Ping(ctx context.Context, address string) (Players, error) {
+// Ping returns nil players when the server answers but hides its player counts.
+func Ping(ctx context.Context, address string) (*Players, error) {
 	host, portText, err := net.SplitHostPort(address)
 	if err != nil {
-		return Players{}, fmt.Errorf("parse address: %w", err)
+		return nil, fmt.Errorf("parse address: %w", err)
 	}
 	port, err := strconv.ParseUint(portText, 10, 16)
 	if err != nil {
-		return Players{}, fmt.Errorf("parse port: %w", err)
+		return nil, fmt.Errorf("parse port: %w", err)
 	}
 
 	var dialer net.Dialer
 	conn, err := dialer.DialContext(ctx, "tcp", address)
 	if err != nil {
-		return Players{}, fmt.Errorf("connect: %w", err)
+		return nil, fmt.Errorf("connect: %w", err)
 	}
 	defer conn.Close()
 
@@ -50,14 +51,14 @@ func Ping(ctx context.Context, address string) (Players, error) {
 		deadline = time.Now().Add(defaultDeadline)
 	}
 	if err := conn.SetDeadline(deadline); err != nil {
-		return Players{}, fmt.Errorf("set deadline: %w", err)
+		return nil, fmt.Errorf("set deadline: %w", err)
 	}
 
 	if err := writePacket(conn, handshake(host, uint16(port))); err != nil {
-		return Players{}, fmt.Errorf("send handshake: %w", err)
+		return nil, fmt.Errorf("send handshake: %w", err)
 	}
 	if err := writePacket(conn, []byte{0x00}); err != nil {
-		return Players{}, fmt.Errorf("send status request: %w", err)
+		return nil, fmt.Errorf("send status request: %w", err)
 	}
 
 	return readStatus(bufio.NewReader(conn))
@@ -80,28 +81,28 @@ func writePacket(w io.Writer, payload []byte) error {
 	return err
 }
 
-func readStatus(r *bufio.Reader) (Players, error) {
+func readStatus(r *bufio.Reader) (*Players, error) {
 	length, err := readVarInt(r)
 	if err != nil {
-		return Players{}, fmt.Errorf("read packet length: %w", err)
+		return nil, fmt.Errorf("read packet length: %w", err)
 	}
 	if length <= 0 || length > maxPacketSize {
-		return Players{}, fmt.Errorf("unexpected packet length %d", length)
+		return nil, fmt.Errorf("unexpected packet length %d", length)
 	}
 
 	payload := make([]byte, length)
 	if _, err := io.ReadFull(r, payload); err != nil {
-		return Players{}, fmt.Errorf("read packet: %w", err)
+		return nil, fmt.Errorf("read packet: %w", err)
 	}
 
 	packet := bytes.NewReader(payload)
 	id, err := readVarInt(packet)
 	if err != nil || id != 0x00 {
-		return Players{}, errors.New("response is not a status packet")
+		return nil, errors.New("response is not a status packet")
 	}
 	size, err := readVarInt(packet)
 	if err != nil || int(size) != packet.Len() {
-		return Players{}, errors.New("status string has an invalid length")
+		return nil, errors.New("status string has an invalid length")
 	}
 
 	var status struct {
@@ -111,13 +112,13 @@ func readStatus(r *bufio.Reader) (Players, error) {
 		} `json:"players"`
 	}
 	if err := json.NewDecoder(packet).Decode(&status); err != nil {
-		return Players{}, fmt.Errorf("decode status: %w", err)
+		return nil, fmt.Errorf("decode status: %w", err)
 	}
 	if status.Players == nil {
-		return Players{}, errors.New("status has no players")
+		return nil, nil
 	}
 
-	return Players{Online: status.Players.Online, Max: status.Players.Max}, nil
+	return &Players{Online: status.Players.Online, Max: status.Players.Max}, nil
 }
 
 func appendVarInt(buffer []byte, value int32) []byte {

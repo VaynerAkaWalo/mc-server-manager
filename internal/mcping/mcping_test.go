@@ -53,18 +53,19 @@ func TestPingReadsPlayers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if players != (Players{Online: 3, Max: 20}) {
+	if players == nil || *players != (Players{Online: 3, Max: 20}) {
 		t.Fatalf("players = %+v", players)
 	}
 }
 
-func TestPingRejectsStatusWithoutPlayers(t *testing.T) {
+func TestPingAcceptsStatusWithoutPlayers(t *testing.T) {
 	address := serveStatus(t, `{"version":{"name":"1.21"}}`)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	if _, err := Ping(ctx, address); err == nil {
-		t.Fatal("expected an error")
+	players, err := Ping(ctx, address)
+	if err != nil || players != nil {
+		t.Fatalf("players = %+v, err = %v", players, err)
 	}
 }
 
