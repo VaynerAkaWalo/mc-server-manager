@@ -10,6 +10,7 @@ import (
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/internalapi"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/server"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/store"
+	"github.com/VaynerAkaWalo/mc-server-manager/internal/versions"
 	"log/slog"
 	"os"
 )
@@ -47,7 +48,9 @@ func main() {
 		os.Exit(-1)
 	}
 
-	serverService := server.CreateServerService(cluster.CreateClusterService(*clusterClient, *dynamicClient), serverStore)
+	gameVersions := versions.NewSource()
+
+	serverService := server.CreateServerService(cluster.CreateClusterService(*clusterClient, *dynamicClient), serverStore, gameVersions)
 	serverHandlers := server.NewServerHandlers(serverService)
 
 	frontendHandlers := frontend.NewFrontendHandlers(os.DirFS("static"))
@@ -56,7 +59,7 @@ func main() {
 
 	publicServer := xhttp.Server{
 		Addr:     ":8080",
-		Handlers: []xhttp.RouteHandler{serverHandlers, catalog.NewCatalogHandlers(), frontendHandlers},
+		Handlers: []xhttp.RouteHandler{serverHandlers, catalog.NewCatalogHandlers(gameVersions), frontendHandlers},
 	}
 	internalServer := xhttp.Server{
 		Addr:     ":8081",

@@ -7,9 +7,9 @@ import (
 
 type customizer func(ctx context.Context, definition ServerDefinition) (ServerDefinition, error)
 
-func TranslateDefinition(ctx context.Context, definition ServerDefinition) (*v1alpha1.McServerSpec, error) {
+func TranslateDefinition(ctx context.Context, definition ServerDefinition, versions VersionSource) (*v1alpha1.McServerSpec, error) {
 	customizers := []customizer{
-		customizeOptions,
+		customizeOptions(versions),
 		customizePreset,
 		customizeName,
 		customizeDuration,

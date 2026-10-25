@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/VaynerAkaWalo/mc-server-manager/internal/definition"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/store"
 	"github.com/VaynerAkaWalo/mc-server-manager/pkg/server"
 	"github.com/google/uuid"
@@ -70,10 +71,10 @@ func (s *memoryStore) ListServers(context.Context, store.ServerQuery) ([]store.S
 func TestProvisionAndListUseSameRepresentation(t *testing.T) {
 	cl := &fakeCluster{}
 	db := &memoryStore{}
-	svc := CreateServerService(cl, db)
+	svc := CreateServerService(cl, db, testVersions)
 	request := server.Request{Name: "my-server", DurationMs: time.Hour.Milliseconds(), Tier: "wooden", Options: map[string]string{"MOTD": "hello", "VERSION": "1.21.3"}}
 
-	created, err := svc.provisionServer(request)
+	created, err := svc.provisionServer(context.Background(), request)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +103,7 @@ func TestListUsesOnlyDatabase(t *testing.T) {
 	record := testRecord(time.Now().Add(time.Hour))
 	record.Status = "new"
 	db := &memoryStore{records: []store.ServerRecord{record}}
-	svc := CreateServerService(nil, db)
+	svc := CreateServerService(nil, db, testVersions)
 
 	listed, err := svc.listServers(context.Background(), store.ServerQuery{Limit: 20})
 	if err != nil {
@@ -117,19 +118,19 @@ func TestListUsesOnlyDatabase(t *testing.T) {
 }
 
 func TestProvisionRejectsActiveName(t *testing.T) {
-	svc := CreateServerService(&fakeCluster{}, &memoryStore{})
+	svc := CreateServerService(&fakeCluster{}, &memoryStore{}, testVersions)
 	request := server.Request{Name: "my-server", DurationMs: time.Hour.Milliseconds(), Tier: "wooden"}
 
-	if _, err := svc.provisionServer(request); err != nil {
+	if _, err := svc.provisionServer(context.Background(), request); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := svc.provisionServer(request); !errors.Is(err, ErrNameInUse) {
+	if _, err := svc.provisionServer(context.Background(), request); !errors.Is(err, ErrNameInUse) {
 		t.Fatalf("err = %v", err)
 	}
 }
 
 func TestGetServerMissing(t *testing.T) {
-	svc := CreateServerService(nil, &memoryStore{})
+	svc := CreateServerService(nil, &memoryStore{}, testVersions)
 
 	if _, err := svc.getServer(context.Background(), uuid.New()); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("err = %v", err)
@@ -141,7 +142,7 @@ func TestDeleteServerStopsClusterResourceAndMarksRecord(t *testing.T) {
 	record.Status = "running"
 	db := &memoryStore{records: []store.ServerRecord{record}}
 	cl := &fakeCluster{items: []unstructured.Unstructured{serverResource("my-server", time.Minute)}, deleted: map[string]types.UID{}}
-	svc := CreateServerService(cl, db)
+	svc := CreateServerService(cl, db, testVersions)
 
 	if err := svc.deleteServer(context.Background(), record.ID); err != nil {
 		t.Fatal(err)
@@ -164,11 +165,27 @@ func TestDeleteServerKeepsRecordWhenClusterFails(t *testing.T) {
 	db := &memoryStore{records: []store.ServerRecord{record}}
 	cl := &fakeCluster{items: []unstructured.Unstructured{serverResource("my-server", time.Minute)}, deleteErr: errors.New("forbidden")}
 
-	svc := CreateServerService(cl, db)
+	svc := CreateServerService(cl, db, testVersions)
 	if err := svc.deleteServer(context.Background(), record.ID); err == nil {
 		t.Fatal("expected error")
 	}
 	if db.records[0].Status != "running" {
 		t.Fatalf("status = %s", db.records[0].Status)
+	}
+}
+
+var testVersions = definition.VersionSet{
+	"VANILLA": {LatestRelease: "1.21.3", Items: []definition.Version{{ID: "1.21.3", Kind: definition.KindRelease}}},
+}
+
+func TestProvisionRejectsUnknownVersion(t *testing.T) {
+	svc := CreateServerService(&fakeCluster{}, &memoryStore{}, testVersions)
+	request := server.Request{Name: "my-server", DurationMs: time.Hour.Milliseconds(), Tier: "wooden", Options: map[string]string{"VERSION": "latest"}}
+
+	_, err := svc.provisionServer(context.Background(), request)
+
+	var invalid definition.InvalidDefinitionError
+	if !errors.As(err, &invalid) {
+		t.Fatalf("got error %v", err)
 	}
 }

@@ -47,7 +47,7 @@ func TestShutdownExpiredDeletesByUID(t *testing.T) {
 		items:   []unstructured.Unstructured{serverResource("old-server", 3*time.Hour), serverResource("new-server", time.Minute)},
 		deleted: map[string]types.UID{},
 	}
-	svc := CreateServerService(cl, &memoryStore{})
+	svc := CreateServerService(cl, &memoryStore{}, testVersions)
 
 	names, err := svc.ShutdownExpired()
 	if err != nil {
@@ -64,7 +64,7 @@ func TestShutdownExpiredReportsFailedDeletes(t *testing.T) {
 		items:     []unstructured.Unstructured{serverResource("old-server", 3*time.Hour)},
 		deleteErr: errors.New("forbidden"),
 	}
-	svc := CreateServerService(cl, &memoryStore{})
+	svc := CreateServerService(cl, &memoryStore{}, testVersions)
 
 	names, err := svc.ShutdownExpired()
 	if err == nil || len(names) != 0 {

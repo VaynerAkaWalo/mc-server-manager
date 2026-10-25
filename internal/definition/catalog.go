@@ -7,6 +7,7 @@ type Catalog struct {
 	Presets    []CatalogPreset `json:"presets"`
 	Options    []CatalogOption `json:"options"`
 	DurationMs DurationLimits  `json:"durationMs"`
+	Versions   VersionSet      `json:"versions"`
 }
 
 type CatalogTier struct {
@@ -33,11 +34,12 @@ type DurationLimits struct {
 	Max int64 `json:"max"`
 }
 
-func BuildCatalog() Catalog {
+func BuildCatalog(versions VersionSet) Catalog {
 	return Catalog{
-		Tiers:   catalogTiers(),
-		Presets: catalogPresets(),
-		Options: catalogOptions(),
+		Versions: versions,
+		Tiers:    catalogTiers(),
+		Presets:  catalogPresets(),
+		Options:  catalogOptions(),
 		DurationMs: DurationLimits{
 			Min: MinServerDuration.Milliseconds(),
 			Max: MaxServerDuration.Milliseconds(),

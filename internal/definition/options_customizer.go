@@ -25,7 +25,7 @@ func text(valid func(string) bool) optionSpec {
 var userSettableOpts = map[Option]optionSpec{
 	VERSION:       text(identifierList),
 	ONLINE_MODE:   oneOf("true", "false"),
-	TYPE:          oneOf("VANILLA", "PAPER", "FABRIC", "FORGE", "NEOFORGE", "QUILT"),
+	TYPE:          oneOf("VANILLA", "FABRIC"),
 	MOTD:          text(freeText),
 	OPS:           text(identifierList),
 	MAX_PLAYERS:   text(identifierList),
@@ -33,23 +33,25 @@ var userSettableOpts = map[Option]optionSpec{
 	VIEW_DISTANCE: text(identifierList),
 }
 
-func customizeOptions(ctx context.Context, definition ServerDefinition) (ServerDefinition, error) {
-	if definition.Options == nil {
-		definition.Options = make(map[Option]string)
-	}
-
-	for key, value := range definition.Options {
-		spec, settable := userSettableOpts[key]
-		if !settable {
-			return definition, invalidf("option %s cannot be set", key)
+func customizeOptions(versions VersionSource) customizer {
+	return func(ctx context.Context, definition ServerDefinition) (ServerDefinition, error) {
+		if definition.Options == nil {
+			definition.Options = make(map[Option]string)
 		}
 
-		if !spec.valid(value) {
-			return definition, invalidf("option %s has an unsupported value", key)
-		}
-	}
+		for key, value := range definition.Options {
+			spec, settable := userSettableOpts[key]
+			if !settable {
+				return definition, invalidf("option %s cannot be set", key)
+			}
 
-	return definition, nil
+			if !spec.valid(value) {
+				return definition, invalidf("option %s has an unsupported value", key)
+			}
+		}
+
+		return definition, validateVersion(ctx, versions, definition.Options)
+	}
 }
 
 func UserOptions(options map[Option]string) map[string]string {

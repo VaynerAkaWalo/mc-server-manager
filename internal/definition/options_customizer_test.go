@@ -2,6 +2,7 @@ package definition
 
 import (
 	"context"
+	"errors"
 	"testing"
 )
 
@@ -26,12 +27,16 @@ func TestCustomizeOptions(t *testing.T) {
 		{"unknown option", map[Option]string{"CUSTOM_SERVER": "https://evil.example/server.jar"}, true},
 		{"unknown server type", map[Option]string{TYPE: "CUSTOM"}, true},
 		{"newline in motd", map[Option]string{MOTD: "hi\nEULA=false"}, true},
+		{"known version", map[Option]string{VERSION: "1.21.3"}, false},
+		{"snapshot", map[Option]string{VERSION: "25w41a"}, false},
+		{"unknown version", map[Option]string{VERSION: "1.99"}, true},
+		{"version of another type", map[Option]string{TYPE: "FABRIC", VERSION: "1.21.10"}, true},
 		{"url in version", map[Option]string{VERSION: "https://evil.example/server.jar"}, true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := customizeOptions(context.Background(), ServerDefinition{Options: tt.options})
+			_, err := customizeOptions(testVersions)(context.Background(), ServerDefinition{Options: tt.options})
 
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("got error %v, want error %v", err, tt.wantErr)
@@ -42,8 +47,21 @@ func TestCustomizeOptions(t *testing.T) {
 
 func TestCustomizeOptionsRejectsValuesOutsideEnums(t *testing.T) {
 	for _, options := range []map[Option]string{{DIFFICULTY: "impossible"}, {ONLINE_MODE: "maybe"}} {
-		if _, err := customizeOptions(context.Background(), ServerDefinition{Options: options}); err == nil {
+		if _, err := customizeOptions(testVersions)(context.Background(), ServerDefinition{Options: options}); err == nil {
 			t.Errorf("%v was accepted", options)
 		}
+	}
+}
+
+var testVersions = VersionSet{
+	"VANILLA": {LatestRelease: "1.21.10", Items: []Version{{"1.21.10", KindRelease}, {"25w41a", KindSnapshot}, {"1.21.3", KindRelease}}},
+	"FABRIC":  {LatestRelease: "1.21.3", Items: []Version{{"1.21.3", KindRelease}}},
+}
+
+func TestCustomizeOptionsWithoutVersionList(t *testing.T) {
+	_, err := customizeOptions(VersionSet{})(context.Background(), ServerDefinition{Options: map[Option]string{VERSION: "1.21.3"}})
+
+	if !errors.Is(err, ErrVersionsUnavailable) {
+		t.Fatalf("got error %v", err)
 	}
 }

@@ -7,7 +7,7 @@ import (
 )
 
 func TestCatalogMatchesDefinitions(t *testing.T) {
-	catalog := BuildCatalog()
+	catalog := BuildCatalog(testVersions)
 
 	if len(catalog.Tiers) != len(tierMapping) {
 		t.Fatalf("tiers = %+v", catalog.Tiers)
@@ -28,13 +28,16 @@ func TestCatalogMatchesDefinitions(t *testing.T) {
 			}
 		}
 	}
+	if catalog.Versions["VANILLA"].LatestRelease != "1.21.10" {
+		t.Fatalf("versions = %+v", catalog.Versions)
+	}
 	if catalog.DurationMs.Min != 120000 || catalog.DurationMs.Max != 1209600000 {
 		t.Fatalf("duration = %+v", catalog.DurationMs)
 	}
 }
 
 func TestCatalogDoesNotExposeEnforcedOptions(t *testing.T) {
-	body, _ := json.Marshal(BuildCatalog())
+	body, _ := json.Marshal(BuildCatalog(testVersions))
 
 	for _, hidden := range []string{"MODS", "MODRINTH_PROJECTS", "github.com", "MEMORY", "JVM_XX_OPTS", "EULA"} {
 		if strings.Contains(string(body), hidden) {
