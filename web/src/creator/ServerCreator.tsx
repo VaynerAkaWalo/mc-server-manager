@@ -5,7 +5,7 @@ import {useEffect, useReducer, useState} from "react";
 import {Checkbox, FormControlLabel, Tooltip} from "@mui/material";
 import {sanitizeString} from "../utils/StringSanitizer.ts";
 import {UpdateNotification} from "../App.tsx";
-import {CreateServerRequest, ManagerClient, Opts, problemMessage, Tier} from "../clients/ManagerClient.ts";
+import {CatalogResponse, CreateServerRequest, ManagerClient, Opts, problemMessage, Tier} from "../clients/ManagerClient.ts";
 
 enum CreatorTab {
   BASIC,
@@ -29,7 +29,7 @@ const initialServer: Server = {
     DIFFICULTY: "normal"
   },
   duration: 2_700_000,
-  tier: Tier.iron,
+  tier: "",
 }
 
 type ServerUpdateAction =
@@ -57,6 +57,14 @@ export function ServerCreator() {
   const {setNotificationMessage} = UpdateNotification()
   const {templateName, templatePreset, templateOps} = useLocation().state || {}
   const navigate = useNavigate()
+  const [catalog, setCatalog] = useState<CatalogResponse | null>(null)
+
+  useEffect(() => {
+    ManagerClient.getCatalog().then(({data}) => {
+      setCatalog(data)
+      dispatch({type: "UPDATE_TIER", payload: (data.tiers.find(tier => tier.default) ?? data.tiers[0])?.id ?? ""})
+    }).catch(err => setNotificationMessage("Failed to load server options: " + problemMessage(err)))
+  }, []);
 
   function isTemplated(): boolean {
     return templateName && templateOps
@@ -140,24 +148,8 @@ export function ServerCreator() {
   }
 
   const advancedSettings = () => {
-    const difficultOptions = [
-      {
-        label: "Peaceful",
-        value: "peaceful"
-      },
-      {
-        label: "Easy",
-        value: "easy"
-      },
-      {
-        label: "Normal",
-        value: "normal"
-      },
-      {
-        label: "Hard",
-        value: "hard"
-      },
-    ]
+    const difficultOptions = (catalog?.options.find(option => option.id === "DIFFICULTY")?.values ?? [])
+      .map(value => ({label: value.charAt(0).toUpperCase() + value.slice(1), value}))
 
     const updateMessageOfDay = (e: React.ChangeEvent<HTMLInputElement>) => {
       const rawMessage = e.target.value
@@ -238,16 +230,13 @@ export function ServerCreator() {
         <div>
           <label className={"text-center"} htmlFor={"tier-settings"}>Server tier</label>
           <div id={"tier-settings"} className={"flex flex-row"}>
-            <Tooltip title={"When chunks are already generated"}>
-              <FormControlLabel
-                control={<Checkbox value={Tier.wooden} checked={state.tier === Tier.wooden} onChange={updateTier}/>}
-                label="Wooden"/>
-            </Tooltip>
-            <Tooltip title={"Default option, should handle up to 10 players"}>
-              <FormControlLabel
-                control={<Checkbox value={Tier.iron} checked={state.tier === Tier.iron} onChange={updateTier}/>}
-                label="Iron"/>
-            </Tooltip>
+            {catalog?.tiers.map(tier => (
+              <Tooltip key={tier.id} title={tier.description}>
+                <FormControlLabel
+                  control={<Checkbox value={tier.id} checked={state.tier === tier.id} onChange={updateTier}/>}
+                  label={tier.name}/>
+              </Tooltip>
+            ))}
           </div>
         </div>
         <div>

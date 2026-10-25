@@ -11,6 +11,8 @@ var containerEnforcedOpts = map[Option]string{
 }
 
 type serverInstance struct {
+	name         string
+	description  string
 	memory       string
 	instanceType string
 }
@@ -23,9 +25,13 @@ const (
 )
 
 var tierMapping = map[Tier]serverInstance{
-	Wooden: {memory: MemorySmall, instanceType: Shared},
-	Iron:   {memory: MemoryMedium, instanceType: Shared},
+	Wooden: {name: "Wooden", description: "When chunks are already generated", memory: MemorySmall, instanceType: Shared},
+	Iron:   {name: "Iron", description: "Default option, should handle up to 10 players", memory: MemoryMedium, instanceType: Shared},
 }
+
+const defaultTier = Iron
+
+var tierOrder = []Tier{Wooden, Iron}
 
 func customizeContainer(ctx context.Context, definition ServerDefinition) (ServerDefinition, error) {
 	for key, val := range containerEnforcedOpts {

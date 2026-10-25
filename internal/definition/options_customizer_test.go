@@ -19,7 +19,7 @@ func TestCustomizeOptions(t *testing.T) {
 			ONLINE_MODE: "false",
 			OPS:         "Steve, Alex",
 		}, false},
-		{"mod url", map[Option]string{MODS: presets["lockout"][MODS]}, true},
+		{"mod url", map[Option]string{MODS: presets["lockout"].options[MODS]}, true},
 		{"modrinth projects", map[Option]string{MODRINTH_PROJECTS: "fabric-api"}, true},
 		{"enforced option", map[Option]string{MEMORY: "64Gi"}, true},
 		{"jvm options", map[Option]string{JVM_XX_OPTS: "-XX:+UnlockDiagnosticVMOptions"}, true},
@@ -37,5 +37,13 @@ func TestCustomizeOptions(t *testing.T) {
 				t.Fatalf("got error %v, want error %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestCustomizeOptionsRejectsValuesOutsideEnums(t *testing.T) {
+	for _, options := range []map[Option]string{{DIFFICULTY: "impossible"}, {ONLINE_MODE: "maybe"}} {
+		if _, err := customizeOptions(context.Background(), ServerDefinition{Options: options}); err == nil {
+			t.Errorf("%v was accepted", options)
+		}
 	}
 }

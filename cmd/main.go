@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/VaynerAkaWalo/go-toolkit/xhttp"
 	"github.com/VaynerAkaWalo/go-toolkit/xlog"
+	"github.com/VaynerAkaWalo/mc-server-manager/internal/catalog"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/cluster"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/frontend"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/healthcheck"
@@ -58,7 +59,7 @@ func main() {
 	// The public /health stays until the probes in the deployments repo point at the internal listener.
 	publicServer := xhttp.Server{
 		Addr:     ":8080",
-		Handlers: []xhttp.RouteHandler{healthcheckHandlers, serverHandlers, frontendHandlers},
+		Handlers: []xhttp.RouteHandler{healthcheckHandlers, serverHandlers, catalog.NewCatalogHandlers(), frontendHandlers},
 	}
 	internalServer := xhttp.Server{
 		Addr:     ":8081",
