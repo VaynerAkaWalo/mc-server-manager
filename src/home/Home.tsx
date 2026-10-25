@@ -19,9 +19,16 @@ export function Home() {
   const [stats, setStats] = useState<StatsResponse>({online: 0, created: 0})
 
   useEffect(() => {
-    ManagerClient.getStats()
-      .then(({data}) => setStats(data))
-      .catch(() => undefined)
+    const loadStats = async () => {
+      try {
+        const {data} = await ManagerClient.getStats()
+        setStats(data)
+      } catch {
+        // counters stay at zero when the manager is unreachable
+      }
+    }
+
+    loadStats()
   }, [])
 
   return (
