@@ -377,7 +377,7 @@ func TestIdleServers(t *testing.T) {
 	}
 	isIdle := func(id uuid.UUID) bool {
 		t.Helper()
-		records, err := s.ListIdleServers(ctx, 30*time.Minute)
+		records, err := s.ListIdleServers(ctx, 30*time.Minute, time.Hour)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -415,5 +415,35 @@ func TestIdleServers(t *testing.T) {
 	}
 	if expired.Status != "expired" || expired.LastActiveAt == nil {
 		t.Fatalf("server = %+v", expired)
+	}
+}
+
+func TestServersThatNeverStartAreIdle(t *testing.T) {
+	s := connectTestStore(t)
+	ctx := context.Background()
+
+	record, err := s.CreateServer(ctx, NewServer{Name: "stuck-server", Hostname: "stuck-server", Definition: map[string]any{}, ExpiresAt: time.Now().Add(time.Hour)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.DeleteServer(ctx, record.ID) })
+	isIdle := func() bool {
+		t.Helper()
+		records, err := s.ListIdleServers(ctx, 30*time.Minute, time.Hour)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return slices.ContainsFunc(records, func(idle ServerRecord) bool { return idle.ID == record.ID })
+	}
+
+	if isIdle() {
+		t.Fatal("a server that is still starting should not be idle")
+	}
+
+	if _, err := s.pool.Exec(ctx, "UPDATE mc_servers SET created_at = now() - interval '61 minutes' WHERE id = $1", record.ID); err != nil {
+		t.Fatal(err)
+	}
+	if !isIdle() {
+		t.Fatal("a server that has not started within an hour should be idle")
 	}
 }

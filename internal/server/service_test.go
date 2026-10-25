@@ -88,11 +88,13 @@ func (s *memoryStore) MarkActive(_ context.Context, id uuid.UUID) error {
 	return nil
 }
 
-func (s *memoryStore) ListIdleServers(_ context.Context, idleFor time.Duration) ([]store.ServerRecord, error) {
+func (s *memoryStore) ListIdleServers(_ context.Context, idleFor time.Duration, startupFor time.Duration) ([]store.ServerRecord, error) {
 	idle := make([]store.ServerRecord, 0)
 	for _, record := range s.records {
 		active := record.Status == "running" || record.Status == "degraded"
-		if active && record.LastActiveAt != nil && time.Since(*record.LastActiveAt) >= idleFor {
+		idleRunning := active && record.LastActiveAt != nil && time.Since(*record.LastActiveAt) >= idleFor
+		stuckStarting := record.Status == "new" && time.Since(record.CreatedAt) >= startupFor
+		if idleRunning || stuckStarting {
 			idle = append(idle, record)
 		}
 	}

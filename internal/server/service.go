@@ -31,7 +31,7 @@ type serverStore interface {
 	ListMonitoredServers(ctx context.Context) ([]store.ServerRecord, error)
 	MarkRunning(ctx context.Context, id uuid.UUID) error
 	MarkActive(ctx context.Context, id uuid.UUID) error
-	ListIdleServers(ctx context.Context, idleFor time.Duration) ([]store.ServerRecord, error)
+	ListIdleServers(ctx context.Context, idleFor time.Duration, startupFor time.Duration) ([]store.ServerRecord, error)
 	ExpireServer(ctx context.Context, id uuid.UUID) error
 	MarkDegraded(ctx context.Context, id uuid.UUID) error
 	MarkStopped(ctx context.Context, id uuid.UUID) error
@@ -213,7 +213,7 @@ func (s *Service) ShutdownExpired() ([]string, error) {
 		return nil, err
 	}
 
-	idleServers, err := s.store.ListIdleServers(context.TODO(), idleTimeout)
+	idleServers, err := s.store.ListIdleServers(context.TODO(), idleTimeout, startupTimeout)
 	if err != nil {
 		return nil, err
 	}
@@ -234,7 +234,7 @@ func (s *Service) ShutdownExpired() ([]string, error) {
 		}
 
 		if idle {
-			slog.Info("Server " + server.GetName() + " has no players for " + idleTimeout.String() + " initiating shutdown")
+			slog.Info("Server " + server.GetName() + " is idle or never started initiating shutdown")
 		} else {
 			slog.Info("Server " + server.GetName() + " expired initiating shutdown")
 		}

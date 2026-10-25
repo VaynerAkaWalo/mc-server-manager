@@ -17,6 +17,7 @@ const (
 	pingTimeout        = 2 * time.Second
 	maxConcurrentPings = 20
 	idleTimeout        = 30 * time.Minute
+	startupTimeout     = time.Hour
 )
 
 type pingFunc func(ctx context.Context, address string) (*mcping.Players, error)

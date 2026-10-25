@@ -134,3 +134,25 @@ func TestShutdownExpiredKeepsIdleServersItFailedToDelete(t *testing.T) {
 		t.Fatalf("status = %s", db.records[0].Status)
 	}
 }
+
+func TestShutdownExpiredStopsServersThatNeverStarted(t *testing.T) {
+	cl := &fakeCluster{
+		items:   []unstructured.Unstructured{serverResource("stuck-server", 61*time.Minute), serverResource("starting-server", time.Minute)},
+		deleted: map[string]types.UID{},
+	}
+	stuck := idleRecord("stuck-server", 0)
+	stuck.Status, stuck.LastActiveAt, stuck.CreatedAt = "new", nil, time.Now().Add(-61*time.Minute)
+	starting := idleRecord("starting-server", 0)
+	starting.Status, starting.LastActiveAt, starting.CreatedAt = "new", nil, time.Now().Add(-time.Minute)
+	db := &memoryStore{records: []store.ServerRecord{stuck, starting}}
+	svc := CreateServerService(cl, db, testVersions)
+
+	names, err := svc.ShutdownExpired()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(names) != 1 || names[0] != "stuck-server" || db.records[0].Status != "expired" || db.records[1].Status != "new" {
+		t.Fatalf("names = %v, statuses = %s, %s", names, db.records[0].Status, db.records[1].Status)
+	}
+}

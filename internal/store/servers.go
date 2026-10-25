@@ -136,11 +136,12 @@ func (s *Store) MarkActive(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-func (s *Store) ListIdleServers(ctx context.Context, idleFor time.Duration) ([]ServerRecord, error) {
+func (s *Store) ListIdleServers(ctx context.Context, idleFor time.Duration, startupFor time.Duration) ([]ServerRecord, error) {
 	rows, err := s.pool.Query(ctx,
 		`SELECT id, name, status FROM mc_servers
-		 WHERE status IN ('running', 'degraded') AND last_active_at <= now() - make_interval(secs => $1)`,
-		idleFor.Seconds(),
+		 WHERE (status IN ('running', 'degraded') AND last_active_at <= now() - make_interval(secs => $1))
+		    OR (status = 'new' AND created_at <= now() - make_interval(secs => $2))`,
+		idleFor.Seconds(), startupFor.Seconds(),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("list idle servers: %w", err)
