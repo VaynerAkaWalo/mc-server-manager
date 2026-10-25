@@ -3,6 +3,7 @@ package cluster
 import (
 	"context"
 	serversv1alpha1 "github.com/VaynerAkaWalo/mc-server-operator/api/v1alpha1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -76,7 +77,7 @@ func (s *Service) DeployServerSpec(serverRequest serversv1alpha1.McServerSpec) e
 
 func (s *Service) DeleteServer(serverName string) {
 	err := s.dynamicClient.Resource(serverGVR()).Namespace("minecraft-server").Delete(context.TODO(), serverName, metav1.DeleteOptions{})
-	if err != nil {
+	if err != nil && !apierrors.IsNotFound(err) {
 		slog.Error("Failed to delete server" + serverName)
 	}
 }

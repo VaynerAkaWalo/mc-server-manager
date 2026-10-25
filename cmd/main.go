@@ -7,6 +7,7 @@ import (
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/cluster"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/frontend"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/healthcheck"
+	"github.com/VaynerAkaWalo/mc-server-manager/internal/internalapi"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/server"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/store"
 	"log/slog"
@@ -52,10 +53,22 @@ func main() {
 	healthcheckHandlers := healthcheck.NewHealthcheckHandlers()
 	frontendHandlers := frontend.NewFrontendHandlers(os.DirFS("static"))
 
-	httpServer := xhttp.Server{
+	internalHandlers := internalapi.NewHandlers(serverStore.Ping, &serverService)
+
+	// The public /health stays until the probes in the deployments repo point at the internal listener.
+	publicServer := xhttp.Server{
 		Addr:     ":8080",
 		Handlers: []xhttp.RouteHandler{healthcheckHandlers, serverHandlers, frontendHandlers},
 	}
+	internalServer := xhttp.Server{
+		Addr:     ":8081",
+		Handlers: []xhttp.RouteHandler{internalHandlers},
+	}
 
-	slog.Error(httpServer.ListenAndServe().Error())
+	failed := make(chan error, 2)
+	go func() { failed <- publicServer.ListenAndServe() }()
+	go func() { failed <- internalServer.ListenAndServe() }()
+
+	slog.Error((<-failed).Error())
+	os.Exit(1)
 }

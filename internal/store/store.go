@@ -37,6 +37,10 @@ func (s *Store) Close() {
 	s.pool.Close()
 }
 
+func (s *Store) Ping(ctx context.Context) error {
+	return s.pool.Ping(ctx)
+}
+
 // Migrate holds a session lock so replicas starting together apply each migration once.
 func (s *Store) Migrate(ctx context.Context) error {
 	db := stdlib.OpenDBFromPool(s.pool)

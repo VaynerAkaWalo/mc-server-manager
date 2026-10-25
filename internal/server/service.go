@@ -131,9 +131,18 @@ func (s *Service) provisionServer(provisionRequest server.Request) (server.Respo
 }
 
 func (s *Service) shutdownExpiredServers() (expiredServers, error) {
-	activeServerResources, err := s.clusterService.GetActiveServers()
+	names, err := s.ShutdownExpired()
 	if err != nil {
 		return expiredServers{}, err
+	}
+
+	return expiredServers{Names: names}, nil
+}
+
+func (s *Service) ShutdownExpired() ([]string, error) {
+	activeServerResources, err := s.clusterService.GetActiveServers()
+	if err != nil {
+		return nil, err
 	}
 
 	serversExpired := make([]string, 0)
@@ -148,5 +157,5 @@ func (s *Service) shutdownExpiredServers() (expiredServers, error) {
 		}
 	}
 
-	return expiredServers{Names: serversExpired}, err
+	return serversExpired, nil
 }
