@@ -1,10 +1,6 @@
 import {Link} from "react-router-dom";
-
-// TODO: replace with real numbers once the manager exposes stats
-const stats = {
-  online: 0,
-  created: 0,
-}
+import {useEffect, useState} from "react";
+import {ManagerClient, StatsResponse} from "../clients/ManagerClient.ts";
 
 const news = [
   {date: "2026-10-25", title: "Alpha 0.0.1", text: "We are now in alpha 0.0.1 and available at mc-server.blamedevs.com."},
@@ -20,6 +16,14 @@ function Stat({label, value}: { label: string, value: number }) {
 }
 
 export function Home() {
+  const [stats, setStats] = useState<StatsResponse>({online: 0, created: 0})
+
+  useEffect(() => {
+    ManagerClient.getStats()
+      .then(({data}) => setStats(data))
+      .catch(() => undefined)
+  }, [])
+
   return (
     <div className="flex flex-col items-center gap-6 w-full max-w-3xl p-4 my-auto">
       <div className="mc-panel w-full flex flex-col items-center gap-6 py-8 px-6 text-center">
