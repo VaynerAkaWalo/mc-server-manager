@@ -1,57 +1,78 @@
-import {Server} from "./Server.tsx";
-import * as React from "react";
-import {useEffect} from "react";
-import {ManagerClient} from "../clients/ManagerClient.ts";
+import {useEffect, useState} from "react";
+import {Link} from "react-router-dom";
+import {ManagerClient, ServerResponse} from "../clients/ManagerClient.ts";
+import {UpdateNotification} from "../App.tsx";
 
-interface ServerSlot {
-  active: boolean,
-  name?: string,
-  ip?: string
-  remainingTime?: string
-  status?: string
+function formatRemainingTime(remainingTime: string) {
+  if (!remainingTime || remainingTime === "0s") {
+    return "soon"
+  }
+
+  if (remainingTime.startsWith("-")) {
+    return "expiring"
+  }
+
+  return remainingTime.replace("0s", "")
 }
 
 export function ServerList() {
-  const [servers, setServers] = React.useState<ServerSlot[]>([])
+  const {setNotificationMessage} = UpdateNotification()
+  const [servers, setServers] = useState<ServerResponse[]>([])
 
-  const loadServers = async () => {
-    const {data: servers} = await ManagerClient.listServers()
-
-    setServers([])
-    servers.forEach(server => {
-      const activeServer: ServerSlot = {
-        active: true,
-        name: server.name,
-        ip: server.IP,
-        remainingTime: server.remainingTime,
-        status: server.status
-      }
-
-      setServers(prev => ([...prev, activeServer]))
-    })
-
-    for (let i = servers.length; i < 3; i++) {
-      const emptySlot: ServerSlot = {
-        active: false
-      }
-      setServers(prev => ([...prev, emptySlot]))
-    }
+  const copyHostname = async (hostname: string) => {
+    await navigator.clipboard.writeText(hostname)
+    setNotificationMessage("Hostname copied to clipboard")
   }
 
   useEffect(() => {
+    const loadServers = async () => {
+      const {data} = await ManagerClient.listServers()
+      setServers(data)
+    }
+
     loadServers()
     const loader = setInterval(loadServers, 10000)
-    return () => {
-      clearInterval(loader)
-    }
+    return () => clearInterval(loader)
   }, [])
 
   return (
-    <ul className="flex flex-col w-2/5 h-1/2 justify-evenly">
-      {servers.map((server, index) => (
-        <Server id={index} active={server.active} ip={server.ip} name={server.name} status={server.status}
-                remainingTime={server.remainingTime}/>
-      ))}
-    </ul>
+    <div className="mc-panel w-4/5 max-w-4xl max-h-full overflow-y-auto p-4">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl">Servers</h2>
+        <Link className="mc-button" to="/server-creator">Create server</Link>
+      </div>
+
+      {servers.length === 0 ? (
+        <p className="text-center py-8">No servers running right now. Create one to get started.</p>
+      ) : (
+        <table className="w-full text-left">
+          <thead>
+            <tr>
+              <th className="p-2">Name</th>
+              <th className="p-2">Version</th>
+              <th className="p-2">Max players</th>
+              <th className="p-2">Remaining time</th>
+              <th className="p-2">Hostname</th>
+            </tr>
+          </thead>
+          <tbody>
+            {servers.map(server => (
+              <tr key={server.name}>
+                <td className="p-2">{server.name}</td>
+                <td className="p-2">{server.version ?? "-"}</td>
+                <td className="p-2">{server.maxPlayers ?? "-"}</td>
+                <td className="p-2">{formatRemainingTime(server.remainingTime)}</td>
+                <td className="p-2">
+                  <div className="flex items-center gap-2">
+                    <span>{server.IP}</span>
+                    <button className="mc-button py-1 px-2" onClick={() => copyHostname(server.IP)}>Copy</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
   )
 }
