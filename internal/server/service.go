@@ -142,7 +142,7 @@ func (s *Service) provisionServer(provisionRequest server.Request) (server.Respo
 		return server.Response{}, err
 	}
 
-	return newResponse(record, server.StatusProvisioning, record.ExpiresAt)
+	return newResponse(record, server.StatusProvisioning)
 }
 
 func toOptions(options map[string]string) map[definition.Option]string {

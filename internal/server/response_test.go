@@ -61,22 +61,28 @@ func TestObservedResponseStatus(t *testing.T) {
 	}
 }
 
-func TestObservedResponseExpiryFollowsStart(t *testing.T) {
+func TestObservedResponseUsesStoredExpiry(t *testing.T) {
 	now := time.Now()
-	started := now.Add(-time.Minute).Truncate(time.Second)
+	started := now.Add(-time.Minute).UTC().Format(time.RFC3339)
 
-	response, err := observedResponse(testRecord(now.Add(time.Minute)), resource("up", started.UTC().Format(time.RFC3339), time.Hour), now)
-	if err != nil {
-		t.Fatal(err)
-	}
+	for _, expiresAt := range []time.Time{now.Add(time.Minute), now.Add(-time.Minute)} {
+		record := testRecord(expiresAt)
+		response, err := observedResponse(record, resource("up", started, time.Hour), now)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	if !response.ExpiresAt.Equal(started.Add(time.Hour)) {
-		t.Fatalf("expiresAt = %s", response.ExpiresAt)
+		if !response.ExpiresAt.Equal(record.ExpiresAt) {
+			t.Fatalf("expiresAt = %s, want stored %s", response.ExpiresAt, record.ExpiresAt)
+		}
+		if record.ExpiresAt.Before(now) && response.Status != server.StatusExpired {
+			t.Fatalf("status = %s, want expired", response.Status)
+		}
 	}
 }
 
 func TestResponseShape(t *testing.T) {
-	response, err := newResponse(testRecord(time.Now().Add(time.Hour)), server.StatusProvisioning, time.Now())
+	response, err := newResponse(testRecord(time.Now().Add(time.Hour)), server.StatusProvisioning)
 	if err != nil {
 		t.Fatal(err)
 	}
