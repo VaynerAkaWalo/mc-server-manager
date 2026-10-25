@@ -5,7 +5,7 @@ interface notificationProps {
 export function Notification({message}: notificationProps) {
 
   return (
-    <div className="notification w-96 h-24 flex justify-center items-center text-zinc-200">
+    <div className="mc-notification">
       <span>{message}</span>
     </div>)
 }

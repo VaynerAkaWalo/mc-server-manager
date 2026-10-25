@@ -8,70 +8,56 @@
   src: url("/fonts/Minecraft.otf") format("opentype");
 }
 
-.notification {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
+@theme {
+  --color-surface: var(--color-stone-800);
+  --color-surface-hover: var(--color-stone-700);
+  --color-edge: var(--color-zinc-500);
+  --color-action: var(--color-zinc-500);
+  --color-action-hover: var(--color-zinc-600);
+  --color-content: var(--color-zinc-300);
+}
 
-  background-color: var(--color-stone-800);
-  border-color: var(--color-zinc-500);
+@utility mc-bevel {
+  border-color: var(--color-edge);
+  border-style: solid;
+  border-top-width: 2px;
+  border-left-width: 2px;
   border-bottom-width: 4px;
   border-right-width: 4px;
-  border-left-width: 2px;
-  border-top-width: 2px;
 }
 
-.modal {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: min(32rem, 92vw);
-  min-height: min(22rem, 92vh);
-  max-height: 92vh;
-  overflow-y: auto;
-
-  background-color: var(--color-stone-800);
-  border-color: var(--color-zinc-500);
-  border-bottom-width: 4px;
-  border-right-width: 4px;
-  border-left-width: 2px;
-  border-top-width: 2px;
+@utility mc-panel {
+  @apply mc-bevel bg-surface text-content;
 }
 
-.mc-border {
-  border-color: var(--color-zinc-500);
-  border-bottom-width: 4px;
-  border-right-width: 4px;
-  border-left-width: 2px;
-  border-top-width: 2px;
-}
+@layer components {
+  .mc-modal {
+    @apply mc-panel absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col;
+    width: min(32rem, 92vw);
+    min-height: min(22rem, 92vh);
+    max-height: 92vh;
+    overflow-y: auto;
+  }
 
-.input-style {
-  padding: 4px 4px 4px 4px;
-  background-color: var(--color-stone-800);
-  border-color: var(--color-zinc-500);
-  border-bottom-width: 4px;
-  border-right-width: 4px;
-  border-left-width: 2px;
-  border-top-width: 2px;
-}
+  .mc-notification {
+    @apply mc-panel fixed bottom-5 right-5 w-96 max-w-[calc(100vw-2.5rem)] h-24 flex justify-center items-center;
+  }
 
-.header > li > a {
-  background-color: var(--color-stone-800);
-  color: var(--color-zinc-300);
+  .mc-input {
+    @apply mc-bevel bg-surface p-1;
+  }
 
-  padding: 8px clamp(8px, 2vw, 32px)
-}
+  .mc-button {
+    @apply bg-action hover:bg-action-hover text-content py-2 px-8 text-center;
+  }
 
-.header > li > a:hover {
-  background-color: var(--color-stone-700);
-}
+  .mc-tab {
+    @apply hover:bg-surface-hover;
+    padding: 10px clamp(8px, 2vw, 32px);
+  }
 
-.button {
-  padding: 10px clamp(8px, 2vw, 32px)
-}
-
-.button:hover {
-  background-color: var(--color-stone-700);
+  .mc-nav-link {
+    @apply bg-surface text-content hover:bg-surface-hover;
+    padding: 8px clamp(8px, 2vw, 32px);
+  }
 }
