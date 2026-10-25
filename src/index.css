@@ -1,5 +1,5 @@
 body {
   background: url("/public/background.jpg") repeat;
   font-family: Minecraft, serif;
-  color: var(--color-zinc-300)
+  color: var(--color-content)
 }

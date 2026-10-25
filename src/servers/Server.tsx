@@ -35,10 +35,10 @@ export function Server({active, name, ip, remainingTime, status}: ServerProps) {
   }
 
   return (
-    <div className="border-zinc-500 bg-stone-800 text-zinc-300 border-t-2 border-l-2 border-b-4 border-r-4 w-full h-full my-3">
+    <div className="mc-panel w-full h-full my-3">
       {!active &&
         <div className="flex h-full justify-center items-center">
-            <Link className="bg-zinc-500 hover:bg-zinc-600 hover:text-gray-200 py-2 px-2 text-center w-1/3" to={"/server-creator"}>Claim server</Link>
+            <Link className="mc-button px-2 w-1/3" to={"/server-creator"}>Claim server</Link>
         </div>}
       {active && activeServer()}
     </div>

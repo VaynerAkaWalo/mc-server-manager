@@ -19,7 +19,7 @@ export function TemplateList() {
   }, []);
 
   return (
-    <ul className="flex flex-col min-w-1/4 max-w-5/12 h-2/3 justify-evenly">
+    <ul className="flex flex-col w-full max-w-3xl gap-4 p-4">
       {templates.map((template) => (
         <Template name={template.name} description={template.description} preset={template.preset} opts={template.opts}/>
       ))}
