@@ -52,10 +52,10 @@ export function ServerList() {
         </div>
       </div>
 
-      {servers === null ? null : servers.length === 0 ? (
-        <p className="text-center py-8">No servers running right now. Create one to get started.</p>
-      ) : (
-        <div className="overflow-x-auto">
+      <div className="h-[33rem] overflow-auto">
+        {servers === null ? null : servers.length === 0 ? (
+          <p className="text-center py-8">No servers running right now. Create one to get started.</p>
+        ) : (
           <table className="w-full text-left">
             <thead>
               <tr>
@@ -83,8 +83,8 @@ export function ServerList() {
               ))}
             </tbody>
           </table>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
