@@ -102,7 +102,7 @@ function ServerPresence({server}: { server: ServerResponse }) {
 
   return (
     <div className="flex items-center gap-2 self-start pt-1 text-xs" title={hint}>
-      <span className={`size-2 shrink-0 ${statusDots[server.status] ?? "bg-content-muted"}`} role="img" aria-label={label}/>
+      <span className={`size-2 shrink-0 ${statusDots[server.status] ?? "bg-content-muted"}`} role="img" aria-label={hint}/>
       <span>{players ? `${players.online}/${players.max}` : label}</span>
     </div>
   )
