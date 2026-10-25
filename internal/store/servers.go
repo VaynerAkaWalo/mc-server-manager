@@ -3,9 +3,19 @@ package store
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"time"
+)
+
+const uniqueViolation = "23505"
+
+var (
+	ErrNotFound        = errors.New("server not found")
+	ErrActiveNameTaken = errors.New("an active server already uses this name")
 )
 
 type ServerRecord struct {
@@ -43,6 +53,10 @@ func (s *Store) CreateServer(ctx context.Context, server NewServer) (ServerRecor
 		 RETURNING id, created_at, status`,
 		record.Name, record.Hostname, record.Definition, record.ExpiresAt,
 	).Scan(&record.ID, &record.CreatedAt, &record.Status)
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == uniqueViolation {
+		return ServerRecord{}, ErrActiveNameTaken
+	}
 	if err != nil {
 		return ServerRecord{}, fmt.Errorf("insert server: %w", err)
 	}
@@ -61,4 +75,39 @@ func (s *Store) DeleteServer(ctx context.Context, id uuid.UUID) error {
 type ServerCounts struct {
 	Online  int
 	Created int
+}
+
+func (s *Store) GetServer(ctx context.Context, id uuid.UUID) (ServerRecord, error) {
+	var record ServerRecord
+	err := s.pool.QueryRow(ctx,
+		`SELECT id, name, hostname, definition, created_at, expires_at, status FROM mc_servers WHERE id = $1`, id,
+	).Scan(&record.ID, &record.Name, &record.Hostname, &record.Definition, &record.CreatedAt, &record.ExpiresAt, &record.Status)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ServerRecord{}, ErrNotFound
+	}
+	if err != nil {
+		return ServerRecord{}, fmt.Errorf("get server: %w", err)
+	}
+
+	return record, nil
+}
+
+func (s *Store) MarkStopped(ctx context.Context, id uuid.UUID) error {
+	if _, err := s.pool.Exec(ctx,
+		`UPDATE mc_servers SET status = 'stopped' WHERE id = $1 AND status IN ('new', 'running')`, id,
+	); err != nil {
+		return fmt.Errorf("mark server stopped: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Store) MarkExpired(ctx context.Context) error {
+	if _, err := s.pool.Exec(ctx,
+		`UPDATE mc_servers SET status = 'expired' WHERE status IN ('new', 'running') AND expires_at <= now()`,
+	); err != nil {
+		return fmt.Errorf("mark servers expired: %w", err)
+	}
+
+	return nil
 }
