@@ -71,7 +71,7 @@ export function ServerList() {
                 <td className="p-2">{server.maxPlayers ?? "-"}</td>
                 <td className="p-2">{formatRemainingTime(server.remainingTime)}</td>
                 <td className="p-2">
-                  <button className="max-w-64 truncate cursor-pointer hover:underline" title="Copy hostname"
+                  <button className="max-w-64 truncate cursor-pointer" title="Copy hostname"
                           onClick={() => copyHostname(server.IP)}>
                     {server.IP}
                   </button>
