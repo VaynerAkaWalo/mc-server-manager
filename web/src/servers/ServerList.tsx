@@ -3,31 +3,9 @@ import {Link} from "react-router-dom";
 import {ManagerClient, ServerResponse, ServerStatus} from "../clients/ManagerClient.ts";
 import {UpdateNotification} from "../App.tsx";
 
-function shutdownTime(server: ServerResponse) {
-  const expiresAt = new Date(server.expiresAt).getTime()
-  const playersMayBeOnline = server.status === "running" && (!server.players || server.players.online > 0)
-  if (!server.idleShutdownAt || playersMayBeOnline) {
-    return expiresAt
-  }
-
-  return Math.min(expiresAt, new Date(server.idleShutdownAt).getTime())
-}
-
-function formatRemainingTime(shutdownAt: number) {
-  const remainingMs = shutdownAt - Date.now()
-  if (remainingMs <= 0) {
-    return "expiring"
-  }
-
-  const minutes = Math.round(remainingMs / 60_000)
-  if (minutes < 1) {
-    return "soon"
-  }
-
-  const days = Math.floor(minutes / 1440)
-  const hours = Math.floor((minutes % 1440) / 60)
-  const parts = [days && `${days}d`, hours && `${hours}h`, minutes % 60 && `${minutes % 60}m`]
-  return parts.filter(Boolean).join(" ")
+function shutdownHint(idleShutdownAt: string) {
+  const minutes = Math.round((new Date(idleShutdownAt).getTime() - Date.now()) / 60_000)
+  return minutes < 1 ? "Shuts down any moment" : `Shuts down in ${minutes}m`
 }
 
 const activeStatuses: ServerStatus[] = ["new", "running", "degraded", "expiring"]
@@ -98,10 +76,7 @@ export function ServerList() {
             <li key={server.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-2 py-4 px-1 border-t border-edge">
               <div className="min-w-0">
                 <h3 className="font-pixel text-base wrap-anywhere">{server.name}</h3>
-                <div className="flex flex-wrap gap-x-4 text-content-muted">
-                  <span>{server.options.VERSION ?? "Unknown version"}</span>
-                  <span title="Shuts down after 30 minutes without players">{formatRemainingTime(shutdownTime(server))}</span>
-                </div>
+                <p className="text-content-muted">{server.options.VERSION ?? "Unknown version"}</p>
               </div>
 
               <ServerPresence server={server}/>
@@ -123,10 +98,11 @@ export function ServerList() {
 function ServerPresence({server}: { server: ServerResponse }) {
   const label = statusLabels[server.status] ?? server.status
   const players = server.status === "running" && server.players
+  const hint = server.status === "expiring" && server.idleShutdownAt ? shutdownHint(server.idleShutdownAt) : label
 
   return (
-    <div className="flex items-center gap-2 self-start pt-1 text-xs" title={label}>
-      <span className={`size-2 shrink-0 ${statusDots[server.status] ?? "bg-content-muted"}`} role="img" aria-label={label}/>
+    <div className="flex items-center gap-2 self-start pt-1 text-xs" title={hint}>
+      <span className={`size-2 shrink-0 ${statusDots[server.status] ?? "bg-content-muted"}`} role="img" aria-label={hint}/>
       <span>{players ? `${players.online}/${players.max}` : label}</span>
     </div>
   )
