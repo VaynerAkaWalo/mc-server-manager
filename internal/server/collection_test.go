@@ -27,7 +27,10 @@ func TestCollectionQueryValidation(t *testing.T) {
 		})
 	}
 	query, err := parseCollectionQuery(url.Values{})
-	if err != nil || query.Limit != 20 || query.Sort != "-createdAt" || query.Filter.Status != "active" {
+	if err != nil {
+		t.Fatal(err)
+	}
+	if query.Limit != 20 || query.Sort != "-createdAt" || query.Filter.Status != "active" {
 		t.Fatalf("default = %+v, %v", query, err)
 	}
 }

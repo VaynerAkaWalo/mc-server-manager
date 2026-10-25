@@ -53,14 +53,37 @@ func parseCollectionQuery(values url.Values) (store.ServerQuery, error) {
 		}
 	}
 	if raw := values.Get("cursor"); raw != "" {
-		cursor := collectionCursor{}
-		body, err := base64.RawURLEncoding.DecodeString(raw)
-		if len(raw) > 4096 || err != nil || json.Unmarshal(body, &cursor) != nil || cursor.Version != 1 || cursor.Boundary.Value.IsZero() || cursor.Boundary.ID == uuid.Nil || cursor.Status != query.Filter.Status || cursor.Sort != query.Sort {
-			return store.ServerQuery{}, errors.New("cursor is invalid or does not match the status and sort")
+		cursor, err := decodeCursor(raw, query)
+		if err != nil {
+			return store.ServerQuery{}, err
 		}
 		query.After = &cursor.Boundary
 	}
 	return query, nil
+}
+
+func decodeCursor(raw string, query store.ServerQuery) (collectionCursor, error) {
+	var cursor collectionCursor
+	invalid := errors.New("cursor is invalid or does not match the status and sort")
+	if len(raw) > 4096 {
+		return cursor, invalid
+	}
+
+	body, err := base64.RawURLEncoding.DecodeString(raw)
+	if err != nil || json.Unmarshal(body, &cursor) != nil {
+		return cursor, invalid
+	}
+	if !cursor.matchesQuery(query) {
+		return cursor, invalid
+	}
+	return cursor, nil
+}
+
+func (c collectionCursor) matchesQuery(query store.ServerQuery) bool {
+	if c.Version != 1 || c.Boundary.Value.IsZero() || c.Boundary.ID == uuid.Nil {
+		return false
+	}
+	return c.Status == query.Filter.Status && c.Sort == query.Sort
 }
 
 func encodeCursor(query store.ServerQuery, last store.ServerRecord) string {

@@ -75,7 +75,10 @@ func TestListUsesOnlyDatabase(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Items) != 1 || listed.Items[0].ID != record.ID || listed.Items[0].Status != server.StatusNew || !listed.Items[0].ExpiresAt.Equal(record.ExpiresAt) {
+	if len(listed.Items) != 1 || listed.Items[0].ID != record.ID || listed.Items[0].Status != server.StatusNew {
+		t.Fatalf("listed = %+v", listed)
+	}
+	if !listed.Items[0].ExpiresAt.Equal(record.ExpiresAt) {
 		t.Fatalf("listed = %+v", listed)
 	}
 }
