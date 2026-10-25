@@ -46,7 +46,7 @@ class ServerManager {
   }
 
   public getStats = async (): Promise<AxiosPromise<StatsResponse>> => {
-    return HTTPClient.get("/stats")
+    return HTTPClient.get("/servers/stats")
   }
 }
 
