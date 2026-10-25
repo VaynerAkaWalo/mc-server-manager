@@ -3,13 +3,14 @@ package server
 import (
 	"context"
 	"errors"
-	"github.com/VaynerAkaWalo/mc-server-manager/internal/cluster"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/definition"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/store"
 	"github.com/VaynerAkaWalo/mc-server-manager/pkg/server"
+	serversv1alpha1 "github.com/VaynerAkaWalo/mc-server-operator/api/v1alpha1"
 	"github.com/google/uuid"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/types"
 	"log/slog"
 	"time"
 )
@@ -22,12 +23,18 @@ type serverStore interface {
 	CountServers(ctx context.Context) (store.ServerCounts, error)
 }
 
+type clusterService interface {
+	GetActiveServers() (*unstructured.UnstructuredList, error)
+	DeployServerSpec(serverRequest serversv1alpha1.McServerSpec) error
+	DeleteServer(serverName string, uid types.UID) error
+}
+
 type Service struct {
-	clusterService cluster.Service
+	clusterService clusterService
 	store          serverStore
 }
 
-func CreateServerService(clusterService cluster.Service, store serverStore) Service {
+func CreateServerService(clusterService clusterService, store serverStore) Service {
 	return Service{
 		clusterService: clusterService,
 		store:          store,
@@ -131,22 +138,36 @@ func (s *Service) provisionServer(provisionRequest server.Request) (server.Respo
 }
 
 func (s *Service) shutdownExpiredServers() (expiredServers, error) {
-	activeServerResources, err := s.clusterService.GetActiveServers()
+	names, err := s.ShutdownExpired()
 	if err != nil {
 		return expiredServers{}, err
 	}
 
+	return expiredServers{Names: names}, nil
+}
+
+func (s *Service) ShutdownExpired() ([]string, error) {
+	activeServerResources, err := s.clusterService.GetActiveServers()
+	if err != nil {
+		return nil, err
+	}
+
 	serversExpired := make([]string, 0)
+	var failures []error
 	for _, server := range activeServerResources.Items {
 		remainingTime := getRemainingTime(server.Object)
 		if remainingTime != remainingTime.Abs() {
 			slog.Info("Server " + server.GetName() + " expired initiating shutdown")
-			s.clusterService.DeleteServer(server.GetName())
+			if err := s.clusterService.DeleteServer(server.GetName(), server.GetUID()); err != nil {
+				slog.Error("Failed to delete expired server " + server.GetName() + ": " + err.Error())
+				failures = append(failures, err)
+				continue
+			}
 			serversExpired = append(serversExpired, server.GetName())
 		} else {
 			slog.Info("Server " + server.GetName() + " remaining time " + remainingTime.String())
 		}
 	}
 
-	return expiredServers{Names: serversExpired}, err
+	return serversExpired, errors.Join(failures...)
 }

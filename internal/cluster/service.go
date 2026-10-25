@@ -3,9 +3,11 @@ package cluster
 import (
 	"context"
 	serversv1alpha1 "github.com/VaynerAkaWalo/mc-server-operator/api/v1alpha1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"log/slog"
@@ -16,8 +18,8 @@ type Service struct {
 	dynamicClient dynamic.DynamicClient
 }
 
-func CreateClusterService(client kubernetes.Clientset, dynamicClient dynamic.DynamicClient) Service {
-	return Service{
+func CreateClusterService(client kubernetes.Clientset, dynamicClient dynamic.DynamicClient) *Service {
+	return &Service{
 		client:        client,
 		dynamicClient: dynamicClient,
 	}
@@ -74,9 +76,14 @@ func (s *Service) DeployServerSpec(serverRequest serversv1alpha1.McServerSpec) e
 	return nil
 }
 
-func (s *Service) DeleteServer(serverName string) {
-	err := s.dynamicClient.Resource(serverGVR()).Namespace("minecraft-server").Delete(context.TODO(), serverName, metav1.DeleteOptions{})
-	if err != nil {
-		slog.Error("Failed to delete server" + serverName)
+// The UID precondition keeps a late delete from removing a newer server that reused the name.
+func (s *Service) DeleteServer(serverName string, uid types.UID) error {
+	err := s.dynamicClient.Resource(serverGVR()).Namespace("minecraft-server").Delete(context.TODO(), serverName, metav1.DeleteOptions{
+		Preconditions: &metav1.Preconditions{UID: &uid},
+	})
+	if err != nil && !apierrors.IsNotFound(err) && !apierrors.IsConflict(err) {
+		return err
 	}
+
+	return nil
 }
