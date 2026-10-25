@@ -5,7 +5,7 @@ import {UpdateNotification} from "../App.tsx";
 
 function shutdownTime(server: ServerResponse) {
   const expiresAt = new Date(server.expiresAt).getTime()
-  if (!server.idleShutdownAt || server.players?.online) {
+  if (!server.idleShutdownAt || !server.players || server.players.online > 0) {
     return expiresAt
   }
 

@@ -117,3 +117,20 @@ func TestShutdownExpiredExpiresIdleServersMissingFromCluster(t *testing.T) {
 		t.Fatalf("status = %s", db.records[0].Status)
 	}
 }
+
+func TestShutdownExpiredKeepsIdleServersItFailedToDelete(t *testing.T) {
+	cl := &fakeCluster{
+		items:     []unstructured.Unstructured{serverResource("idle-server", time.Minute)},
+		deleteErr: errors.New("forbidden"),
+	}
+	db := &memoryStore{records: []store.ServerRecord{idleRecord("idle-server", time.Hour)}}
+	svc := CreateServerService(cl, db, testVersions)
+
+	if _, err := svc.ShutdownExpired(); err == nil {
+		t.Fatal("expected the failed delete to be reported")
+	}
+
+	if db.records[0].Status != "running" {
+		t.Fatalf("status = %s", db.records[0].Status)
+	}
+}

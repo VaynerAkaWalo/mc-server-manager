@@ -241,6 +241,7 @@ func (s *Service) ShutdownExpired() ([]string, error) {
 		if err := s.clusterService.DeleteServer(server.GetName(), server.GetUID()); err != nil {
 			slog.Error("Failed to delete expired server " + server.GetName() + ": " + err.Error())
 			failures = append(failures, err)
+			delete(idleByName, server.GetName())
 			continue
 		}
 		serversExpired = append(serversExpired, server.GetName())
