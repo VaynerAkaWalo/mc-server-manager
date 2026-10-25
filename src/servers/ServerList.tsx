@@ -66,15 +66,15 @@ export function ServerList() {
           <tbody>
             {servers.map(server => (
               <tr key={server.name}>
-                <td className="p-2">{server.name}</td>
+                <td className="p-2 max-w-48 truncate" title={server.name}>{server.name}</td>
                 <td className="p-2">{server.version ?? "-"}</td>
                 <td className="p-2">{server.maxPlayers ?? "-"}</td>
                 <td className="p-2">{formatRemainingTime(server.remainingTime)}</td>
                 <td className="p-2">
-                  <div className="flex items-center gap-2">
-                    <span>{server.IP}</span>
-                    <button className="mc-button py-1 px-2" onClick={() => copyHostname(server.IP)}>Copy</button>
-                  </div>
+                  <button className="mc-button py-1 px-2 max-w-64 truncate" title="Copy hostname"
+                          onClick={() => copyHostname(server.IP)}>
+                    {server.IP}
+                  </button>
                 </td>
               </tr>
             ))}
