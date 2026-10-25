@@ -52,6 +52,16 @@ func TestVersionsPerServerType(t *testing.T) {
 	}
 }
 
+func settle(source *Source) {
+	source.mu.Lock()
+	done := source.refreshing
+	source.mu.Unlock()
+
+	if done != nil {
+		<-done
+	}
+}
+
 func TestVersionsAreCachedAndSurviveOutage(t *testing.T) {
 	failing, calls := &atomic.Bool{}, &atomic.Int32{}
 	source := upstream(t, failing, calls)
@@ -69,11 +79,65 @@ func TestVersionsAreCachedAndSurviveOutage(t *testing.T) {
 	if got := source.Versions(context.Background())["VANILLA"].LatestRelease; got != "1.21.10" {
 		t.Fatalf("stale list not served, latest = %q", got)
 	}
+	settle(source)
 
 	before := calls.Load()
-	source.Versions(context.Background())
+	if got := source.Versions(context.Background())["VANILLA"].LatestRelease; got != "1.21.10" {
+		t.Fatalf("stale list lost after failed refresh, latest = %q", got)
+	}
+	settle(source)
 	if calls.Load() != before {
 		t.Fatal("failed refresh was retried immediately")
+	}
+}
+
+func TestCancelledCallerDoesNotBlockOthers(t *testing.T) {
+	source := upstream(t, &atomic.Bool{}, &atomic.Int32{})
+	cancelled, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	source.Versions(cancelled)
+	settle(source)
+
+	if got := source.Versions(context.Background())["VANILLA"].LatestRelease; got != "1.21.10" {
+		t.Fatalf("latest = %q", got)
+	}
+}
+
+func TestFabricOutageKeepsVanillaFresh(t *testing.T) {
+	var fabricDown atomic.Bool
+	manifestBody := manifest
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/fabric" {
+			if fabricDown.Load() {
+				w.Write([]byte(`[]`))
+				return
+			}
+			w.Write([]byte(fabric))
+			return
+		}
+		w.Write([]byte(manifestBody))
+	}))
+	t.Cleanup(server.Close)
+	source := &Source{client: server.Client(), mojangURL: server.URL + "/mojang", fabricURL: server.URL + "/fabric", now: time.Now}
+
+	fabricDown.Store(true)
+	cold := source.Versions(context.Background())
+	if len(cold["VANILLA"].Items) != 3 || len(cold["FABRIC"].Items) != 0 {
+		t.Fatalf("cold start = %+v", cold)
+	}
+
+	fabricDown.Store(false)
+	source.refreshAt = time.Time{}
+	source.Versions(context.Background())
+	settle(source)
+	fabricDown.Store(true)
+	source.refreshAt = time.Time{}
+	source.Versions(context.Background())
+	settle(source)
+
+	if got := source.Versions(context.Background())["FABRIC"].LatestRelease; got != "1.21.9" {
+		t.Fatalf("previous fabric list not kept, latest = %q", got)
 	}
 }
 
