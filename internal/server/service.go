@@ -16,6 +16,7 @@ import (
 type serverStore interface {
 	CreateServer(ctx context.Context, server store.NewServer) (store.ServerRecord, error)
 	DeleteServer(ctx context.Context, id uuid.UUID) error
+	CountServers(ctx context.Context) (store.ServerCounts, error)
 }
 
 type Service struct {
@@ -56,6 +57,15 @@ func (s *Service) getActiveServers() ([]server.Response, error) {
 	}
 
 	return activeServers, nil
+}
+
+func (s *Service) getStats(ctx context.Context) (stats, error) {
+	counts, err := s.store.CountServers(ctx)
+	if err != nil {
+		return stats{}, err
+	}
+
+	return stats{Online: counts.Online, Created: counts.Created}, nil
 }
 
 func (s *Service) provisionServer(provisionRequest server.Request) (server.Response, error) {

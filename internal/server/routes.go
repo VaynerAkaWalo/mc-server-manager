@@ -22,6 +22,7 @@ func (h *Handlers) RegisterRoutes(router *xhttp.Router) {
 	router.RegisterHandler("GET /servers", h.listServersHandler)
 	router.RegisterHandler("POST /servers", h.provisionServer)
 	router.RegisterHandler("DELETE /servers", h.shutdownExpiredServers)
+	router.RegisterHandler("GET /servers/stats", h.statsHandler)
 }
 
 func (h *Handlers) listServersHandler(w http.ResponseWriter, r *http.Request) error {
@@ -31,6 +32,15 @@ func (h *Handlers) listServersHandler(w http.ResponseWriter, r *http.Request) er
 	}
 
 	return xhttp.WriteResponse(w, http.StatusOK, servers)
+}
+
+func (h *Handlers) statsHandler(w http.ResponseWriter, r *http.Request) error {
+	res, err := h.serverService.getStats(r.Context())
+	if err != nil {
+		return xhttp.NewError("Failed to get stats "+err.Error(), http.StatusInternalServerError)
+	}
+
+	return xhttp.WriteResponse(w, http.StatusOK, res)
 }
 
 func (h *Handlers) provisionServer(w http.ResponseWriter, r *http.Request) error {
