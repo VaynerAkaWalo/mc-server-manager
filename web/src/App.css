@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: Minecraft;
+  font-style: normal;
+  font-weight: 200 700;
+  font-display: swap;
+  src: url("/fonts/Minecraft.otf") format("opentype");
+}
+
+@theme {
+  --color-surface: var(--color-stone-800);
+  --color-surface-hover: var(--color-stone-700);
+  --color-edge: var(--color-zinc-500);
+  --color-action: var(--color-zinc-500);
+  --color-action-hover: var(--color-zinc-600);
+  --color-content: var(--color-zinc-300);
+}
+
+@utility mc-bevel {
+  border-color: var(--color-edge);
+  border-style: solid;
+  border-top-width: 2px;
+  border-left-width: 2px;
+  border-bottom-width: 4px;
+  border-right-width: 4px;
+}
+
+@utility mc-panel {
+  @apply mc-bevel bg-surface text-content;
+}
+
+@layer components {
+  .mc-modal {
+    @apply mc-panel absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col;
+    width: min(32rem, 92vw);
+    min-height: min(22rem, 92vh);
+    max-height: 92vh;
+    overflow-y: auto;
+  }
+
+  .mc-notification {
+    @apply mc-panel fixed bottom-5 right-5 w-96 max-w-[calc(100vw-2.5rem)] h-24 flex justify-center items-center text-zinc-200;
+  }
+
+  .mc-input {
+    @apply mc-bevel bg-surface p-1;
+  }
+
+  .mc-button {
+    @apply bg-action hover:bg-action-hover text-content hover:text-gray-200 py-2 px-8 text-center;
+  }
+
+  .mc-tab {
+    @apply hover:bg-surface-hover;
+    padding: 10px clamp(8px, 2vw, 32px);
+  }
+
+  .mc-nav-link {
+    @apply inline-block bg-surface text-content hover:bg-surface-hover;
+    padding: 8px clamp(8px, 2vw, 32px);
+  }
+}
