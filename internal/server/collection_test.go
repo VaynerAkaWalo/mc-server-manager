@@ -62,7 +62,7 @@ func TestCollectionCursorRoundTrip(t *testing.T) {
 
 func TestCollectionResponse(t *testing.T) {
 	first := testRecord(time.Now().Add(time.Hour))
-	first.Status = "provisioning"
+	first.Status = "new"
 	second := first
 	second.ID = uuid.New()
 	svc := CreateServerService(nil, &memoryStore{records: []store.ServerRecord{first, second}})

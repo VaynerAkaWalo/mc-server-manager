@@ -21,7 +21,7 @@ func (s *memoryStore) CreateServer(_ context.Context, input store.NewServer) (st
 		return store.ServerRecord{}, err
 	}
 
-	record := store.ServerRecord{ID: uuid.New(), Name: input.Name, Hostname: input.Hostname, Definition: definition, CreatedAt: time.Now(), ExpiresAt: input.ExpiresAt, Status: "provisioning"}
+	record := store.ServerRecord{ID: uuid.New(), Name: input.Name, Hostname: input.Hostname, Definition: definition, CreatedAt: time.Now(), ExpiresAt: input.ExpiresAt, Status: "new"}
 	s.records = append([]store.ServerRecord{record}, s.records...)
 	return record, nil
 }
@@ -67,7 +67,7 @@ func TestProvisionAndListUseSameRepresentation(t *testing.T) {
 
 func TestListUsesOnlyDatabase(t *testing.T) {
 	record := testRecord(time.Now().Add(time.Hour))
-	record.Status = "provisioning"
+	record.Status = "new"
 	db := &memoryStore{records: []store.ServerRecord{record}}
 	svc := CreateServerService(nil, db)
 
@@ -75,7 +75,7 @@ func TestListUsesOnlyDatabase(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Items) != 1 || listed.Items[0].ID != record.ID || listed.Items[0].Status != server.StatusProvisioning || !listed.Items[0].ExpiresAt.Equal(record.ExpiresAt) {
+	if len(listed.Items) != 1 || listed.Items[0].ID != record.ID || listed.Items[0].Status != server.StatusNew || !listed.Items[0].ExpiresAt.Equal(record.ExpiresAt) {
 		t.Fatalf("listed = %+v", listed)
 	}
 }

@@ -20,7 +20,7 @@ function formatRemainingTime(expiresAt: string) {
   return parts.filter(Boolean).join(" ")
 }
 
-const activeStatuses: ServerStatus[] = ["provisioning", "running"]
+const activeStatuses: ServerStatus[] = ["new", "running"]
 
 export function ServerList() {
   const {setNotificationMessage} = UpdateNotification()

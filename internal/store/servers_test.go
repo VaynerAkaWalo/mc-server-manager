@@ -146,7 +146,7 @@ func TestServerCollectionPaginationAndFilters(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Microsecond)
 
 	ids := make(map[string]string)
-	for _, status := range []string{"provisioning", "running", "stopped", "expired"} {
+	for _, status := range []string{"new", "running", "stopped", "expired"} {
 		for i := 0; i < 3; i++ {
 			record, err := s.CreateServer(ctx, NewServer{Name: "collection-" + status, Hostname: "test", Definition: map[string]any{}, ExpiresAt: now.Add(time.Hour)})
 			if err != nil {
@@ -224,7 +224,7 @@ func TestServerCollectionPaginationAndFilters(t *testing.T) {
 		})
 	}
 
-	for _, status := range []string{"active", "all", "provisioning", "running", "stopped", "expired"} {
+	for _, status := range []string{"active", "all", "new", "running", "stopped", "expired"} {
 		filter := ServerFilter{Status: status}
 		records, err := s.ListServers(ctx, ServerQuery{Filter: filter, Sort: "-createdAt", Limit: 100})
 		if err != nil {
@@ -241,7 +241,7 @@ func TestServerCollectionPaginationAndFilters(t *testing.T) {
 			if status != "active" && status != "all" && record.Status != status {
 				t.Fatalf("%s filter returned %s", status, record.Status)
 			}
-			if status == "active" && record.Status != "running" && record.Status != "provisioning" {
+			if status == "active" && record.Status != "running" && record.Status != "new" {
 				t.Fatalf("active returned %s", record.Status)
 			}
 		}

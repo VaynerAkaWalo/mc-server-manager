@@ -24,7 +24,7 @@ func testRecord(expiresAt time.Time) store.ServerRecord {
 
 func TestResponseUsesStoredExpiry(t *testing.T) {
 	record := testRecord(time.Now().Add(time.Minute))
-	response, err := newResponse(record, server.StatusProvisioning)
+	response, err := newResponse(record, server.StatusNew)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,7 +35,7 @@ func TestResponseUsesStoredExpiry(t *testing.T) {
 }
 
 func TestResponseShape(t *testing.T) {
-	response, err := newResponse(testRecord(time.Now().Add(time.Hour)), server.StatusProvisioning)
+	response, err := newResponse(testRecord(time.Now().Add(time.Hour)), server.StatusNew)
 	if err != nil {
 		t.Fatal(err)
 	}

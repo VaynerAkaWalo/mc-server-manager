@@ -8,10 +8,10 @@ import (
 type Status string
 
 const (
-	StatusProvisioning Status = "provisioning"
-	StatusRunning      Status = "running"
-	StatusStopped      Status = "stopped"
-	StatusExpired      Status = "expired"
+	StatusNew     Status = "new"
+	StatusRunning Status = "running"
+	StatusStopped Status = "stopped"
+	StatusExpired Status = "expired"
 )
 
 type Response struct {

@@ -24,7 +24,7 @@ export enum Tier {
   iron = "iron"
 }
 
-export type ServerStatus = "provisioning" | "running" | "stopped" | "expired"
+export type ServerStatus = "new" | "running" | "stopped" | "expired"
 
 export interface ServerResponse {
   id: string,

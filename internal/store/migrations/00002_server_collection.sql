@@ -1,6 +1,6 @@
 -- +goose Up
-ALTER TABLE mc_servers ADD COLUMN status text NOT NULL DEFAULT 'provisioning'
-    CHECK (status IN ('provisioning', 'running', 'stopped', 'expired'));
+ALTER TABLE mc_servers ADD COLUMN status text NOT NULL DEFAULT 'new'
+    CHECK (status IN ('new', 'running', 'stopped', 'expired'));
 
 CREATE INDEX mc_servers_created_at_id_idx ON mc_servers (created_at, id);
 CREATE INDEX mc_servers_expires_at_id_idx ON mc_servers (expires_at, id);

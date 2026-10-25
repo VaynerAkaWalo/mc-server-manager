@@ -26,17 +26,17 @@ type ServerBoundary struct {
 }
 
 func serverPredicate(filter ServerFilter) (string, []any) {
-	active := "status IN ('provisioning', 'running') AND expires_at > now()"
+	active := "status IN ('new', 'running') AND expires_at > now()"
 	predicate := active
 	switch filter.Status {
 	case "all":
 		predicate = "TRUE"
-	case "provisioning", "running":
+	case "new", "running":
 		predicate = "status = $1 AND expires_at > now()"
 	case "stopped":
 		predicate = "status = $1"
 	case "expired":
-		predicate = "(status = 'expired' OR (status IN ('provisioning', 'running') AND expires_at <= now()))"
+		predicate = "(status = 'expired' OR (status IN ('new', 'running') AND expires_at <= now()))"
 	}
 
 	args := []any{}
@@ -50,7 +50,7 @@ func (s *Store) CountServers(ctx context.Context, filter ServerFilter) (ServerCo
 	predicate, args := serverPredicate(filter)
 	var counts ServerCounts
 	err := s.pool.QueryRow(ctx,
-		`SELECT count(*) FILTER (WHERE status IN ('provisioning', 'running') AND expires_at > now()), count(*)
+		`SELECT count(*) FILTER (WHERE status IN ('new', 'running') AND expires_at > now()), count(*)
    FROM mc_servers WHERE `+predicate, args...,
 	).Scan(&counts.Online, &counts.Created)
 	if err != nil {
@@ -76,7 +76,7 @@ func (s *Store) ListServers(ctx context.Context, query ServerQuery) ([]ServerRec
 	}
 	args = append(args, query.Limit+1)
 	statement := fmt.Sprintf(`SELECT id, name, hostname, definition, created_at, expires_at,
-  CASE WHEN status IN ('provisioning', 'running') AND expires_at <= now() THEN 'expired' ELSE status END
+  CASE WHEN status IN ('new', 'running') AND expires_at <= now() THEN 'expired' ELSE status END
   FROM mc_servers WHERE %s ORDER BY %s %s, id %s LIMIT $%d`, predicate, column, direction, direction, len(args))
 
 	rows, err := s.pool.Query(ctx, statement, args...)
