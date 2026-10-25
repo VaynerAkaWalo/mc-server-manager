@@ -145,12 +145,16 @@ export function ServerCreator() {
         </div>
 
         <div className={"w-3/4"}>
-          <label htmlFor="server-version">Server version</label>
+          <div className="flex flex-row items-center justify-between">
+            <label htmlFor="server-version">Server version</label>
+            <FormControlLabel sx={{margin: 0, gap: 0.5}}
+                              control={<Checkbox size="small" sx={{padding: 0}} checked={showSnapshots}
+                                                 disabled={isTemplated()} onChange={updateShowSnapshots}/>}
+                              label="Show snapshots"/>
+          </div>
           <Select inputId="server-version" className={"text-zinc-800"} options={versionOptions}
                   placeholder={"Select a version"} isDisabled={isTemplated()}
                   onChange={updateVersion} value={selectedVersion}/>
-          <FormControlLabel control={<Checkbox checked={showSnapshots} disabled={isTemplated()} onChange={updateShowSnapshots}/>}
-                            label="Show snapshots"/>
         </div>
 
         <div className={"w-3/4"}>
