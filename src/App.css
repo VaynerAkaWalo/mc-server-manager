@@ -57,7 +57,7 @@
   }
 
   .mc-nav-link {
-    @apply bg-surface text-content hover:bg-surface-hover;
+    @apply inline-block bg-surface text-content hover:bg-surface-hover;
     padding: 8px clamp(8px, 2vw, 32px);
   }
 }
