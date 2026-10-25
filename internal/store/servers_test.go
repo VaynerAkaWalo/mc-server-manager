@@ -120,7 +120,7 @@ func TestListServers(t *testing.T) {
 	latestRun := create("list-reused", -time.Hour)
 	gone := create("list-gone", -time.Hour)
 
-	records, err := s.ListServers(ctx, []string{"list-reused"})
+	records, err := s.ListServers(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +129,7 @@ func TestListServers(t *testing.T) {
 	for _, record := range records {
 		listed[record.ID.String()] = true
 	}
-	if !listed[active.ID.String()] || !listed[latestRun.ID.String()] || listed[oldRun.ID.String()] || listed[gone.ID.String()] {
+	if !listed[active.ID.String()] || listed[latestRun.ID.String()] || listed[oldRun.ID.String()] || listed[gone.ID.String()] {
 		t.Fatalf("unexpected records: %v", listed)
 	}
 

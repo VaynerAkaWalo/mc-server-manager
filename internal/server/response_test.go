@@ -9,7 +9,6 @@ import (
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/store"
 	"github.com/VaynerAkaWalo/mc-server-manager/pkg/server"
 	"github.com/google/uuid"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 func testRecord(expiresAt time.Time) store.ServerRecord {
@@ -23,61 +22,15 @@ func testRecord(expiresAt time.Time) store.ServerRecord {
 	}
 }
 
-func resource(operatorStatus, startedTime string, expireAfter time.Duration) *unstructured.Unstructured {
-	return &unstructured.Unstructured{Object: map[string]any{
-		"spec":   map[string]any{"expireAfter": expireAfter.Milliseconds()},
-		"status": map[string]any{"status": operatorStatus, "startedTime": startedTime},
-	}}
-}
-
-func TestObservedResponseStatus(t *testing.T) {
-	now := time.Now()
-	future := now.Add(time.Hour)
-	started := now.Add(-time.Minute).UTC().Format(time.RFC3339)
-
-	cases := map[string]struct {
-		expiresAt time.Time
-		resource  *unstructured.Unstructured
-		want      server.Status
-	}{
-		"new resource":            {future, resource("new", "", time.Hour), server.StatusProvisioning},
-		"not ready":               {future, resource("not ready", "", time.Hour), server.StatusProvisioning},
-		"up":                      {future, resource("up", started, time.Hour), server.StatusRunning},
-		"no resource":             {future, nil, server.StatusStopped},
-		"no resource and expired": {now.Add(-time.Hour), nil, server.StatusExpired},
-		"still up after expiry":   {now.Add(-time.Hour), resource("up", now.Add(-2*time.Hour).UTC().Format(time.RFC3339), time.Hour), server.StatusExpired},
+func TestResponseUsesStoredExpiry(t *testing.T) {
+	record := testRecord(time.Now().Add(time.Minute))
+	response, err := newResponse(record, server.StatusProvisioning)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	for name, tc := range cases {
-		t.Run(name, func(t *testing.T) {
-			response, err := observedResponse(testRecord(tc.expiresAt), tc.resource, now)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if response.Status != tc.want {
-				t.Fatalf("status = %s, want %s", response.Status, tc.want)
-			}
-		})
-	}
-}
-
-func TestObservedResponseUsesStoredExpiry(t *testing.T) {
-	now := time.Now()
-	started := now.Add(-time.Minute).UTC().Format(time.RFC3339)
-
-	for _, expiresAt := range []time.Time{now.Add(time.Minute), now.Add(-time.Minute)} {
-		record := testRecord(expiresAt)
-		response, err := observedResponse(record, resource("up", started, time.Hour), now)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if !response.ExpiresAt.Equal(record.ExpiresAt) {
-			t.Fatalf("expiresAt = %s, want stored %s", response.ExpiresAt, record.ExpiresAt)
-		}
-		if record.ExpiresAt.Before(now) && response.Status != server.StatusExpired {
-			t.Fatalf("status = %s, want expired", response.Status)
-		}
+	if !response.ExpiresAt.Equal(record.ExpiresAt) {
+		t.Fatalf("expiresAt = %s, want stored %s", response.ExpiresAt, record.ExpiresAt)
 	}
 }
 

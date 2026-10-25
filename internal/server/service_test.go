@@ -9,7 +9,6 @@ import (
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/store"
 	"github.com/VaynerAkaWalo/mc-server-manager/pkg/server"
 	"github.com/google/uuid"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 type memoryStore struct {
@@ -31,7 +30,7 @@ func (s *memoryStore) DeleteServer(context.Context, uuid.UUID) error { return ni
 func (s *memoryStore) CountServers(context.Context) (store.ServerCounts, error) {
 	return store.ServerCounts{}, nil
 }
-func (s *memoryStore) ListServers(context.Context, []string) ([]store.ServerRecord, error) {
+func (s *memoryStore) ListServers(context.Context) ([]store.ServerRecord, error) {
 	return s.records, nil
 }
 
@@ -45,7 +44,6 @@ func TestProvisionAndListUseSameRepresentation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cl.items = []unstructured.Unstructured{{Object: map[string]any{"metadata": map[string]any{"name": request.Name}}}}
 	listed, err := svc.listServers(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -67,19 +65,16 @@ func TestProvisionAndListUseSameRepresentation(t *testing.T) {
 	}
 }
 
-func TestListMergesClusterIntoLatestRecord(t *testing.T) {
-	now := time.Now()
-	latest := testRecord(now.Add(time.Hour))
-	older := testRecord(now.Add(time.Hour))
-	cl := &fakeCluster{items: []unstructured.Unstructured{serverResource(latest.Name, time.Minute), serverResource("untracked", time.Minute)}}
-	db := &memoryStore{records: []store.ServerRecord{latest, older}}
-	svc := CreateServerService(cl, db)
+func TestListUsesOnlyDatabase(t *testing.T) {
+	record := testRecord(time.Now().Add(time.Hour))
+	db := &memoryStore{records: []store.ServerRecord{record}}
+	svc := CreateServerService(nil, db)
 
 	listed, err := svc.listServers(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed) != 2 || listed[0].ID != latest.ID || listed[0].Status != server.StatusProvisioning || listed[1].Status != server.StatusStopped {
+	if len(listed) != 1 || listed[0].ID != record.ID || listed[0].Status != server.StatusProvisioning || !listed[0].ExpiresAt.Equal(record.ExpiresAt) {
 		t.Fatalf("listed = %+v", listed)
 	}
 }

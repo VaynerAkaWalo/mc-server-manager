@@ -22,7 +22,7 @@ type serverStore interface {
 	CreateServer(ctx context.Context, server store.NewServer) (store.ServerRecord, error)
 	DeleteServer(ctx context.Context, id uuid.UUID) error
 	CountServers(ctx context.Context) (store.ServerCounts, error)
-	ListServers(ctx context.Context, clusterNames []string) ([]store.ServerRecord, error)
+	ListServers(ctx context.Context) ([]store.ServerRecord, error)
 }
 
 type clusterService interface {
@@ -44,31 +44,14 @@ func CreateServerService(clusterService clusterService, store serverStore) Servi
 }
 
 func (s *Service) listServers(ctx context.Context) ([]server.Response, error) {
-	resources, err := s.clusterService.GetActiveServers()
+	records, err := s.store.ListServers(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	resourcesByName := make(map[string]*unstructured.Unstructured, len(resources.Items))
-	names := make([]string, 0, len(resources.Items))
-	for i := range resources.Items {
-		resourcesByName[resources.Items[i].GetName()] = &resources.Items[i]
-		names = append(names, resources.Items[i].GetName())
-	}
-
-	records, err := s.store.ListServers(ctx, names)
-	if err != nil {
-		return nil, err
-	}
-
-	now := time.Now()
 	servers := make([]server.Response, 0, len(records))
 	for _, record := range records {
-		// Records are newest first, so a resource belongs to the first record with its name.
-		resource := resourcesByName[record.Name]
-		delete(resourcesByName, record.Name)
-
-		response, err := observedResponse(record, resource, now)
+		response, err := newResponse(record, server.StatusProvisioning)
 		if err != nil {
 			return nil, err
 		}

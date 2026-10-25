@@ -74,15 +74,12 @@ func (s *Store) CountServers(ctx context.Context) (ServerCounts, error) {
 	return counts, nil
 }
 
-// A late cluster start can keep the latest run alive past its stored expiry.
-func (s *Store) ListServers(ctx context.Context, clusterNames []string) ([]ServerRecord, error) {
+func (s *Store) ListServers(ctx context.Context) ([]ServerRecord, error) {
 	rows, err := s.pool.Query(ctx,
 		`SELECT id, name, hostname, definition, created_at, expires_at
 		 FROM mc_servers
 		 WHERE expires_at > now()
-		    OR id IN (SELECT DISTINCT ON (name) id FROM mc_servers WHERE name = ANY($1) ORDER BY name, created_at DESC, id DESC)
 		 ORDER BY created_at DESC, id DESC`,
-		clusterNames,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("list servers: %w", err)
