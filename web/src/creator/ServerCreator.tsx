@@ -138,28 +138,28 @@ export function ServerCreator() {
 
     return (
       <>
-        <div className="flex flex-col w-3/4">
-          <label htmlFor="server-name-input">Server name</label>
+        <div className="flex flex-col">
+          <label className="mc-label" htmlFor="server-name-input">Server name</label>
           <input className="mc-input" id="server-name-input" type="text" placeholder="My Minecraft Server"
                  value={state.name} onChange={updateName}/>
         </div>
 
-        <div className={"w-3/4"}>
+        <div className="flex flex-col">
           <div className="flex flex-row items-center justify-between">
-            <label htmlFor="server-version">Server version</label>
+            <label className="mc-label mb-0" htmlFor="server-version">Server version</label>
             <FormControlLabel sx={{margin: 0, gap: 0.5}}
                               control={<Checkbox size="small" sx={{padding: 0}} checked={showSnapshots}
                                                  disabled={isTemplated()} onChange={updateShowSnapshots}/>}
                               label="Snapshots"/>
           </div>
-          <Select inputId="server-version" className={"text-zinc-800"} options={versionOptions}
+          <Select inputId="server-version" classNamePrefix="mc-select" options={versionOptions}
                   placeholder={"Select a version"} isDisabled={isTemplated()}
                   onChange={updateVersion} value={selectedVersion}/>
         </div>
 
-        <div className={"w-3/4"}>
-          <label htmlFor={"server-reservation-time-select"}>Select reservation time</label>
-          <Select id={"server-reservation-time-select"} className={"text-zinc-800"} options={reservationTimeOptions}
+        <div className="flex flex-col">
+          <label className="mc-label" htmlFor={"server-reservation-time-select"}>Reservation time</label>
+          <Select id={"server-reservation-time-select"} classNamePrefix="mc-select" options={reservationTimeOptions}
                   onChange={updateReservationTime}
                   value={reservationTimeOptions.find(option => option.value === state.duration)}/>
         </div>
@@ -183,15 +183,15 @@ export function ServerCreator() {
 
     return (
       <>
-        <div className="flex flex-col w-3/4">
-          <label htmlFor="message-of-the-day">Message of the day</label>
+        <div className="flex flex-col">
+          <label className="mc-label" htmlFor="message-of-the-day">Message of the day</label>
           <input className={"mc-input"} id={"message-of-the-day"} type={"text"} placeholder={"Welcome to the server!"}
                  value={state.opts.MOTD} onChange={updateMessageOfDay}/>
         </div>
 
-        <div className={"w-3/4"}>
-          <label htmlFor={"server-difficulty"}>Server difficulty</label>
-          <Select id={"server-difficulty"} className={"text-zinc-800"} options={difficultOptions}
+        <div className="flex flex-col">
+          <label className="mc-label" htmlFor={"server-difficulty"}>Server difficulty</label>
+          <Select id={"server-difficulty"} classNamePrefix="mc-select" options={difficultOptions}
                   onChange={updateDifficulty}
                   value={difficultOptions.find(option => option.value === state.opts.DIFFICULTY)}/>
         </div>
@@ -219,18 +219,18 @@ export function ServerCreator() {
 
     return (
       <>
-        <div className="flex flex-col w-3/4">
-          <label htmlFor="player-limit">Player limit</label>
+        <div className="flex flex-col">
+          <label className="mc-label" htmlFor="player-limit">Player limit</label>
           <input className="mc-input text-right" id="player-limit" type="text" value={state.opts.MAX_PLAYERS}
                  onChange={updateMaxPlayers}/>
         </div>
 
-        <div className="flex flex-col w-3/4">
-          <label htmlFor="operators">Server operators</label>
+        <div className="flex flex-col">
+          <label className="mc-label" htmlFor="operators">Server operators</label>
           <input className="mc-input" id="operators" type="text" value={state.opts.OPS} onChange={updateOperators}/>
         </div>
 
-        <div className={"flex flex-row items-center justify-evenly w-3/4"}>
+        <div className="flex flex-row items-center">
           <FormControlLabel control={<Checkbox checked={state.opts.ONLINE_MODE === 'true'} onClick={toggleOnlineMode}/>}
                             label="Online mode"/>
         </div>
@@ -247,8 +247,8 @@ export function ServerCreator() {
 
     return (
       <>
-        <div>
-          <label className={"text-center"} htmlFor={"tier-settings"}>Server tier</label>
+        <div className="flex flex-col">
+          <label className="mc-label" htmlFor={"tier-settings"}>Server tier</label>
           <div id={"tier-settings"} className={"flex flex-row"}>
             {catalog?.tiers.map(tier => (
               <Tooltip key={tier.id} title={tier.description}>
@@ -259,8 +259,8 @@ export function ServerCreator() {
             ))}
           </div>
         </div>
-        <div>
-          <label className={"text-center"} htmlFor={"optimization-settings"}>Server type</label>
+        <div className="flex flex-col">
+          <label className="mc-label" htmlFor={"optimization-settings"}>Server type</label>
           <div id={"optimization-settings"} className={"flex flex-row"}>
             <Tooltip title={"Default option, uses vanilla server"}>
               <FormControlLabel control={<Checkbox checked={true} value={"vanilla"}/>} label="Vanilla"/>
@@ -311,28 +311,34 @@ export function ServerCreator() {
     navigate("/my-servers")
   }
 
+  const tabs = [
+    {tab: CreatorTab.BASIC, label: "Basic"},
+    {tab: CreatorTab.TIER, label: "Tier"},
+    {tab: CreatorTab.ADVANCED, label: "Advanced"},
+    {tab: CreatorTab.PLAYERS, label: "Players"},
+  ]
+
   return (
     <div className="mc-modal">
-      <ul className="flex flex-row flex-wrap justify-evenly border-b-2 border-edge">
-        <button className="mc-tab" value={CreatorTab.BASIC} onClick={() => setActiveTab(CreatorTab.BASIC)}>Basic
-        </button>
-        <button className="mc-tab" value={CreatorTab.TIER} onClick={() => setActiveTab(CreatorTab.TIER)}>Tier
-        </button>
-        <button className="mc-tab" value={CreatorTab.ADVANCED}
-                onClick={() => setActiveTab(CreatorTab.ADVANCED)}>Advanced
-        </button>
-        <button className="mc-tab" value={CreatorTab.PLAYERS} onClick={() => setActiveTab(CreatorTab.PLAYERS)}>Players
-        </button>
-      </ul>
-      <div className="flex flex-1 flex-col justify-evenly items-center">
+      <div className="flex flex-row flex-wrap justify-evenly border-b border-edge" role="tablist">
+        {tabs.map(({tab, label}) => (
+          <button key={tab} className={`mc-tab ${activeTab === tab ? "active" : ""}`} role="tab"
+                  aria-selected={activeTab === tab} onClick={() => setActiveTab(tab)}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex flex-1 flex-col gap-5 p-6">
         {activeTab === CreatorTab.BASIC && basicSettings()}
         {activeTab === CreatorTab.ADVANCED && advancedSettings()}
         {activeTab === CreatorTab.PLAYERS && playerSettings()}
         {activeTab === CreatorTab.TIER && tierSettings()}
       </div>
-      <div className={"flex items-center justify-evenly gap-2 w-full px-4 pb-6"}>
-        <button className={"mc-button flex-1 px-2 whitespace-nowrap"} onClick={() => navigate("/my-servers")}>Cancel</button>
-        <button className={"mc-button flex-1 px-2 whitespace-nowrap"} onClick={createServer}>Create server</button>
+
+      <div className="flex items-center gap-2 w-full px-6 pb-6">
+        <button className="mc-button-secondary flex-1 whitespace-nowrap" onClick={() => navigate("/my-servers")}>Cancel</button>
+        <button className="mc-button flex-1 whitespace-nowrap" onClick={createServer}>Create server</button>
       </div>
     </div>
   )
