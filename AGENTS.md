@@ -1,5 +1,9 @@
 # Agent guidelines
 
+## API
+
+Follow [docs/API_RULES.md](docs/API_RULES.md) when adding or changing endpoints.
+
 ## Pull requests that change the UI
 
 Attach screenshots to the PR showing how the affected UI looked before and after the change.
