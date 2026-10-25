@@ -56,3 +56,20 @@ func (s *Store) DeleteServer(ctx context.Context, id uuid.UUID) error {
 
 	return nil
 }
+
+type ServerCounts struct {
+	Online  int
+	Created int
+}
+
+func (s *Store) CountServers(ctx context.Context) (ServerCounts, error) {
+	var counts ServerCounts
+	err := s.pool.QueryRow(ctx,
+		`SELECT count(*) FILTER (WHERE expires_at > now()), count(*) FROM mc_servers`,
+	).Scan(&counts.Online, &counts.Created)
+	if err != nil {
+		return ServerCounts{}, fmt.Errorf("count servers: %w", err)
+	}
+
+	return counts, nil
+}

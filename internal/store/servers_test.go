@@ -69,3 +69,34 @@ func TestCreateAndDeleteServer(t *testing.T) {
 		t.Fatalf("expected record to be deleted, found %d", count)
 	}
 }
+
+func TestCountServers(t *testing.T) {
+	s := connectTestStore(t)
+	ctx := context.Background()
+
+	before, err := s.CountServers(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	active, err := s.CreateServer(ctx, NewServer{Name: "count-active", Hostname: "a", Definition: map[string]any{}, ExpiresAt: time.Now().Add(time.Hour)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	expired, err := s.CreateServer(ctx, NewServer{Name: "count-expired", Hostname: "b", Definition: map[string]any{}, ExpiresAt: time.Now().Add(-time.Hour)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = s.DeleteServer(ctx, active.ID)
+		_ = s.DeleteServer(ctx, expired.ID)
+	})
+
+	after, err := s.CountServers(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.Online != before.Online+1 || after.Created != before.Created+2 {
+		t.Fatalf("expected one more online and two more created, got before %+v after %+v", before, after)
+	}
+}
