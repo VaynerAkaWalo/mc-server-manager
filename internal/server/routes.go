@@ -48,7 +48,11 @@ func (h *Handlers) statsHandler(w http.ResponseWriter, r *http.Request) error {
 
 func (h *Handlers) provisionServer(w http.ResponseWriter, r *http.Request) error {
 	var req server.Request
-	err := json.NewDecoder(r.Body).Decode(&req)
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&req)
+	if err == nil && decoder.More() {
+		err = errors.New("unexpected data after the JSON object")
+	}
 	if err != nil {
 		return problem.Write(w, http.StatusBadRequest, "The request body is not valid JSON for a server")
 	}

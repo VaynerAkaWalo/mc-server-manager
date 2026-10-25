@@ -108,6 +108,7 @@ func (s *Service) provisionServer(provisionRequest server.Request) (server.Respo
 	err = s.clusterService.DeployServerSpec(*serverSpec)
 	if err != nil {
 		alreadyExists := apierrors.IsAlreadyExists(err)
+		invalid := apierrors.IsInvalid(err)
 		if rejectedByCluster(err) {
 			if deleteErr := s.store.DeleteServer(context.TODO(), record.ID); deleteErr != nil {
 				slog.Error("Failed to remove record of server that was not deployed " + record.ID.String() + ": " + deleteErr.Error())
@@ -115,6 +116,9 @@ func (s *Service) provisionServer(provisionRequest server.Request) (server.Respo
 		}
 		if alreadyExists {
 			return server.Response{}, ErrNameInUse
+		}
+		if invalid {
+			return server.Response{}, definition.InvalidDefinitionError{Message: "the cluster rejected the server definition, check the server name"}
 		}
 		return server.Response{}, err
 	}
