@@ -92,9 +92,53 @@ func (s *Store) GetServer(ctx context.Context, id uuid.UUID) (ServerRecord, erro
 	return record, nil
 }
 
+func (s *Store) ListMonitoredServers(ctx context.Context) ([]ServerRecord, error) {
+	rows, err := s.pool.Query(ctx,
+		`SELECT id, name, status FROM mc_servers WHERE status IN ('new', 'running', 'degraded') AND expires_at > now()`,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list monitored servers: %w", err)
+	}
+	defer rows.Close()
+
+	records := make([]ServerRecord, 0)
+	for rows.Next() {
+		var record ServerRecord
+		if err := rows.Scan(&record.ID, &record.Name, &record.Status); err != nil {
+			return nil, fmt.Errorf("scan monitored server: %w", err)
+		}
+		records = append(records, record)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list monitored servers: %w", err)
+	}
+
+	return records, nil
+}
+
+func (s *Store) MarkRunning(ctx context.Context, id uuid.UUID) error {
+	if _, err := s.pool.Exec(ctx,
+		`UPDATE mc_servers SET status = 'running' WHERE id = $1 AND status IN ('new', 'degraded')`, id,
+	); err != nil {
+		return fmt.Errorf("mark server running: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Store) MarkDegraded(ctx context.Context, id uuid.UUID) error {
+	if _, err := s.pool.Exec(ctx,
+		`UPDATE mc_servers SET status = 'degraded' WHERE id = $1 AND status = 'running'`, id,
+	); err != nil {
+		return fmt.Errorf("mark server degraded: %w", err)
+	}
+
+	return nil
+}
+
 func (s *Store) MarkStopped(ctx context.Context, id uuid.UUID) error {
 	if _, err := s.pool.Exec(ctx,
-		`UPDATE mc_servers SET status = 'stopped' WHERE id = $1 AND status IN ('new', 'running')`, id,
+		`UPDATE mc_servers SET status = 'stopped' WHERE id = $1 AND status IN ('new', 'running', 'degraded')`, id,
 	); err != nil {
 		return fmt.Errorf("mark server stopped: %w", err)
 	}
@@ -104,7 +148,7 @@ func (s *Store) MarkStopped(ctx context.Context, id uuid.UUID) error {
 
 func (s *Store) MarkExpired(ctx context.Context) error {
 	if _, err := s.pool.Exec(ctx,
-		`UPDATE mc_servers SET status = 'expired' WHERE status IN ('new', 'running') AND expires_at <= now()`,
+		`UPDATE mc_servers SET status = 'expired' WHERE status IN ('new', 'running', 'degraded') AND expires_at <= now()`,
 	); err != nil {
 		return fmt.Errorf("mark servers expired: %w", err)
 	}

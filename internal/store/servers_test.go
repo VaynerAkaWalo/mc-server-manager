@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"os"
+	"slices"
 	"testing"
 	"time"
 )
@@ -310,5 +311,50 @@ func TestMarkExpiredReleasesName(t *testing.T) {
 	record, err := s.GetServer(ctx, old.ID)
 	if err != nil || record.Status != "expired" {
 		t.Fatalf("status = %q, err = %v", record.Status, err)
+	}
+}
+
+func TestMonitoringTransitions(t *testing.T) {
+	s := connectTestStore(t)
+	ctx := context.Background()
+
+	record, err := s.CreateServer(ctx, NewServer{Name: "monitored", Hostname: "a", Definition: map[string]any{}, ExpiresAt: time.Now().Add(time.Hour)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.DeleteServer(ctx, record.ID) })
+
+	statusOf := func() string {
+		stored, err := s.GetServer(ctx, record.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return stored.Status
+	}
+
+	if err := s.MarkDegraded(ctx, record.ID); err != nil || statusOf() != "new" {
+		t.Fatalf("a new server cannot be degraded, status = %s, err = %v", statusOf(), err)
+	}
+	if err := s.MarkRunning(ctx, record.ID); err != nil || statusOf() != "running" {
+		t.Fatalf("status = %s, err = %v", statusOf(), err)
+	}
+	if err := s.MarkDegraded(ctx, record.ID); err != nil || statusOf() != "degraded" {
+		t.Fatalf("status = %s, err = %v", statusOf(), err)
+	}
+
+	monitored, err := s.ListMonitoredServers(ctx)
+	if err != nil || !slices.ContainsFunc(monitored, func(r ServerRecord) bool { return r.ID == record.ID }) {
+		t.Fatalf("a degraded server is still monitored, got %v, err = %v", monitored, err)
+	}
+
+	if _, err := s.CreateServer(ctx, NewServer{Name: "monitored", Hostname: "a", Definition: map[string]any{}, ExpiresAt: time.Now().Add(time.Hour)}); !errors.Is(err, ErrActiveNameTaken) {
+		t.Fatalf("a degraded server keeps its name, err = %v", err)
+	}
+
+	if err := s.MarkStopped(ctx, record.ID); err != nil || statusOf() != "stopped" {
+		t.Fatalf("status = %s, err = %v", statusOf(), err)
+	}
+	if err := s.MarkRunning(ctx, record.ID); err != nil || statusOf() != "stopped" {
+		t.Fatalf("a stopped server cannot be revived, status = %s, err = %v", statusOf(), err)
 	}
 }

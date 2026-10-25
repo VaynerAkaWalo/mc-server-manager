@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/definition"
+	"github.com/VaynerAkaWalo/mc-server-manager/internal/mcping"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/store"
 	"github.com/VaynerAkaWalo/mc-server-manager/pkg/server"
 	serversv1alpha1 "github.com/VaynerAkaWalo/mc-server-operator/api/v1alpha1"
@@ -27,6 +28,9 @@ type serverStore interface {
 	CountServers(ctx context.Context, filter store.ServerFilter) (store.ServerCounts, error)
 	ListServers(ctx context.Context, query store.ServerQuery) ([]store.ServerRecord, error)
 	GetServer(ctx context.Context, id uuid.UUID) (store.ServerRecord, error)
+	ListMonitoredServers(ctx context.Context) ([]store.ServerRecord, error)
+	MarkRunning(ctx context.Context, id uuid.UUID) error
+	MarkDegraded(ctx context.Context, id uuid.UUID) error
 	MarkStopped(ctx context.Context, id uuid.UUID) error
 	MarkExpired(ctx context.Context) error
 }
@@ -40,6 +44,8 @@ type clusterService interface {
 type Service struct {
 	clusterService clusterService
 	store          serverStore
+	players        *playerCache
+	ping           pingFunc
 	versions       definition.VersionSource
 }
 
@@ -47,6 +53,8 @@ func CreateServerService(clusterService clusterService, store serverStore, versi
 	return Service{
 		clusterService: clusterService,
 		store:          store,
+		players:        newPlayerCache(),
+		ping:           mcping.Ping,
 		versions:       versions,
 	}
 }
@@ -63,7 +71,7 @@ func (s *Service) listServers(ctx context.Context, query store.ServerQuery) (ser
 		result.NextCursor = encodeCursor(query, records[len(records)-1])
 	}
 	for _, record := range records {
-		response, err := newResponse(record, server.Status(record.Status))
+		response, err := s.respond(record)
 		if err != nil {
 			return server.Collection{}, err
 		}
@@ -140,7 +148,19 @@ func (s *Service) getServer(ctx context.Context, id uuid.UUID) (server.Response,
 		return server.Response{}, err
 	}
 
-	return newResponse(record, server.Status(record.Status))
+	return s.respond(record)
+}
+
+func (s *Service) respond(record store.ServerRecord) (server.Response, error) {
+	response, err := newResponse(record, server.Status(record.Status))
+	if err != nil {
+		return server.Response{}, err
+	}
+	if response.Status == server.StatusRunning {
+		response.Players = s.players.get(record.ID)
+	}
+
+	return response, nil
 }
 
 func (s *Service) deleteServer(ctx context.Context, id uuid.UUID) error {
@@ -172,7 +192,7 @@ func (s *Service) deleteServer(ctx context.Context, id uuid.UUID) error {
 }
 
 func isActive(status string) bool {
-	return status == string(server.StatusNew) || status == string(server.StatusRunning)
+	return status == string(server.StatusNew) || status == string(server.StatusRunning) || status == string(server.StatusDegraded)
 }
 
 func toOptions(options map[string]string) map[definition.Option]string {

@@ -26,13 +26,13 @@ type ServerBoundary struct {
 }
 
 const serverFilterSQL = `($1 = 'all'
- OR ($1 = 'active' AND status IN ('new', 'running') AND expires_at > now())
+ OR ($1 = 'active' AND status IN ('new', 'running', 'degraded') AND expires_at > now())
  OR status = $1)`
 
 func (s *Store) CountServers(ctx context.Context, filter ServerFilter) (ServerCounts, error) {
 	var counts ServerCounts
 	err := s.pool.QueryRow(ctx,
-		`SELECT count(*) FILTER (WHERE status IN ('new', 'running') AND expires_at > now()), count(*)
+		`SELECT count(*) FILTER (WHERE status IN ('new', 'running', 'degraded') AND expires_at > now()), count(*)
    FROM mc_servers WHERE `+serverFilterSQL, filter.Status,
 	).Scan(&counts.Online, &counts.Created)
 	if err != nil {

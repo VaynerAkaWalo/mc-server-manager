@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -46,6 +47,34 @@ func (s *memoryStore) GetServer(_ context.Context, id uuid.UUID) (store.ServerRe
 		}
 	}
 	return store.ServerRecord{}, store.ErrNotFound
+}
+
+func (s *memoryStore) setStatus(id uuid.UUID, from []string, to string) {
+	for i := range s.records {
+		if s.records[i].ID == id && slices.Contains(from, s.records[i].Status) {
+			s.records[i].Status = to
+		}
+	}
+}
+
+func (s *memoryStore) ListMonitoredServers(context.Context) ([]store.ServerRecord, error) {
+	monitored := make([]store.ServerRecord, 0)
+	for _, record := range s.records {
+		if isActive(record.Status) {
+			monitored = append(monitored, record)
+		}
+	}
+	return monitored, nil
+}
+
+func (s *memoryStore) MarkRunning(_ context.Context, id uuid.UUID) error {
+	s.setStatus(id, []string{"new", "degraded"}, "running")
+	return nil
+}
+
+func (s *memoryStore) MarkDegraded(_ context.Context, id uuid.UUID) error {
+	s.setStatus(id, []string{"running"}, "degraded")
+	return nil
 }
 
 func (s *memoryStore) MarkStopped(_ context.Context, id uuid.UUID) error {

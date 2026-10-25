@@ -53,6 +53,8 @@ func main() {
 	serverService := server.CreateServerService(cluster.CreateClusterService(*clusterClient, *dynamicClient), serverStore, gameVersions)
 	serverHandlers := server.NewServerHandlers(serverService)
 
+	go serverService.RunMonitor(context.Background())
+
 	frontendHandlers := frontend.NewFrontendHandlers(os.DirFS("static"))
 
 	internalHandlers := internalapi.NewHandlers(serverStore.Ping, &serverService)
