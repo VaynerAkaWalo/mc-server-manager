@@ -2,7 +2,6 @@ package definition
 
 import (
 	"context"
-	"fmt"
 	"regexp"
 	"slices"
 )
@@ -33,11 +32,11 @@ func customizeOptions(ctx context.Context, definition ServerDefinition) (ServerD
 	for key, value := range definition.Options {
 		isValid, settable := userSettableOpts[key]
 		if !settable {
-			return definition, fmt.Errorf("option %s cannot be set", key)
+			return definition, invalidf("option %s cannot be set", key)
 		}
 
 		if !isValid(value) {
-			return definition, fmt.Errorf("option %s has an unsupported value", key)
+			return definition, invalidf("option %s has an unsupported value", key)
 		}
 	}
 

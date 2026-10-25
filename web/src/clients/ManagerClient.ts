@@ -1,5 +1,5 @@
 import {HTTPClient} from "./Client.ts";
-import {AxiosPromise} from "axios";
+import {AxiosPromise, isAxiosError} from "axios";
 
 export interface CreateServerRequest {
   name: string,
@@ -36,6 +36,19 @@ export interface ServerResponse {
 export interface StatsResponse {
   online: number,
   created: number
+}
+
+export interface Problem {
+  title: string,
+  status: number,
+  detail?: string
+}
+
+export const problemMessage = (err: unknown): string => {
+  if (isAxiosError<Problem>(err) && err.response?.data?.detail) {
+    return err.response.data.detail
+  }
+  return "Something went wrong, try again later"
 }
 
 class ServerManager {

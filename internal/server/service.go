@@ -8,10 +8,13 @@ import (
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/store"
 	"github.com/VaynerAkaWalo/mc-server-manager/pkg/server"
 	"github.com/google/uuid"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"log/slog"
 	"time"
 )
+
+var ErrNameInUse = errors.New("a server with this name already exists")
 
 type serverStore interface {
 	CreateServer(ctx context.Context, server store.NewServer) (store.ServerRecord, error)
@@ -75,7 +78,7 @@ func (s *Service) provisionServer(provisionRequest server.Request) (server.Respo
 	}
 	for _, item := range activeServers.Items {
 		if item.GetName() == provisionRequest.Name {
-			return server.Response{}, errors.New("server with this name already exists")
+			return server.Response{}, ErrNameInUse
 		}
 	}
 
@@ -104,10 +107,18 @@ func (s *Service) provisionServer(provisionRequest server.Request) (server.Respo
 
 	err = s.clusterService.DeployServerSpec(*serverSpec)
 	if err != nil {
+		alreadyExists := apierrors.IsAlreadyExists(err)
+		invalid := apierrors.IsInvalid(err)
 		if rejectedByCluster(err) {
 			if deleteErr := s.store.DeleteServer(context.TODO(), record.ID); deleteErr != nil {
 				slog.Error("Failed to remove record of server that was not deployed " + record.ID.String() + ": " + deleteErr.Error())
 			}
+		}
+		if alreadyExists {
+			return server.Response{}, ErrNameInUse
+		}
+		if invalid {
+			return server.Response{}, definition.InvalidDefinitionError{Message: "the cluster rejected the server definition, check the server name"}
 		}
 		return server.Response{}, err
 	}

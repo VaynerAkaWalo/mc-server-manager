@@ -5,7 +5,7 @@ import {useEffect, useReducer, useState} from "react";
 import {Checkbox, FormControlLabel, Tooltip} from "@mui/material";
 import {sanitizeString} from "../utils/StringSanitizer.ts";
 import {UpdateNotification} from "../App.tsx";
-import {CreateServerRequest, ManagerClient, Opts, Tier} from "../clients/ManagerClient.ts";
+import {CreateServerRequest, ManagerClient, Opts, problemMessage, Tier} from "../clients/ManagerClient.ts";
 
 enum CreatorTab {
   BASIC,
@@ -286,12 +286,15 @@ export function ServerCreator() {
       preset: templatePreset,
     }
 
-    await ManagerClient.createServer(request).catch(err => {
-      setNotificationMessage("Failed to create server with unknown error " + err)
-    }).then(() => {
-      setNotificationMessage("Your server will be started shortly")
-      navigate("/my-servers")
-    })
+    try {
+      await ManagerClient.createServer(request)
+    } catch (err) {
+      setNotificationMessage("Failed to create server: " + problemMessage(err))
+      return
+    }
+
+    setNotificationMessage("Your server will be started shortly")
+    navigate("/my-servers")
   }
 
   return (
