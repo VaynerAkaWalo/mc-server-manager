@@ -49,7 +49,6 @@ func (h *Handlers) ready(w http.ResponseWriter, r *http.Request) error {
 	return xhttp.WriteResponse(w, http.StatusOK, statusResponse{Status: "OK"})
 }
 
-// Running it again after a run finished, or while servers are still shutting down, is safe and expires nothing twice.
 func (h *Handlers) expireServers(w http.ResponseWriter, r *http.Request) error {
 	names, err := h.servers.ShutdownExpired()
 	if err != nil {

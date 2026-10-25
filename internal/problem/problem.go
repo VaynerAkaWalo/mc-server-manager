@@ -7,7 +7,6 @@ import (
 
 const ContentType = "application/problem+json"
 
-// RFC 9457 problem details. Without a specific type URI the type is about:blank and the title is the status text.
 type Problem struct {
 	Type   string `json:"type"`
 	Title  string `json:"title"`

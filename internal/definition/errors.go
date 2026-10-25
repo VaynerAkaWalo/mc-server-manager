@@ -2,7 +2,6 @@ package definition
 
 import "fmt"
 
-// InvalidDefinitionError means the requested server is not allowed, as opposed to a failure of the system building it.
 type InvalidDefinitionError struct {
 	Message string
 }
