@@ -182,15 +182,6 @@ func toOptions(options map[string]string) map[definition.Option]string {
 	return converted
 }
 
-func (s *Service) shutdownExpiredServers() (expiredServers, error) {
-	names, err := s.ShutdownExpired()
-	if err != nil {
-		return expiredServers{}, err
-	}
-
-	return expiredServers{Names: names}, nil
-}
-
 func (s *Service) ShutdownExpired() ([]string, error) {
 	activeServerResources, err := s.clusterService.GetActiveServers()
 	if err != nil {
