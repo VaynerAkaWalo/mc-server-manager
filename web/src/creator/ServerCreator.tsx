@@ -67,7 +67,7 @@ export function ServerCreator() {
       setCatalog(data)
       dispatch({type: "UPDATE_TIER", payload: (data.tiers.find(tier => tier.default) ?? data.tiers[0])?.id ?? ""})
       if (!isTemplated()) {
-        dispatch({type: "UPDATE_OPTS", payload: {VERSION: data.versions[DEFAULT_SERVER_TYPE]?.latestRelease}})
+        dispatch({type: "UPDATE_OPTS", payload: {VERSION: data.versions?.[DEFAULT_SERVER_TYPE]?.latestRelease}})
       }
     }).catch(err => setNotificationMessage("Failed to load server options: " + problemMessage(err)))
   }, []);
@@ -108,7 +108,7 @@ export function ServerCreator() {
       dispatch({type: "UPDATE_NAME", payload: sanitizeString(rawName)})
     }
 
-    const serverVersions = catalog?.versions[state.opts.TYPE ?? DEFAULT_SERVER_TYPE]
+    const serverVersions = catalog?.versions?.[state.opts.TYPE ?? DEFAULT_SERVER_TYPE]
     const versionOptions = (serverVersions?.items ?? [])
       .filter(version => showSnapshots || version.kind === "release")
       .map(version => ({

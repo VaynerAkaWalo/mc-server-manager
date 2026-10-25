@@ -45,3 +45,11 @@ func TestCatalogDoesNotExposeEnforcedOptions(t *testing.T) {
 		}
 	}
 }
+
+func TestCatalogVersionsAreAnObjectWithoutUpstream(t *testing.T) {
+	body, _ := json.Marshal(BuildCatalog(nil))
+
+	if !strings.Contains(string(body), `"versions":{}`) {
+		t.Fatalf("body = %s", body)
+	}
+}

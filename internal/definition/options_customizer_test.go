@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 )
 
 func TestCustomizeOptions(t *testing.T) {
@@ -78,5 +79,18 @@ func TestVersionIsRequiredUnlessPresetSetsIt(t *testing.T) {
 	}
 	if _, err := customizeVersionRequired(context.Background(), withPreset); err != nil {
 		t.Fatalf("preset version was rejected: %v", err)
+	}
+}
+
+func TestTranslateRequiresVersionAfterPreset(t *testing.T) {
+	base := ServerDefinition{Name: "my-server", Tier: Wooden, Duration: time.Hour, Options: map[Option]string{}}
+
+	if _, err := TranslateDefinition(context.Background(), base, testVersions); err == nil {
+		t.Fatal("definition without version was translated")
+	}
+
+	base.Preset = "lockout"
+	if _, err := TranslateDefinition(context.Background(), base, testVersions); err != nil {
+		t.Fatalf("preset without explicit version was rejected: %v", err)
 	}
 }

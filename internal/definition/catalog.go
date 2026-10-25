@@ -35,6 +35,10 @@ type DurationLimits struct {
 }
 
 func BuildCatalog(versions VersionSet) Catalog {
+	if versions == nil {
+		versions = VersionSet{}
+	}
+
 	return Catalog{
 		Versions: versions,
 		Tiers:    catalogTiers(),
