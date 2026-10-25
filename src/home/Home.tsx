@@ -22,8 +22,8 @@ function Stat({label, value}: { label: string, value: number }) {
 export function Home() {
   return (
     <div className="flex flex-col items-center gap-6 w-full max-w-3xl p-4 my-auto">
-      <div className="mc-panel w-full flex flex-col sm:flex-row items-center justify-between gap-4 py-4 px-6 text-center sm:text-left">
-        <p className="text-xl">Host a server in minutes and play with your friends</p>
+      <div className="mc-panel w-full flex flex-col items-center gap-6 py-8 px-6 text-center">
+        <p className="text-3xl">Host a server in minutes and play with your friends</p>
         <Link className="mc-button whitespace-nowrap" to="/server-creator">Get started</Link>
       </div>
 
