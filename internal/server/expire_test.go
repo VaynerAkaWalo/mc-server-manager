@@ -136,8 +136,11 @@ func TestShutdownExpiredKeepsIdleServersItFailedToDelete(t *testing.T) {
 }
 
 func TestShutdownExpiredStopsServersThatNeverStarted(t *testing.T) {
+	stuckResource := serverResource("stuck-server", 61*time.Minute)
+	stuckResource.Object["spec"] = map[string]any{"expireAfter": int64(7 * 24 * time.Hour / time.Millisecond)}
+	delete(stuckResource.Object, "status")
 	cl := &fakeCluster{
-		items:   []unstructured.Unstructured{serverResource("stuck-server", 61*time.Minute), serverResource("starting-server", time.Minute)},
+		items:   []unstructured.Unstructured{stuckResource, serverResource("starting-server", time.Minute)},
 		deleted: map[string]types.UID{},
 	}
 	stuck := idleRecord("stuck-server", 0)
@@ -152,7 +155,7 @@ func TestShutdownExpiredStopsServersThatNeverStarted(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(names) != 1 || names[0] != "stuck-server" || db.records[0].Status != "expired" || db.records[1].Status != "new" {
+	if len(names) != 1 || cl.deleted["stuck-server"] != "stuck-server-uid" || db.records[0].Status != "expired" || db.records[1].Status != "new" {
 		t.Fatalf("names = %v, statuses = %s, %s", names, db.records[0].Status, db.records[1].Status)
 	}
 }
