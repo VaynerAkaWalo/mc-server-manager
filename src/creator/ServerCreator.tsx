@@ -296,7 +296,7 @@ export function ServerCreator() {
 
   return (
     <div className="mc-modal">
-      <ul className="flex flex-row justify-evenly border-b-2 border-edge">
+      <ul className="flex flex-row flex-wrap justify-evenly border-b-2 border-edge">
         <button className="mc-tab" value={CreatorTab.BASIC} onClick={() => setActiveTab(CreatorTab.BASIC)}>Basic
         </button>
         <button className="mc-tab" value={CreatorTab.TIER} onClick={() => setActiveTab(CreatorTab.TIER)}>Tier
