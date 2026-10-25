@@ -6,10 +6,8 @@ const stats = {
   created: 0,
 }
 
-// TODO: placeholder entries until there is a real changelog source
 const news = [
-  {date: "2026-10-25", title: "New home page", text: "A place to start from, with a quick way into the server creator."},
-  {date: "2026-10-20", title: "Better small screens", text: "The creator and navigation now stay usable on narrow viewports."},
+  {date: "2026-10-25", title: "Alpha 0.0.1", text: "We are now in alpha 0.0.1 and available at mc-server.blamedevs.com."},
 ]
 
 function Stat({label, value}: { label: string, value: number }) {
@@ -25,10 +23,7 @@ export function Home() {
   return (
     <div className="flex flex-col items-center gap-6 w-full max-w-3xl p-4 my-auto">
       <div className="mc-panel w-full flex flex-col sm:flex-row items-center justify-between gap-4 py-4 px-6 text-center sm:text-left">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl text-gray-200">Host your own Minecraft server</h1>
-          <p>Create a server in a minute and play with your friends.</p>
-        </div>
+        <p>Host a Minecraft server in a minute and play with your friends.</p>
         <Link className="mc-button whitespace-nowrap" to="/server-creator">Get started</Link>
       </div>
 
