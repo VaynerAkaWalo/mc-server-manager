@@ -24,7 +24,7 @@ export enum Tier {
   iron = "iron"
 }
 
-export type ServerStatus = "provisioning" | "running" | "stopped" | "expired"
+export type ServerStatus = "new" | "running" | "stopped" | "expired"
 
 export interface ServerResponse {
   id: string,
@@ -36,6 +36,11 @@ export interface ServerResponse {
   options: Opts,
   createdAt: string,
   expiresAt: string
+}
+
+export interface ServerCollection {
+  items: ServerResponse[],
+  nextCursor: string
 }
 
 export interface StatsResponse {
@@ -61,12 +66,13 @@ class ServerManager {
     return HTTPClient.post("/api/v1/servers", request)
   }
 
-  public listServers = async (): Promise<AxiosPromise<ServerResponse[]>> => {
-    return HTTPClient.get("/api/v1/servers")
+  public listServers = async (cursor?: string): Promise<AxiosPromise<ServerCollection>> => {
+    const query = new URLSearchParams(cursor ? {cursor} : {})
+    return HTTPClient.get(`/api/v1/servers?${query}`)
   }
 
   public getStats = async (): Promise<AxiosPromise<StatsResponse>> => {
-    return HTTPClient.get("/api/v1/servers/stats")
+    return HTTPClient.get("/api/v1/servers/stats?status=all")
   }
 }
 

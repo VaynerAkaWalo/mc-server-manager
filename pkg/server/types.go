@@ -8,10 +8,10 @@ import (
 type Status string
 
 const (
-	StatusProvisioning Status = "provisioning"
-	StatusRunning      Status = "running"
-	StatusStopped      Status = "stopped"
-	StatusExpired      Status = "expired"
+	StatusNew     Status = "new"
+	StatusRunning Status = "running"
+	StatusStopped Status = "stopped"
+	StatusExpired Status = "expired"
 )
 
 type Response struct {
@@ -32,4 +32,9 @@ type Request struct {
 	Tier       string            `json:"tier"`
 	Preset     string            `json:"preset,omitempty"`
 	Options    map[string]string `json:"options"`
+}
+
+type Collection struct {
+	Items      []Response `json:"items"`
+	NextCursor string     `json:"nextCursor"`
 }
