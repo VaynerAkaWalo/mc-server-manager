@@ -6,17 +6,19 @@ const news = [
   {date: "2026-10-25", title: "Alpha 0.0.1", text: "We are now in alpha 0.0.1 and available at mc-server.blamedevs.com."},
 ]
 
-function Stat({label, value}: { label: string, value: number }) {
+function Stat({label, value}: { label: string, value?: number }) {
   return (
     <div className="mc-panel flex-1 flex flex-col items-center py-4 px-6">
-      <span className="text-4xl text-gray-200">{value}</span>
+      {value === undefined
+        ? <span className="text-4xl h-10 w-16 my-0.5 rounded-sm bg-stone-600 motion-safe:animate-pulse" aria-label="Loading"/>
+        : <span className="text-4xl text-gray-200">{value}</span>}
       <span>{label}</span>
     </div>
   )
 }
 
 export function Home() {
-  const [stats, setStats] = useState<StatsResponse>({online: 0, created: 0})
+  const [stats, setStats] = useState<StatsResponse>()
 
   useEffect(() => {
     const loadStats = async () => {
@@ -24,7 +26,7 @@ export function Home() {
         const {data} = await ManagerClient.getStats()
         setStats(data)
       } catch {
-        // counters stay at zero when the manager is unreachable
+        setStats({online: 0, created: 0})
       }
     }
 
@@ -39,8 +41,8 @@ export function Home() {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 w-full">
-        <Stat label="Servers online" value={stats.online}/>
-        <Stat label="Servers created" value={stats.created}/>
+        <Stat label="Servers online" value={stats?.online}/>
+        <Stat label="Servers created" value={stats?.created}/>
       </div>
 
       <section className="mc-panel w-full p-4">
