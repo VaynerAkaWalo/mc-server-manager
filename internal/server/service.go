@@ -211,6 +211,12 @@ func (s *Service) ShutdownExpired() ([]string, error) {
 		return nil, err
 	}
 
+	// Provisioning inserts the record before deploying, so listing the cluster first means every listed resource already has its record.
+	activeServerResources, err := s.clusterService.GetActiveServers()
+	if err != nil {
+		return nil, err
+	}
+
 	activeRecords, err := s.store.ListMonitoredServers(context.TODO())
 	if err != nil {
 		return nil, err
@@ -218,11 +224,6 @@ func (s *Service) ShutdownExpired() ([]string, error) {
 	active := make(map[string]bool, len(activeRecords))
 	for _, record := range activeRecords {
 		active[record.Name] = true
-	}
-
-	activeServerResources, err := s.clusterService.GetActiveServers()
-	if err != nil {
-		return nil, err
 	}
 
 	serversExpired := make([]string, 0)

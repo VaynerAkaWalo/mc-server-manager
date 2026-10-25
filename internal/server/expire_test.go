@@ -15,9 +15,13 @@ type fakeCluster struct {
 	items     []unstructured.Unstructured
 	deleteErr error
 	deleted   map[string]types.UID
+	onList    func()
 }
 
 func (f *fakeCluster) GetActiveServers() (*unstructured.UnstructuredList, error) {
+	if f.onList != nil {
+		f.onList()
+	}
 	return &unstructured.UnstructuredList{Items: f.items}, nil
 }
 
@@ -95,5 +99,21 @@ func TestShutdownExpiredReportsFailedDeletes(t *testing.T) {
 	names, err := svc.ShutdownExpired()
 	if err == nil || len(names) != 0 {
 		t.Fatalf("names = %v, err = %v", names, err)
+	}
+}
+
+func TestShutdownExpiredKeepsServersProvisionedDuringCleanup(t *testing.T) {
+	db := &memoryStore{}
+	cl := &fakeCluster{items: []unstructured.Unstructured{serverResource("fresh-server")}, deleted: map[string]types.UID{}}
+	cl.onList = func() { db.records = append(db.records, namedRecord("fresh-server", "new")) }
+	svc := CreateServerService(cl, db, testVersions)
+
+	names, err := svc.ShutdownExpired()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(names) != 0 {
+		t.Fatalf("deleted %v", names)
 	}
 }
