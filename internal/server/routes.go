@@ -29,7 +29,6 @@ func (h *Handlers) RegisterRoutes(router *xhttp.Router) {
 	router.RegisterHandler("GET /api/v1/servers/stats", h.statsHandler)
 	router.RegisterHandler("GET /api/v1/servers/{id}", h.getServerHandler)
 	router.RegisterHandler("DELETE /api/v1/servers/{id}", h.deleteServerHandler)
-	router.RegisterHandler("DELETE /servers", h.shutdownExpiredServers)
 }
 
 func (h *Handlers) listServersHandler(w http.ResponseWriter, r *http.Request) error {
@@ -103,15 +102,6 @@ func (h *Handlers) provisionServer(w http.ResponseWriter, r *http.Request) error
 	}
 
 	return xhttp.WriteResponse(w, http.StatusCreated, res)
-}
-
-func (h *Handlers) shutdownExpiredServers(w http.ResponseWriter, r *http.Request) error {
-	results, err := h.serverService.shutdownExpiredServers()
-	if err != nil {
-		return internalFailure(w, r, "Failed to shut down expired servers", err)
-	}
-
-	return xhttp.WriteResponse(w, http.StatusOK, results)
 }
 
 func (h *Handlers) preFlightHandler(w http.ResponseWriter, r *http.Request) error {

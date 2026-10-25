@@ -7,7 +7,6 @@ import (
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/catalog"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/cluster"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/frontend"
-	"github.com/VaynerAkaWalo/mc-server-manager/internal/healthcheck"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/internalapi"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/server"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/store"
@@ -51,15 +50,13 @@ func main() {
 	serverService := server.CreateServerService(cluster.CreateClusterService(*clusterClient, *dynamicClient), serverStore)
 	serverHandlers := server.NewServerHandlers(serverService)
 
-	healthcheckHandlers := healthcheck.NewHealthcheckHandlers()
 	frontendHandlers := frontend.NewFrontendHandlers(os.DirFS("static"))
 
 	internalHandlers := internalapi.NewHandlers(serverStore.Ping, &serverService)
 
-	// The public /health stays until the probes in the deployments repo point at the internal listener.
 	publicServer := xhttp.Server{
 		Addr:     ":8080",
-		Handlers: []xhttp.RouteHandler{healthcheckHandlers, serverHandlers, catalog.NewCatalogHandlers(), frontendHandlers},
+		Handlers: []xhttp.RouteHandler{serverHandlers, catalog.NewCatalogHandlers(), frontendHandlers},
 	}
 	internalServer := xhttp.Server{
 		Addr:     ":8081",
