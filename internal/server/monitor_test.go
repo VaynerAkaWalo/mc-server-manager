@@ -15,7 +15,7 @@ func monitoredService(status string, ping pingFunc) (*Service, *memoryStore, sto
 	record := testRecord(time.Now().Add(time.Hour))
 	record.Status = status
 	db := &memoryStore{records: []store.ServerRecord{record}}
-	svc := CreateServerService(nil, db)
+	svc := CreateServerService(nil, db, testVersions)
 	svc.ping = ping
 
 	return &svc, db, record

@@ -6,10 +6,12 @@ import (
 	"net/http"
 )
 
-type Handlers struct{}
+type Handlers struct {
+	versions definition.VersionSource
+}
 
-func NewCatalogHandlers() *Handlers {
-	return &Handlers{}
+func NewCatalogHandlers(versions definition.VersionSource) *Handlers {
+	return &Handlers{versions: versions}
 }
 
 func (h *Handlers) RegisterRoutes(router *xhttp.Router) {
@@ -17,5 +19,5 @@ func (h *Handlers) RegisterRoutes(router *xhttp.Router) {
 }
 
 func (h *Handlers) catalogHandler(w http.ResponseWriter, r *http.Request) error {
-	return xhttp.WriteResponse(w, http.StatusOK, definition.BuildCatalog())
+	return xhttp.WriteResponse(w, http.StatusOK, definition.BuildCatalog(h.versions.Versions(r.Context())))
 }

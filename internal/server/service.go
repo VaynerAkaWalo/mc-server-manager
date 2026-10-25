@@ -46,14 +46,16 @@ type Service struct {
 	store          serverStore
 	players        *playerCache
 	ping           pingFunc
+	versions       definition.VersionSource
 }
 
-func CreateServerService(clusterService clusterService, store serverStore) Service {
+func CreateServerService(clusterService clusterService, store serverStore, versions definition.VersionSource) Service {
 	return Service{
 		clusterService: clusterService,
 		store:          store,
 		players:        newPlayerCache(),
 		ping:           mcping.Ping,
+		versions:       versions,
 	}
 }
 
@@ -86,7 +88,7 @@ func (s *Service) getStats(ctx context.Context, filter store.ServerFilter) (stat
 	return stats{Online: counts.Online, Created: counts.Created}, nil
 }
 
-func (s *Service) provisionServer(provisionRequest server.Request) (server.Response, error) {
+func (s *Service) provisionServer(ctx context.Context, provisionRequest server.Request) (server.Response, error) {
 	serverDefinition := definition.ServerDefinition{
 		Name:     provisionRequest.Name,
 		Options:  toOptions(provisionRequest.Options),
@@ -98,7 +100,7 @@ func (s *Service) provisionServer(provisionRequest server.Request) (server.Respo
 	// Translation mutates options, so preserve the requested definition.
 	translated := serverDefinition
 	translated.Options = maps.Clone(serverDefinition.Options)
-	serverSpec, err := definition.TranslateDefinition(context.TODO(), translated)
+	serverSpec, err := definition.TranslateDefinition(ctx, translated, s.versions)
 	if err != nil {
 		return server.Response{}, err
 	}

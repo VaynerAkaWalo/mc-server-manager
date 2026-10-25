@@ -96,7 +96,7 @@ func (h *Handlers) provisionServer(w http.ResponseWriter, r *http.Request) error
 		return problem.Write(w, http.StatusBadRequest, "The request body is not valid JSON for a server")
 	}
 
-	res, err := h.serverService.provisionServer(req)
+	res, err := h.serverService.provisionServer(r.Context(), req)
 	if err != nil {
 		return provisionFailure(w, r, err)
 	}
@@ -115,6 +115,9 @@ func provisionFailure(w http.ResponseWriter, r *http.Request, err error) error {
 		return problem.Write(w, http.StatusUnprocessableEntity, invalid.Error())
 	case errors.Is(err, ErrNameInUse):
 		return problem.Write(w, http.StatusConflict, ErrNameInUse.Error())
+	case errors.Is(err, definition.ErrVersionsUnavailable):
+		slog.ErrorContext(r.Context(), "Cannot validate game version: "+err.Error())
+		return problem.Write(w, http.StatusServiceUnavailable, "Game versions are not available right now, try again later")
 	}
 
 	return internalFailure(w, r, "Failed to provision server", err)
