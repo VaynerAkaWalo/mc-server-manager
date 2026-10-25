@@ -5,7 +5,8 @@ import {UpdateNotification} from "../App.tsx";
 
 function shutdownTime(server: ServerResponse) {
   const expiresAt = new Date(server.expiresAt).getTime()
-  if (!server.idleShutdownAt || !server.players || server.players.online > 0) {
+  const playersMayBeOnline = server.status === "running" && (!server.players || server.players.online > 0)
+  if (!server.idleShutdownAt || playersMayBeOnline) {
     return expiresAt
   }
 
@@ -29,18 +30,20 @@ function formatRemainingTime(shutdownAt: number) {
   return parts.filter(Boolean).join(" ")
 }
 
-const activeStatuses: ServerStatus[] = ["new", "running", "degraded"]
+const activeStatuses: ServerStatus[] = ["new", "running", "degraded", "expiring"]
 
 const statusDots: Partial<Record<ServerStatus, string>> = {
   new: "bg-starting motion-safe:animate-pulse",
   running: "bg-online",
-  degraded: "bg-warning"
+  degraded: "bg-warning",
+  expiring: "bg-warning"
 }
 
 const statusLabels: Record<ServerStatus, string> = {
   new: "Starting",
   running: "Online",
   degraded: "Not responding",
+  expiring: "Shutting down soon",
   stopped: "Stopped",
   expired: "Expired"
 }

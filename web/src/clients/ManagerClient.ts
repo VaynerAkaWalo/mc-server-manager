@@ -32,7 +32,7 @@ export interface CatalogResponse {
   versions: Record<string, { latestRelease: string, items: GameVersion[] }>
 }
 
-export type ServerStatus = "new" | "running" | "degraded" | "stopped" | "expired"
+export type ServerStatus = "new" | "running" | "degraded" | "expiring" | "stopped" | "expired"
 
 export interface ServerResponse {
   id: string,

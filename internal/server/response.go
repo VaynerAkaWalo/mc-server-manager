@@ -17,7 +17,7 @@ func newResponse(record store.ServerRecord, status server.Status) (server.Respon
 
 	var idleShutdownAt *time.Time
 	if record.LastActiveAt != nil {
-		shutdownAt := record.LastActiveAt.Add(idleTimeout)
+		shutdownAt := record.LastActiveAt.Add(idleTimeouts.Expired)
 		idleShutdownAt = &shutdownAt
 	}
 

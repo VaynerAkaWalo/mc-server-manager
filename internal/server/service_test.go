@@ -85,24 +85,23 @@ func (s *memoryStore) MarkActive(_ context.Context, id uuid.UUID) error {
 			s.records[i].LastActiveAt = &now
 		}
 	}
+	s.setStatus(id, []string{"expiring"}, "running")
 	return nil
 }
 
-func (s *memoryStore) ListIdleServers(_ context.Context, idleFor time.Duration, startupFor time.Duration) ([]store.ServerRecord, error) {
-	idle := make([]store.ServerRecord, 0)
-	for _, record := range s.records {
-		active := record.Status == "running" || record.Status == "degraded"
-		idleRunning := active && record.LastActiveAt != nil && time.Since(*record.LastActiveAt) >= idleFor
-		stuckStarting := record.Status == "new" && time.Since(record.CreatedAt) >= startupFor
-		if idleRunning || stuckStarting {
-			idle = append(idle, record)
+func (s *memoryStore) MarkIdle(_ context.Context, timeouts store.IdleTimeouts) error {
+	for i := range s.records {
+		record := &s.records[i]
+		switch {
+		case record.Status == "new" && time.Since(record.CreatedAt) >= timeouts.Startup:
+			record.Status = "expired"
+		case !slices.Contains([]string{"running", "degraded", "expiring"}, record.Status) || record.LastActiveAt == nil:
+		case time.Since(*record.LastActiveAt) >= timeouts.Expired:
+			record.Status = "expired"
+		case time.Since(*record.LastActiveAt) >= timeouts.Expiring:
+			record.Status = "expiring"
 		}
 	}
-	return idle, nil
-}
-
-func (s *memoryStore) ExpireServer(_ context.Context, id uuid.UUID) error {
-	s.setStatus(id, []string{"new", "running", "degraded"}, "expired")
 	return nil
 }
 
@@ -122,6 +121,11 @@ func (s *memoryStore) MarkStopped(_ context.Context, id uuid.UUID) error {
 
 func (s *memoryStore) MarkExpired(context.Context) error {
 	s.expireRuns++
+	for i := range s.records {
+		if isActive(s.records[i].Status) && !s.records[i].ExpiresAt.After(time.Now()) {
+			s.records[i].Status = "expired"
+		}
+	}
 	return nil
 }
 func (s *memoryStore) CountServers(context.Context, store.ServerFilter) (store.ServerCounts, error) {
@@ -204,7 +208,7 @@ func TestDeleteServerStopsClusterResourceAndMarksRecord(t *testing.T) {
 	record := testRecord(time.Now().Add(time.Hour))
 	record.Status = "running"
 	db := &memoryStore{records: []store.ServerRecord{record}}
-	cl := &fakeCluster{items: []unstructured.Unstructured{serverResource("my-server", time.Minute)}, deleted: map[string]types.UID{}}
+	cl := &fakeCluster{items: []unstructured.Unstructured{serverResource("my-server")}, deleted: map[string]types.UID{}}
 	svc := CreateServerService(cl, db, testVersions)
 
 	if err := svc.deleteServer(context.Background(), record.ID); err != nil {
@@ -226,7 +230,7 @@ func TestDeleteServerKeepsRecordWhenClusterFails(t *testing.T) {
 	record := testRecord(time.Now().Add(time.Hour))
 	record.Status = "running"
 	db := &memoryStore{records: []store.ServerRecord{record}}
-	cl := &fakeCluster{items: []unstructured.Unstructured{serverResource("my-server", time.Minute)}, deleteErr: errors.New("forbidden")}
+	cl := &fakeCluster{items: []unstructured.Unstructured{serverResource("my-server")}, deleteErr: errors.New("forbidden")}
 
 	svc := CreateServerService(cl, db, testVersions)
 	if err := svc.deleteServer(context.Background(), record.ID); err == nil {

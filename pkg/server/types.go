@@ -11,6 +11,7 @@ const (
 	StatusNew      Status = "new"
 	StatusRunning  Status = "running"
 	StatusDegraded Status = "degraded"
+	StatusExpiring Status = "expiring"
 	StatusStopped  Status = "stopped"
 	StatusExpired  Status = "expired"
 )

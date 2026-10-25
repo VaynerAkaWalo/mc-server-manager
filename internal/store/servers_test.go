@@ -359,91 +359,74 @@ func TestMonitoringTransitions(t *testing.T) {
 	}
 }
 
-func TestIdleServers(t *testing.T) {
+func TestMarkIdle(t *testing.T) {
 	s := connectTestStore(t)
 	ctx := context.Background()
+	timeouts := IdleTimeouts{Expiring: 15 * time.Minute, Expired: 30 * time.Minute, Startup: time.Hour}
 
-	create := func(name string) ServerRecord {
+	create := func(name string, status string, idleFor string, age string) uuid.UUID {
 		t.Helper()
 		record, err := s.CreateServer(ctx, NewServer{Name: name, Hostname: name, Definition: map[string]any{}, ExpiresAt: time.Now().Add(time.Hour)})
 		if err != nil {
 			t.Fatal(err)
 		}
 		t.Cleanup(func() { _ = s.DeleteServer(ctx, record.ID) })
-		if err := s.MarkRunning(ctx, record.ID); err != nil {
+		if _, err := s.pool.Exec(ctx,
+			`UPDATE mc_servers SET status = $1, last_active_at = now() - $2::interval, created_at = now() - $3::interval WHERE id = $4`,
+			status, idleFor, age, record.ID,
+		); err != nil {
 			t.Fatal(err)
 		}
-		return record
+		return record.ID
 	}
-	isIdle := func(id uuid.UUID) bool {
-		t.Helper()
-		records, err := s.ListIdleServers(ctx, 30*time.Minute, time.Hour)
+
+	cases := map[uuid.UUID]string{
+		create("idle-active", "running", "1 minute", "2 hours"):        "running",
+		create("idle-expiring", "running", "16 minutes", "2 hours"):    "expiring",
+		create("idle-degraded", "degraded", "16 minutes", "2 hours"):   "expiring",
+		create("idle-expired", "expiring", "31 minutes", "2 hours"):    "expired",
+		create("idle-skipped", "running", "31 minutes", "2 hours"):     "expired",
+		create("idle-starting", "new", "0 minutes", "10 minutes"):      "new",
+		create("idle-never-started", "new", "0 minutes", "61 minutes"): "expired",
+		create("idle-stopped", "stopped", "2 hours", "2 hours"):        "stopped",
+	}
+
+	if err := s.MarkIdle(ctx, timeouts); err != nil {
+		t.Fatal(err)
+	}
+	for id, want := range cases {
+		record, err := s.GetServer(ctx, id)
 		if err != nil {
 			t.Fatal(err)
 		}
-		return slices.ContainsFunc(records, func(record ServerRecord) bool { return record.ID == id })
+		if record.Status != want {
+			t.Errorf("%s: status = %s, want %s", record.Name, record.Status, want)
+		}
 	}
+}
 
-	record := create("idle-server")
-	if isIdle(record.ID) {
-		t.Fatal("a server that just started should not be idle")
-	}
+func TestMarkActiveRevivesExpiringServers(t *testing.T) {
+	s := connectTestStore(t)
+	ctx := context.Background()
 
-	if _, err := s.pool.Exec(ctx, "UPDATE mc_servers SET last_active_at = now() - interval '31 minutes' WHERE id = $1", record.ID); err != nil {
+	record, err := s.CreateServer(ctx, NewServer{Name: "revived-server", Hostname: "revived-server", Definition: map[string]any{}, ExpiresAt: time.Now().Add(time.Hour)})
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.MarkRunning(ctx, record.ID); err != nil {
+	t.Cleanup(func() { _ = s.DeleteServer(ctx, record.ID) })
+	if _, err := s.pool.Exec(ctx, "UPDATE mc_servers SET status = 'expiring' WHERE id = $1", record.ID); err != nil {
 		t.Fatal(err)
-	}
-	if !isIdle(record.ID) {
-		t.Fatal("a server without players for 31 minutes should be idle")
 	}
 
 	if err := s.MarkActive(ctx, record.ID); err != nil {
 		t.Fatal(err)
 	}
-	if isIdle(record.ID) {
-		t.Fatal("a server with players should not be idle")
-	}
 
-	if err := s.ExpireServer(ctx, record.ID); err != nil {
-		t.Fatal(err)
-	}
-	expired, err := s.GetServer(ctx, record.ID)
+	revived, err := s.GetServer(ctx, record.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if expired.Status != "expired" || expired.LastActiveAt == nil {
-		t.Fatalf("server = %+v", expired)
-	}
-}
-
-func TestServersThatNeverStartAreIdle(t *testing.T) {
-	s := connectTestStore(t)
-	ctx := context.Background()
-
-	record, err := s.CreateServer(ctx, NewServer{Name: "stuck-server", Hostname: "stuck-server", Definition: map[string]any{}, ExpiresAt: time.Now().Add(time.Hour)})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = s.DeleteServer(ctx, record.ID) })
-	isIdle := func() bool {
-		t.Helper()
-		records, err := s.ListIdleServers(ctx, 30*time.Minute, time.Hour)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return slices.ContainsFunc(records, func(idle ServerRecord) bool { return idle.ID == record.ID })
-	}
-
-	if isIdle() {
-		t.Fatal("a server that is still starting should not be idle")
-	}
-
-	if _, err := s.pool.Exec(ctx, "UPDATE mc_servers SET created_at = now() - interval '61 minutes' WHERE id = $1", record.ID); err != nil {
-		t.Fatal(err)
-	}
-	if !isIdle() {
-		t.Fatal("a server that has not started within an hour should be idle")
+	if revived.Status != "running" || revived.LastActiveAt == nil {
+		t.Fatalf("server = %+v", revived)
 	}
 }
