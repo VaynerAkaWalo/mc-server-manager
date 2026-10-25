@@ -42,8 +42,6 @@ func NewSource() *Source {
 	}
 }
 
-// Versions serves the last known list while a refresh runs in the background.
-// Only the very first call waits for the upstream, and it stays empty until one succeeds.
 func (s *Source) Versions(ctx context.Context) definition.VersionSet {
 	s.mu.Lock()
 	cached := s.cached

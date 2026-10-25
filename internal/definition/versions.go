@@ -25,7 +25,6 @@ type TypeVersions struct {
 	Items         []Version `json:"items"`
 }
 
-// VersionSet maps a server type to the game versions it can run.
 type VersionSet map[string]TypeVersions
 
 type VersionSource interface {
