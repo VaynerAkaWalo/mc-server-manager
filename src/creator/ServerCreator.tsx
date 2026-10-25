@@ -290,7 +290,7 @@ export function ServerCreator() {
       setNotificationMessage("Failed to create server with unknown error " + err)
     }).then(() => {
       setNotificationMessage("Your server will be started shortly")
-      navigate("/servers")
+      navigate("/my-servers")
     })
   }
 
@@ -314,7 +314,7 @@ export function ServerCreator() {
         {activeTab === CreatorTab.TIER && tierSettings()}
       </div>
       <div className={"flex items-center justify-evenly gap-2 w-full px-4 pb-6"}>
-        <button className={"mc-button flex-1 px-2 whitespace-nowrap"} onClick={() => navigate("/")}>Cancel</button>
+        <button className={"mc-button flex-1 px-2 whitespace-nowrap"} onClick={() => navigate("/my-servers")}>Cancel</button>
         <button className={"mc-button flex-1 px-2 whitespace-nowrap"} onClick={createServer}>Create server</button>
       </div>
     </div>
