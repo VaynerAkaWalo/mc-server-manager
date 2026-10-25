@@ -28,7 +28,9 @@ export interface ServerResponse {
   name: string,
   IP: string,
   remainingTime: string,
-  status: string
+  status: string,
+  version?: string,
+  maxPlayers?: number
 }
 
 export interface StatsResponse {
