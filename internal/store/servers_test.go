@@ -100,3 +100,42 @@ func TestCountServers(t *testing.T) {
 		t.Fatalf("expected one more online and two more created, got before %+v after %+v", before, after)
 	}
 }
+
+func TestListServers(t *testing.T) {
+	s := connectTestStore(t)
+	ctx := context.Background()
+
+	create := func(name string, expiresIn time.Duration) ServerRecord {
+		t.Helper()
+		record, err := s.CreateServer(ctx, NewServer{Name: name, Hostname: name, Definition: map[string]any{}, ExpiresAt: time.Now().Add(expiresIn)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = s.DeleteServer(ctx, record.ID) })
+		return record
+	}
+
+	active := create("list-active", time.Hour)
+	oldRun := create("list-reused", -2*time.Hour)
+	latestRun := create("list-reused", -time.Hour)
+	gone := create("list-gone", -time.Hour)
+
+	records, err := s.ListServers(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	listed := map[string]bool{}
+	for _, record := range records {
+		listed[record.ID.String()] = true
+	}
+	if !listed[active.ID.String()] || listed[latestRun.ID.String()] || listed[oldRun.ID.String()] || listed[gone.ID.String()] {
+		t.Fatalf("unexpected records: %v", listed)
+	}
+
+	for i := 1; i < len(records); i++ {
+		if records[i-1].CreatedAt.Before(records[i].CreatedAt) {
+			t.Fatalf("records are not newest first")
+		}
+	}
+}

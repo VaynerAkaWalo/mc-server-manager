@@ -73,3 +73,30 @@ func (s *Store) CountServers(ctx context.Context) (ServerCounts, error) {
 
 	return counts, nil
 }
+
+func (s *Store) ListServers(ctx context.Context) ([]ServerRecord, error) {
+	rows, err := s.pool.Query(ctx,
+		`SELECT id, name, hostname, definition, created_at, expires_at
+		 FROM mc_servers
+		 WHERE expires_at > now()
+		 ORDER BY created_at DESC, id DESC`,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list servers: %w", err)
+	}
+	defer rows.Close()
+
+	records := make([]ServerRecord, 0)
+	for rows.Next() {
+		var record ServerRecord
+		if err := rows.Scan(&record.ID, &record.Name, &record.Hostname, &record.Definition, &record.CreatedAt, &record.ExpiresAt); err != nil {
+			return nil, fmt.Errorf("scan server: %w", err)
+		}
+		records = append(records, record)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list servers: %w", err)
+	}
+
+	return records, nil
+}

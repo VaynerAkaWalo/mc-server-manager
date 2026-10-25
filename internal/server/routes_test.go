@@ -26,7 +26,7 @@ func TestProvisionFailure(t *testing.T) {
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			req := httptest.NewRequest(http.MethodPost, "/servers", nil)
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/servers", nil)
 
 			if err := provisionFailure(rec, req, tc.err); err != nil {
 				t.Fatal(err)
@@ -48,7 +48,7 @@ func TestProvisionFailure(t *testing.T) {
 func TestProvisionServerRejectsMalformedBody(t *testing.T) {
 	h := NewServerHandlers(Service{})
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/servers", strings.NewReader("{nope"))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/servers", strings.NewReader("{nope"))
 
 	if err := h.provisionServer(rec, req); err != nil {
 		t.Fatal(err)
@@ -65,12 +65,12 @@ func TestProvisionServerRejectsMalformedBody(t *testing.T) {
 
 func TestProvisionServerRejectsTrailingData(t *testing.T) {
 	h := NewServerHandlers(Service{})
-	valid := `{"name":"my-server","duration":120000,"tier":"wooden"}`
+	valid := `{"name":"my-server","durationMs":120000,"tier":"wooden"}`
 
 	for _, suffix := range []string{" garbage", "}", "]", valid} {
 		t.Run(suffix, func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			req := httptest.NewRequest(http.MethodPost, "/servers", strings.NewReader(valid+suffix))
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/servers", strings.NewReader(valid+suffix))
 
 			if err := h.provisionServer(rec, req); err != nil {
 				t.Fatal(err)
