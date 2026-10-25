@@ -13,8 +13,14 @@ function App() {
   const [showNotification, setShowNotification] = useState<boolean>(false)
 
   const theme = createTheme({
+    palette: {
+      mode: "dark",
+      primary: {main: "#c5d9ae"},
+      text: {primary: "#edf0e9", secondary: "#a5ada3"},
+    },
     typography: {
-      fontFamily: "Minecraft, serif",
+      fontFamily: "system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif",
+      fontSize: 13,
     }
   })
 
@@ -35,7 +41,7 @@ function App() {
   return (
     <>
       <ThemeProvider theme={theme}>
-        <div className="h-screen flex flex-col text-gray-700">
+        <div className="h-screen flex flex-col">
           <Header/>
           <div className="flex flex-1 min-h-0 justify-center items-center-safe overflow-y-auto">
             <Outlet context={{ setNotificationMessage } satisfies NotificationContext } />

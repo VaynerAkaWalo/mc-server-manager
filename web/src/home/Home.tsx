@@ -9,11 +9,11 @@ const news = [
 
 function Stat({label, value}: { label: string, value?: number }) {
   return (
-    <div className="mc-panel flex-1 flex flex-col items-center py-4 px-6">
+    <div className="mc-panel flex-1 flex flex-col items-center gap-1 py-4 px-6">
       {value === undefined
-        ? <span className="text-4xl text-gray-200 motion-safe:animate-pulse" aria-label="Loading">...</span>
-        : <span className="text-4xl text-gray-200">{value}</span>}
-      <span>{label}</span>
+        ? <span className="font-pixel text-3xl motion-safe:animate-pulse" aria-label="Loading">...</span>
+        : <span className="font-pixel text-3xl">{value}</span>}
+      <span className="text-sm text-content-muted">{label}</span>
     </div>
   )
 }
@@ -37,7 +37,7 @@ export function Home() {
   return (
     <div className="flex flex-col items-center gap-6 w-full max-w-3xl p-4 my-auto">
       <div className="mc-panel w-full flex flex-col items-center gap-6 py-8 px-6 text-center">
-        <p className="text-3xl">Host a server in minutes and play with your friends</p>
+        <h1 className="font-pixel text-2xl sm:text-3xl text-balance">Host a server in minutes and play with your friends</h1>
         <Link className="mc-button whitespace-nowrap" to="/server-creator">Get started</Link>
       </div>
 
@@ -46,14 +46,16 @@ export function Home() {
         <Stat label="Servers created" value={stats?.created}/>
       </div>
 
-      <section className="mc-panel w-full p-4">
-        <h2 className="text-xl text-gray-200 mb-3">What's new</h2>
-        <ul className="flex flex-col gap-3">
+      <section className="mc-panel w-full p-6">
+        <h2 className="font-pixel text-xl mb-2">What's new</h2>
+        <ul>
           {news.map(item => (
-            <li key={item.title}>
-              <span className="text-sm">{item.date}</span>
-              <h3 className="text-gray-200">{item.title}</h3>
-              <p>{item.text}</p>
+            <li key={item.title} className="py-3 border-t border-edge first:border-t-0">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-4">
+                <h3 className="font-pixel">{item.title}</h3>
+                <span className="text-xs text-content-muted">{item.date}</span>
+              </div>
+              <p className="text-sm text-content-muted">{item.text}</p>
             </li>
           ))}
         </ul>

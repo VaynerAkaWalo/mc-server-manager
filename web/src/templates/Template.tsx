@@ -17,19 +17,19 @@ export function Template({name, description, preset, opts}: template) {
   }
 
   return (
-    <div className="flex flex-col sm:flex-row items-center gap-4 w-full mc-panel p-4 sm:p-8">
-      <div className="flex h-24 sm:h-32 shrink-0 items-center justify-center">
-        <img className="max-h-full" src={wordUrl} alt="placeholder"/>
+    <li className="flex flex-col sm:flex-row items-center gap-4 w-full mc-panel p-4 sm:p-6">
+      <div className="flex size-20 shrink-0 items-center justify-center">
+        <img className="max-h-full" src={wordUrl} alt=""/>
       </div>
 
-      <div className="flex flex-col flex-1 min-w-0">
-          <span className="font-bold text-xl mb-4">{name}</span>
-          <span>{description}</span>
+      <div className="flex flex-col flex-1 min-w-0 gap-1 text-center sm:text-left">
+        <h2 className="font-pixel text-lg">{name}</h2>
+        <p className="text-sm text-content-muted">{description}</p>
       </div>
 
       <div className="flex shrink-0 justify-center">
         <button className="mc-button" onClick={handleCreateServerFromTemplate}>Select</button>
       </div>
-    </div>
+    </li>
   )
 }

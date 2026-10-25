@@ -49,16 +49,72 @@
   }
 
   .mc-input {
-    @apply bg-inset border border-edge p-1 focus:outline-none focus:border-action-content;
+    @apply bg-inset border border-edge px-3 py-1.5 focus:outline-none focus:border-action-content;
   }
 
   .mc-button {
     @apply bg-action hover:bg-action-hover border-b-3 border-action-shade text-white font-pixel py-2 px-4 text-center;
   }
 
+  .mc-button-secondary {
+    @apply bg-surface-hover hover:bg-edge border-b-3 border-inset text-content font-pixel py-2 px-4 text-center;
+  }
+
+  .mc-label {
+    @apply mb-1 text-xs text-content-muted;
+  }
+
   .mc-tab {
-    @apply hover:bg-surface-hover;
+    @apply font-pixel text-content-muted hover:text-content border-b-2 border-transparent -mb-px;
     padding: 10px clamp(8px, 2vw, 32px);
+  }
+
+  .mc-tab.active {
+    @apply text-content border-action-content;
+  }
+
+  .mc-select__control {
+    @apply bg-inset! border-edge! rounded-none! min-h-0! shadow-none!;
+  }
+
+  .mc-select__control--is-focused {
+    @apply border-action-content!;
+  }
+
+  .mc-select__single-value, .mc-select__input-container {
+    @apply text-content!;
+  }
+
+  .mc-select__placeholder, .mc-select__indicator {
+    @apply text-content-muted!;
+  }
+
+  .mc-select__indicator-separator {
+    @apply bg-edge!;
+  }
+
+  .mc-select__control--is-disabled {
+    @apply opacity-60 cursor-not-allowed;
+  }
+
+  .mc-select__single-value--is-disabled, .mc-select__control--is-disabled .mc-select__indicator {
+    @apply text-content-muted!;
+  }
+
+  .mc-select__menu {
+    @apply bg-surface! border border-edge-strong rounded-none! shadow-lg!;
+  }
+
+  .mc-select__option {
+    @apply bg-transparent! text-content!;
+  }
+
+  .mc-select__option--is-focused {
+    @apply bg-surface-hover!;
+  }
+
+  .mc-select__option--is-selected {
+    @apply text-action-content!;
   }
 
   .mc-nav-link {
