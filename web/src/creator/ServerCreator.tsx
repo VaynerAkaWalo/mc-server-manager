@@ -150,7 +150,7 @@ export function ServerCreator() {
             <FormControlLabel sx={{margin: 0, gap: 0.5}}
                               control={<Checkbox size="small" sx={{padding: 0}} checked={showSnapshots}
                                                  disabled={isTemplated()} onChange={updateShowSnapshots}/>}
-                              label="Show snapshots"/>
+                              label="Snapshots"/>
           </div>
           <Select inputId="server-version" className={"text-zinc-800"} options={versionOptions}
                   placeholder={"Select a version"} isDisabled={isTemplated()}
