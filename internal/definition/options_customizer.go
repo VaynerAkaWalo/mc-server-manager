@@ -6,22 +6,31 @@ import (
 	"slices"
 )
 
-type optionValidator func(value string) bool
+type optionSpec struct {
+	valid  func(value string) bool
+	values []string
+}
 
 var freeText = regexp.MustCompile(`^[\p{L}\p{N} _.,:'!?-]*$`).MatchString
 var identifierList = regexp.MustCompile(`^[a-zA-Z0-9_.:, -]*$`).MatchString
 
-var serverTypes = []string{"VANILLA", "PAPER", "FABRIC", "FORGE", "NEOFORGE", "QUILT"}
+func oneOf(values ...string) optionSpec {
+	return optionSpec{valid: func(value string) bool { return slices.Contains(values, value) }, values: values}
+}
 
-var userSettableOpts = map[Option]optionValidator{
-	VERSION:       identifierList,
-	ONLINE_MODE:   identifierList,
-	TYPE:          isServerType,
-	MOTD:          freeText,
-	OPS:           identifierList,
-	MAX_PLAYERS:   identifierList,
-	DIFFICULTY:    identifierList,
-	VIEW_DISTANCE: identifierList,
+func text(valid func(string) bool) optionSpec {
+	return optionSpec{valid: valid}
+}
+
+var userSettableOpts = map[Option]optionSpec{
+	VERSION:       text(identifierList),
+	ONLINE_MODE:   oneOf("true", "false"),
+	TYPE:          oneOf("VANILLA", "PAPER", "FABRIC", "FORGE", "NEOFORGE", "QUILT"),
+	MOTD:          text(freeText),
+	OPS:           text(identifierList),
+	MAX_PLAYERS:   text(identifierList),
+	DIFFICULTY:    oneOf("peaceful", "easy", "normal", "hard"),
+	VIEW_DISTANCE: text(identifierList),
 }
 
 func customizeOptions(ctx context.Context, definition ServerDefinition) (ServerDefinition, error) {
@@ -30,21 +39,17 @@ func customizeOptions(ctx context.Context, definition ServerDefinition) (ServerD
 	}
 
 	for key, value := range definition.Options {
-		isValid, settable := userSettableOpts[key]
+		spec, settable := userSettableOpts[key]
 		if !settable {
 			return definition, invalidf("option %s cannot be set", key)
 		}
 
-		if !isValid(value) {
+		if !spec.valid(value) {
 			return definition, invalidf("option %s has an unsupported value", key)
 		}
 	}
 
 	return definition, nil
-}
-
-func isServerType(value string) bool {
-	return slices.Contains(serverTypes, value)
 }
 
 func UserOptions(options map[Option]string) map[string]string {

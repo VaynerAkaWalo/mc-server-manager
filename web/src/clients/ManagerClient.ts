@@ -1,5 +1,5 @@
 import {HTTPClient} from "./Client.ts";
-import {AxiosPromise, isAxiosError} from "axios";
+import {AxiosPromise, AxiosResponse, isAxiosError} from "axios";
 
 export interface CreateServerRequest {
   name: string,
@@ -19,9 +19,13 @@ export interface Opts {
   OPS?: string
 }
 
-export enum Tier {
-  wooden = "wooden",
-  iron = "iron"
+export type Tier = string
+
+export interface CatalogResponse {
+  tiers: { id: Tier, name: string, description: string, default: boolean }[],
+  presets: { id: string, name: string, description: string, options: Opts }[],
+  options: { id: string, values?: string[] }[],
+  durationMs: { min: number, max: number }
 }
 
 export type ServerStatus = "new" | "running" | "stopped" | "expired"
@@ -69,6 +73,10 @@ class ServerManager {
   public listServers = async (cursor?: string): Promise<AxiosPromise<ServerCollection>> => {
     const query = new URLSearchParams(cursor ? {cursor} : {})
     return HTTPClient.get(`/api/v1/servers?${query}`)
+  }
+
+  public getCatalog = async (): Promise<AxiosResponse<CatalogResponse>> => {
+    return HTTPClient.get("/api/v1/catalog")
   }
 
   public getStats = async (): Promise<AxiosPromise<StatsResponse>> => {

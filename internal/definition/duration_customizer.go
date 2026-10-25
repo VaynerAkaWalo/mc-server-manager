@@ -5,10 +5,13 @@ import (
 	"time"
 )
 
-const MaxServerDuration = 14 * 24 * time.Hour
+const (
+	MinServerDuration = 2 * time.Minute
+	MaxServerDuration = 14 * 24 * time.Hour
+)
 
 func customizeDuration(ctx context.Context, definition ServerDefinition) (ServerDefinition, error) {
-	if definition.Duration.Minutes() < 2 {
+	if definition.Duration < MinServerDuration {
 		return definition, invalidf("duration cannot be less than 2 minutes")
 	}
 
