@@ -22,7 +22,7 @@ func (h *Handlers) RegisterRoutes(router *xhttp.Router) {
 	router.RegisterHandler("GET /servers", h.listServersHandler)
 	router.RegisterHandler("POST /servers", h.provisionServer)
 	router.RegisterHandler("DELETE /servers", h.shutdownExpiredServers)
-	router.RegisterHandler("GET /stats", h.statsHandler)
+	router.RegisterHandler("GET /servers/stats", h.statsHandler)
 }
 
 func (h *Handlers) listServersHandler(w http.ResponseWriter, r *http.Request) error {
