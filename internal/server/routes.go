@@ -3,11 +3,11 @@ package server
 import (
 	"encoding/json"
 	"errors"
-	"io"
 	"github.com/VaynerAkaWalo/go-toolkit/xhttp"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/definition"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/problem"
 	"github.com/VaynerAkaWalo/mc-server-manager/pkg/server"
+	"io"
 	"log/slog"
 	"net/http"
 )
