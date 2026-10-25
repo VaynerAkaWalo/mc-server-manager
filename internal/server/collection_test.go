@@ -68,7 +68,7 @@ func TestCollectionResponse(t *testing.T) {
 	first.Status = "new"
 	second := first
 	second.ID = uuid.New()
-	svc := CreateServerService(nil, &memoryStore{records: []store.ServerRecord{first, second}})
+	svc := CreateServerService(nil, &memoryStore{records: []store.ServerRecord{first, second}}, testVersions)
 	query, _ := parseCollectionQuery(url.Values{"limit": {"1"}})
 	page, err := svc.listServers(context.Background(), query)
 	if err != nil {
@@ -78,7 +78,7 @@ func TestCollectionResponse(t *testing.T) {
 		t.Fatalf("page = %+v", page)
 	}
 
-	svc = CreateServerService(nil, &memoryStore{})
+	svc = CreateServerService(nil, &memoryStore{}, testVersions)
 	page, err = svc.listServers(context.Background(), query)
 	if err != nil || page.Items == nil || page.NextCursor != "" {
 		t.Fatalf("empty page = %+v, %v", page, err)

@@ -18,9 +18,10 @@ func TestProvisionFailure(t *testing.T) {
 		err    error
 		status int
 	}{
-		"invalid definition": {definition.InvalidDefinitionError{Message: "tier gold is not available"}, http.StatusUnprocessableEntity},
-		"name in use":        {fmt.Errorf("wrapped: %w", ErrNameInUse), http.StatusConflict},
-		"unexpected":         {errors.New("pq: password authentication failed for user admin"), http.StatusInternalServerError},
+		"invalid definition":   {definition.InvalidDefinitionError{Message: "tier gold is not available"}, http.StatusUnprocessableEntity},
+		"name in use":          {fmt.Errorf("wrapped: %w", ErrNameInUse), http.StatusConflict},
+		"versions unavailable": {fmt.Errorf("wrapped: %w", definition.ErrVersionsUnavailable), http.StatusServiceUnavailable},
+		"unexpected":           {errors.New("pq: password authentication failed for user admin"), http.StatusInternalServerError},
 	}
 
 	for name, tc := range cases {
