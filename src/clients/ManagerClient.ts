@@ -31,6 +31,11 @@ export interface ServerResponse {
   status: string
 }
 
+export interface StatsResponse {
+  online: number,
+  created: number
+}
+
 class ServerManager {
   public createServer = (request: CreateServerRequest): Promise<AxiosPromise<ServerResponse>> => {
     return HTTPClient.post("/servers", request)
@@ -38,6 +43,10 @@ class ServerManager {
 
   public listServers = async (): Promise<AxiosPromise<ServerResponse[]>> => {
     return HTTPClient.get("/servers")
+  }
+
+  public getStats = async (): Promise<AxiosPromise<StatsResponse>> => {
+    return HTTPClient.get("/servers/stats")
   }
 }
 
