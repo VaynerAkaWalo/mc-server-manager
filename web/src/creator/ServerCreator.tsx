@@ -231,21 +231,27 @@ export function ServerCreator() {
   return (
     <div className="mc-modal">
       <div className="flex flex-row items-center justify-between gap-4 px-6 pt-6">
-        <h2 className="font-pixel text-2xl">{showAdvanced ? "Advanced" : "New server"}</h2>
-        <button className="mc-button-secondary py-1 text-sm" onClick={() => setShowAdvanced(!showAdvanced)}>
-          {showAdvanced ? "Back" : "Advanced"}
+        <h2 className="font-pixel text-2xl grid">
+          <span className={`[grid-area:1/1] ${showAdvanced ? "invisible" : ""}`} aria-hidden={showAdvanced}>New server</span>
+          <span className={`[grid-area:1/1] ${showAdvanced ? "" : "invisible"}`} aria-hidden={!showAdvanced}>Advanced</span>
+        </h2>
+        <button className="mc-button-secondary grid py-1 text-sm" onClick={() => setShowAdvanced(advanced => !advanced)}>
+          <span className={`[grid-area:1/1] ${showAdvanced ? "invisible" : ""}`}>Advanced</span>
+          <span className={`[grid-area:1/1] ${showAdvanced ? "" : "invisible"}`}>Back</span>
         </button>
       </div>
 
       {/* Both views share one grid cell so the modal keeps the height of the taller one when switching. */}
       <div className="grid flex-1 p-6">
-        <div className={`flex flex-col gap-5 [grid-area:1/1] ${showAdvanced ? "invisible" : ""}`} inert={showAdvanced}>
+        <div className={`flex flex-col gap-5 [grid-area:1/1] ${showAdvanced ? "opacity-0" : ""}`}
+             inert={showAdvanced} aria-hidden={showAdvanced}>
           {basicSettings()}
           {tierSettings()}
           <p className="text-sm text-content-muted">The server shuts down after 30 minutes without players.</p>
         </div>
 
-        <div className={`flex flex-col gap-4 [grid-area:1/1] ${showAdvanced ? "" : "invisible"}`} inert={!showAdvanced}>
+        <div className={`flex flex-col gap-4 [grid-area:1/1] ${showAdvanced ? "" : "opacity-0"}`}
+             inert={!showAdvanced} aria-hidden={!showAdvanced}>
           {advancedSettings()}
         </div>
       </div>
