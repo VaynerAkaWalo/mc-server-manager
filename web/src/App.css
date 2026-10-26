@@ -4,7 +4,7 @@
   font-family: Minecraft;
   font-style: normal;
   font-weight: 200 700;
-  font-display: swap;
+  font-display: block;
   src: url("/fonts/Minecraft.otf") format("opentype");
 }
 
