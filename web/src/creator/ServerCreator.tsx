@@ -49,6 +49,7 @@ export function ServerCreator() {
   const navigate = useNavigate()
   const [catalog, setCatalog] = useState<CatalogResponse | null>(null)
   const [showSnapshots, setShowSnapshots] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(false)
 
   useEffect(() => {
     ManagerClient.getCatalog().then(({data}) => {
@@ -142,31 +143,6 @@ export function ServerCreator() {
       dispatch({type: "UPDATE_OPTS", payload: {DIFFICULTY: selectedDifficulty?.value}})
     }
 
-    return (
-      <>
-        <h3 className="mc-label uppercase tracking-wider mb-0">World</h3>
-
-        <div className="flex flex-col">
-          <label className="mc-label" htmlFor="message-of-the-day">Message of the day</label>
-          <input className={"mc-input"} id={"message-of-the-day"} type={"text"} placeholder={"Welcome to the server!"}
-                 value={state.opts.MOTD} onChange={updateMessageOfDay}/>
-        </div>
-
-        <div className="flex flex-col">
-          <label className="mc-label" htmlFor={"server-difficulty"}>Server difficulty</label>
-          <Select inputId={"server-difficulty"} classNamePrefix="mc-select" options={difficultOptions}
-                  onChange={updateDifficulty}
-                  value={difficultOptions.find(option => option.value === state.opts.DIFFICULTY)}/>
-        </div>
-
-        <FormControlLabel sx={{margin: 0}}
-                          control={<Checkbox checked={showSnapshots} disabled={isTemplated()} onChange={toggleSnapshots}/>}
-                          label="Show snapshot versions"/>
-      </>
-    )
-  }
-
-  const playerSettings = () => {
     const updateMaxPlayers = (e: React.ChangeEvent<HTMLInputElement>) => {
       const value = e.target.value
       if (!isNaN(Number(value))) {
@@ -186,12 +162,25 @@ export function ServerCreator() {
 
     return (
       <>
-        <h3 className="mc-label uppercase tracking-wider mb-0 mt-2">Players</h3>
-
         <div className="flex flex-col">
-          <label className="mc-label" htmlFor="player-limit">Player limit</label>
-          <input className="mc-input text-right" id="player-limit" type="text" value={state.opts.MAX_PLAYERS}
-                 onChange={updateMaxPlayers}/>
+          <label className="mc-label" htmlFor="message-of-the-day">Message of the day</label>
+          <input className={"mc-input"} id={"message-of-the-day"} type={"text"} placeholder={"Welcome to the server!"}
+                 value={state.opts.MOTD} onChange={updateMessageOfDay}/>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="flex flex-col">
+            <label className="mc-label" htmlFor={"server-difficulty"}>Server difficulty</label>
+            <Select inputId={"server-difficulty"} classNamePrefix="mc-select" options={difficultOptions}
+                    onChange={updateDifficulty}
+                    value={difficultOptions.find(option => option.value === state.opts.DIFFICULTY)}/>
+          </div>
+
+          <div className="flex flex-col">
+            <label className="mc-label" htmlFor="player-limit">Player limit</label>
+            <input className="mc-input text-right" id="player-limit" type="text" value={state.opts.MAX_PLAYERS}
+                   onChange={updateMaxPlayers}/>
+          </div>
         </div>
 
         <div className="flex flex-col">
@@ -199,9 +188,14 @@ export function ServerCreator() {
           <input className="mc-input" id="operators" type="text" value={state.opts.OPS} onChange={updateOperators}/>
         </div>
 
-        <FormControlLabel sx={{margin: 0}}
-                          control={<Checkbox checked={state.opts.ONLINE_MODE === 'true'} onClick={toggleOnlineMode}/>}
-                          label="Online mode"/>
+        <div className="grid sm:grid-cols-2">
+          <FormControlLabel sx={{margin: 0}}
+                            control={<Checkbox checked={state.opts.ONLINE_MODE === 'true'} onClick={toggleOnlineMode}/>}
+                            label="Online mode"/>
+          <FormControlLabel sx={{margin: 0}}
+                            control={<Checkbox checked={showSnapshots} disabled={isTemplated()} onChange={toggleSnapshots}/>}
+                            label="Show snapshot versions"/>
+        </div>
       </>
     )
   }
@@ -255,24 +249,24 @@ export function ServerCreator() {
 
   return (
     <div className="mc-modal">
-      <div className="flex flex-1 flex-col gap-5 p-6">
-        <h2 className="font-pixel text-2xl">New server</h2>
+      <div className="flex flex-row items-center justify-between gap-4 px-6 pt-6">
+        <h2 className="font-pixel text-2xl">{showAdvanced ? "Advanced" : "New server"}</h2>
+        <button className="mc-button-secondary py-1 text-sm" onClick={() => setShowAdvanced(!showAdvanced)}>
+          {showAdvanced ? "Back" : "Advanced"}
+        </button>
+      </div>
 
-        {basicSettings()}
-        {tierSettings()}
+      {/* Both views share one grid cell so the modal keeps the height of the taller one when switching. */}
+      <div className="grid flex-1 p-6">
+        <div className={`flex flex-col gap-5 [grid-area:1/1] ${showAdvanced ? "invisible" : ""}`} inert={showAdvanced}>
+          {basicSettings()}
+          {tierSettings()}
+          <p className="text-sm text-content-muted">The server shuts down after 30 minutes without players.</p>
+        </div>
 
-        <details className="group border border-edge bg-inset/40 px-4">
-          <summary className="flex cursor-pointer list-none [&::-webkit-details-marker]:hidden items-baseline gap-x-2 py-3 text-sm">
-            <span className="group-open:rotate-90 transition-transform">›</span>
-            More options
-          </summary>
-          <div className="flex flex-col gap-4 pb-4">
-            {advancedSettings()}
-            {playerSettings()}
-          </div>
-        </details>
-
-        <p className="text-sm text-content-muted">The server shuts down after 30 minutes without players.</p>
+        <div className={`flex flex-col gap-4 [grid-area:1/1] ${showAdvanced ? "" : "invisible"}`} inert={!showAdvanced}>
+          {advancedSettings()}
+        </div>
       </div>
 
       <div className="flex items-center gap-2 w-full px-6 pb-6">
