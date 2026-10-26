@@ -4,51 +4,67 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/VaynerAkaWalo/mc-server-manager/internal/definition"
 )
 
-const manifest = `{"latest":{"release":"1.21.10","snapshot":"25w41a"},"versions":[
-	{"id":"25w41a","type":"snapshot"},
-	{"id":"1.21.10","type":"release"},
-	{"id":"1.21.9","type":"release"},
-	{"id":"b1.7.3","type":"old_beta"}]}`
+const fabric = `[
+	{"version":"25w41a","stable":false},
+	{"version":"1.21.10","stable":true},
+	{"version":"1.21.9","stable":true}]`
 
-const fabric = `[{"version":"25w41a"},{"version":"1.21.9"}]`
+var modReleases = map[string]string{
+	"lithium": `[{"version_type":"release","game_versions":["1.21.10","1.21.9"]}]`,
+	"c2me":    `[{"version_type":"alpha","game_versions":["1.21.10"]},{"version_type":"release","game_versions":["1.21.9"]}]`,
+}
 
-func upstream(t *testing.T, failing *atomic.Bool, calls *atomic.Int32) *Source {
+func upstream(t *testing.T, fabricDown, modrinthDown *atomic.Bool, calls *atomic.Int32) *Source {
 	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls.Add(1)
-		if failing.Load() {
-			w.WriteHeader(http.StatusBadGateway)
-			return
-		}
 		if r.URL.Path == "/fabric" {
+			if fabricDown.Load() {
+				w.WriteHeader(http.StatusBadGateway)
+				return
+			}
 			w.Write([]byte(fabric))
 			return
 		}
-		w.Write([]byte(manifest))
+
+		mod := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/modrinth/project/"), "/version")
+		if modrinthDown.Load() || r.URL.Query().Get("loaders") != `["fabric"]` {
+			w.WriteHeader(http.StatusBadGateway)
+			return
+		}
+		w.Write([]byte(modReleases[mod]))
 	}))
 	t.Cleanup(server.Close)
 
-	return &Source{client: server.Client(), mojangURL: server.URL + "/mojang", fabricURL: server.URL + "/fabric", now: time.Now}
+	return &Source{
+		client:      server.Client(),
+		fabricURL:   server.URL + "/fabric",
+		modrinthURL: server.URL + "/modrinth",
+		mods:        []string{"lithium", "c2me"},
+		now:         time.Now,
+	}
 }
 
-func TestVersionsPerServerType(t *testing.T) {
-	source := upstream(t, &atomic.Bool{}, &atomic.Int32{})
+func TestVersionsAreStableFabricReleasesWithTheirMods(t *testing.T) {
+	source := upstream(t, &atomic.Bool{}, &atomic.Bool{}, &atomic.Int32{})
 
-	set := source.Versions(context.Background())
+	versions := source.Versions(context.Background())[definition.ServerType]
 
-	vanilla := set["VANILLA"]
-	if vanilla.LatestRelease != "1.21.10" || len(vanilla.Items) != 3 || vanilla.Items[0].Kind != "snapshot" {
-		t.Fatalf("vanilla = %+v", vanilla)
-	}
-
-	fabric := set["FABRIC"]
-	if fabric.LatestRelease != "1.21.9" || len(fabric.Items) != 2 {
-		t.Fatalf("fabric = %+v", fabric)
+	want := definition.TypeVersions{LatestRelease: "1.21.10", Items: []definition.Version{
+		{ID: "1.21.10", Kind: definition.KindRelease, Mods: []string{"lithium"}},
+		{ID: "1.21.9", Kind: definition.KindRelease, Mods: []string{"lithium", "c2me"}},
+	}}
+	if !reflect.DeepEqual(versions, want) {
+		t.Fatalf("versions = %+v", versions)
 	}
 }
 
@@ -64,25 +80,25 @@ func settle(source *Source) {
 
 func TestVersionsAreCachedAndSurviveOutage(t *testing.T) {
 	failing, calls := &atomic.Bool{}, &atomic.Int32{}
-	source := upstream(t, failing, calls)
+	source := upstream(t, failing, &atomic.Bool{}, calls)
 	now := time.Now()
 	source.now = func() time.Time { return now }
 
 	source.Versions(context.Background())
 	source.Versions(context.Background())
-	if calls.Load() != 2 {
-		t.Fatalf("upstream called %d times, want 2 for the first refresh only", calls.Load())
+	if calls.Load() != 3 {
+		t.Fatalf("upstream called %d times, want 3 for the first refresh only", calls.Load())
 	}
 
 	failing.Store(true)
 	now = now.Add(2 * time.Hour)
-	if got := source.Versions(context.Background())["VANILLA"].LatestRelease; got != "1.21.10" {
+	if got := latest(source); got != "1.21.10" {
 		t.Fatalf("stale list not served, latest = %q", got)
 	}
 	settle(source)
 
 	before := calls.Load()
-	if got := source.Versions(context.Background())["VANILLA"].LatestRelease; got != "1.21.10" {
+	if got := latest(source); got != "1.21.10" {
 		t.Fatalf("stale list lost after failed refresh, latest = %q", got)
 	}
 	settle(source)
@@ -92,52 +108,44 @@ func TestVersionsAreCachedAndSurviveOutage(t *testing.T) {
 }
 
 func TestCancelledCallerDoesNotBlockOthers(t *testing.T) {
-	source := upstream(t, &atomic.Bool{}, &atomic.Int32{})
+	source := upstream(t, &atomic.Bool{}, &atomic.Bool{}, &atomic.Int32{})
 	cancelled, cancel := context.WithCancel(context.Background())
 	cancel()
 
 	source.Versions(cancelled)
 	settle(source)
 
-	if got := source.Versions(context.Background())["VANILLA"].LatestRelease; got != "1.21.10" {
+	if got := latest(source); got != "1.21.10" {
 		t.Fatalf("latest = %q", got)
 	}
 }
 
-func TestFabricOutageKeepsVanillaFresh(t *testing.T) {
-	var fabricDown atomic.Bool
-	manifestBody := manifest
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/fabric" {
-			if fabricDown.Load() {
-				w.Write([]byte(`[]`))
-				return
-			}
-			w.Write([]byte(fabric))
-			return
-		}
-		w.Write([]byte(manifestBody))
-	}))
-	t.Cleanup(server.Close)
-	source := &Source{client: server.Client(), mojangURL: server.URL + "/mojang", fabricURL: server.URL + "/fabric", now: time.Now}
+func TestModrinthOutageKeepsPreviousModsAndRetriesSoon(t *testing.T) {
+	modrinthDown := &atomic.Bool{}
+	source := upstream(t, &atomic.Bool{}, modrinthDown, &atomic.Int32{})
+	now := time.Now()
+	source.now = func() time.Time { return now }
 
-	fabricDown.Store(true)
-	cold := source.Versions(context.Background())
-	if len(cold["VANILLA"].Items) != 3 || len(cold["FABRIC"].Items) != 0 {
+	modrinthDown.Store(true)
+	cold := source.Versions(context.Background())[definition.ServerType]
+	if len(cold.Items) != 2 || cold.Items[0].Mods != nil {
 		t.Fatalf("cold start = %+v", cold)
 	}
+	if !source.refreshAt.Equal(now.Add(retryInterval)) {
+		t.Fatal("refresh without mods is not retried soon")
+	}
 
-	fabricDown.Store(false)
+	modrinthDown.Store(false)
 	source.refreshAt = time.Time{}
 	source.Versions(context.Background())
 	settle(source)
-	fabricDown.Store(true)
+	modrinthDown.Store(true)
 	source.refreshAt = time.Time{}
 	source.Versions(context.Background())
 	settle(source)
 
-	if got := source.Versions(context.Background())["FABRIC"].LatestRelease; got != "1.21.9" {
-		t.Fatalf("previous fabric list not kept, latest = %q", got)
+	if got := source.Versions(context.Background())[definition.ServerType].Items[1].Mods; !reflect.DeepEqual(got, []string{"lithium", "c2me"}) {
+		t.Fatalf("previous mods not kept, mods = %v", got)
 	}
 }
 
@@ -145,7 +153,11 @@ func TestVersionsBeforeFirstSuccessAreEmpty(t *testing.T) {
 	failing := &atomic.Bool{}
 	failing.Store(true)
 
-	if set := upstream(t, failing, &atomic.Int32{}).Versions(context.Background()); len(set) != 0 {
+	if set := upstream(t, failing, &atomic.Bool{}, &atomic.Int32{}).Versions(context.Background()); len(set) != 0 {
 		t.Fatalf("set = %+v", set)
 	}
+}
+
+func latest(source *Source) string {
+	return source.Versions(context.Background())[definition.ServerType].LatestRelease
 }

@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
@@ -14,8 +15,9 @@ import (
 )
 
 const (
-	mojangManifestURL = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
-	fabricGameURL     = "https://meta.fabricmc.net/v2/versions/game"
+	fabricGameURL  = "https://meta.fabricmc.net/v2/versions/game"
+	modrinthAPIURL = "https://api.modrinth.com/v2"
+	userAgent      = "VaynerAkaWalo/mc-server-manager"
 
 	refreshInterval = time.Hour
 	retryInterval   = time.Minute
@@ -23,22 +25,24 @@ const (
 )
 
 type Source struct {
-	client     *http.Client
-	mojangURL  string
-	fabricURL  string
-	now        func() time.Time
-	mu         sync.Mutex
-	cached     definition.VersionSet
-	refreshAt  time.Time
-	refreshing chan struct{}
+	client      *http.Client
+	fabricURL   string
+	modrinthURL string
+	mods        []string
+	now         func() time.Time
+	mu          sync.Mutex
+	cached      definition.VersionSet
+	refreshAt   time.Time
+	refreshing  chan struct{}
 }
 
 func NewSource() *Source {
 	return &Source{
-		client:    &http.Client{Timeout: 5 * time.Second},
-		mojangURL: mojangManifestURL,
-		fabricURL: fabricGameURL,
-		now:       time.Now,
+		client:      &http.Client{Timeout: 5 * time.Second},
+		fabricURL:   fabricGameURL,
+		modrinthURL: modrinthAPIURL,
+		mods:        definition.OptimizationMods,
+		now:         time.Now,
 	}
 }
 
@@ -96,92 +100,74 @@ func (s *Source) refresh(previous definition.VersionSet, done chan struct{}) {
 	close(done)
 }
 
-type mojangManifest struct {
-	Latest struct {
-		Release string `json:"release"`
-	} `json:"latest"`
-	Versions []struct {
-		ID   string `json:"id"`
-		Type string `json:"type"`
-	} `json:"versions"`
-}
-
 type fabricGameVersion struct {
 	Version string `json:"version"`
+	Stable  bool   `json:"stable"`
 }
 
-// A Fabric outage must not hide new vanilla versions, so each type keeps its previous list when its own source fails.
+type modrinthVersion struct {
+	GameVersions []string `json:"game_versions"`
+	VersionType  string   `json:"version_type"`
+}
+
 func (s *Source) fetch(ctx context.Context, previous definition.VersionSet) (set definition.VersionSet, healthy bool, err error) {
-	var manifest mojangManifest
-	if err := s.getJSON(ctx, s.mojangURL, &manifest); err != nil {
+	var fabric []fabricGameVersion
+	if err := s.getJSON(ctx, s.fabricURL, &fabric); err != nil {
 		return nil, false, err
 	}
 
-	vanilla := definition.TypeVersions{LatestRelease: manifest.Latest.Release}
-	for _, entry := range manifest.Versions {
-		if kind, listed := kindOf(entry.Type); listed {
-			vanilla.Items = append(vanilla.Items, definition.Version{ID: entry.ID, Kind: kind})
-		}
-	}
-	if len(vanilla.Items) == 0 {
-		return nil, false, fmt.Errorf("manifest %s has no versions", s.mojangURL)
+	modsByVersion, modsErr := s.modsByGameVersion(ctx)
+	if modsErr != nil {
+		slog.Error("Failed to refresh optimization mods: " + modsErr.Error())
 	}
 
-	set = definition.VersionSet{"VANILLA": vanilla}
-
-	fabric, err := s.fabricVersions(ctx, vanilla)
-	if err != nil {
-		slog.Error("Failed to refresh Fabric game versions: " + err.Error())
-		if kept, found := previous["FABRIC"]; found {
-			set["FABRIC"] = kept
-		}
-
-		return set, false, nil
-	}
-
-	set["FABRIC"] = fabric
-
-	return set, true, nil
-}
-
-func (s *Source) fabricVersions(ctx context.Context, vanilla definition.TypeVersions) (definition.TypeVersions, error) {
-	var supported []fabricGameVersion
-	if err := s.getJSON(ctx, s.fabricURL, &supported); err != nil {
-		return definition.TypeVersions{}, err
-	}
-
-	supportedByFabric := make(map[string]bool, len(supported))
-	for _, version := range supported {
-		supportedByFabric[version.Version] = true
-	}
-
-	var fabric definition.TypeVersions
-	for _, version := range vanilla.Items {
-		if !supportedByFabric[version.ID] {
+	var versions definition.TypeVersions
+	for _, entry := range fabric {
+		if !entry.Stable {
 			continue
 		}
 
-		fabric.Items = append(fabric.Items, version)
-		if fabric.LatestRelease == "" && version.Kind == definition.KindRelease {
-			fabric.LatestRelease = version.ID
+		mods := modsByVersion[entry.Version]
+		if modsErr != nil {
+			kept, _ := previous[definition.ServerType].Find(entry.Version)
+			mods = kept.Mods
 		}
-	}
-	if len(fabric.Items) == 0 {
-		return definition.TypeVersions{}, fmt.Errorf("%s has no versions known to Mojang", s.fabricURL)
-	}
 
-	return fabric, nil
+		versions.Items = append(versions.Items, definition.Version{ID: entry.Version, Kind: definition.KindRelease, Mods: mods})
+	}
+	if len(versions.Items) == 0 {
+		return nil, false, fmt.Errorf("%s has no stable versions", s.fabricURL)
+	}
+	versions.LatestRelease = versions.Items[0].ID
+
+	return definition.VersionSet{definition.ServerType: versions}, modsErr == nil, nil
 }
 
-func kindOf(mojangType string) (string, bool) {
-	switch mojangType {
-	case "release":
-		return definition.KindRelease, true
-	case "snapshot":
-		return definition.KindSnapshot, true
+func (s *Source) modsByGameVersion(ctx context.Context) (map[string][]string, error) {
+	modsByVersion := make(map[string][]string)
+	for _, mod := range s.mods {
+		var releases []modrinthVersion
+		endpoint := fmt.Sprintf("%s/project/%s/version?loaders=%s&include_changelog=false", s.modrinthURL, mod, url.QueryEscape(`["fabric"]`))
+		if err := s.getJSON(ctx, endpoint, &releases); err != nil {
+			return nil, err
+		}
+
+		supported := make(map[string]bool)
+		for _, release := range releases {
+			if release.VersionType != "release" {
+				continue
+			}
+			for _, gameVersion := range release.GameVersions {
+				supported[gameVersion] = true
+			}
+		}
+
+		for gameVersion := range supported {
+			modsByVersion[gameVersion] = append(modsByVersion[gameVersion], mod)
+		}
 	}
 
-	return "", false
+	return modsByVersion, nil
 }
 
 func (s *Source) getJSON(ctx context.Context, url string, target any) error {
@@ -189,6 +175,7 @@ func (s *Source) getJSON(ctx context.Context, url string, target any) error {
 	if err != nil {
 		return err
 	}
+	req.Header.Set("User-Agent", userAgent)
 
 	res, err := s.client.Do(req)
 	if err != nil {

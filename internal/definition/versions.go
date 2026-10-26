@@ -7,17 +7,17 @@ import (
 )
 
 const (
-	KindRelease  = "release"
-	KindSnapshot = "snapshot"
+	KindRelease = "release"
 
-	defaultServerType = "VANILLA"
+	ServerType = "FABRIC"
 )
 
 var ErrVersionsUnavailable = errors.New("the list of game versions is not available yet")
 
 type Version struct {
-	ID   string `json:"id"`
-	Kind string `json:"kind"`
+	ID   string   `json:"id"`
+	Kind string   `json:"kind"`
+	Mods []string `json:"-"`
 }
 
 type TypeVersions struct {
@@ -35,8 +35,13 @@ func (v VersionSet) Versions(context.Context) VersionSet {
 	return v
 }
 
-func (t TypeVersions) contains(id string) bool {
-	return slices.ContainsFunc(t.Items, func(version Version) bool { return version.ID == id })
+func (t TypeVersions) Find(id string) (Version, bool) {
+	index := slices.IndexFunc(t.Items, func(version Version) bool { return version.ID == id })
+	if index < 0 {
+		return Version{}, false
+	}
+
+	return t.Items[index], true
 }
 
 func validateVersion(ctx context.Context, source VersionSource, options map[Option]string) error {
@@ -45,18 +50,13 @@ func validateVersion(ctx context.Context, source VersionSource, options map[Opti
 		return nil
 	}
 
-	serverType := options[TYPE]
-	if serverType == "" {
-		serverType = defaultServerType
-	}
-
-	available := source.Versions(ctx)[serverType]
+	available := source.Versions(ctx)[ServerType]
 	if len(available.Items) == 0 {
 		return ErrVersionsUnavailable
 	}
 
-	if !available.contains(version) {
-		return invalidf("version %s is not available for server type %s", version, serverType)
+	if _, found := available.Find(version); !found {
+		return invalidf("version %s is not available", version)
 	}
 
 	return nil

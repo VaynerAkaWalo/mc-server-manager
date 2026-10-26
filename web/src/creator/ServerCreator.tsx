@@ -14,13 +14,12 @@ interface Server {
   tier: Tier,
 }
 
-const DEFAULT_SERVER_TYPE = "VANILLA"
+const SERVER_TYPE = "FABRIC"
 
 const initialServer: Server = {
   name: "",
   opts: {
     ONLINE_MODE: 'true',
-    MAX_PLAYERS: "20",
     DIFFICULTY: "normal"
   },
   tier: "",
@@ -51,12 +50,11 @@ export function ServerCreator() {
     tier: (catalog?.tiers.find(tier => tier.default) ?? catalog?.tiers[0])?.id ?? "",
     opts: {
       ...initialServer.opts,
-      ...(templateName && templateOps ? templateOps : {VERSION: catalog?.versions?.[DEFAULT_SERVER_TYPE]?.latestRelease}),
+      ...(templateName && templateOps ? templateOps : {VERSION: catalog?.versions?.[SERVER_TYPE]?.latestRelease}),
     },
   }))
   const {setNotificationMessage} = UpdateNotification()
   const navigate = useNavigate()
-  const [showSnapshots, setShowSnapshots] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
 
   useEffect(() => {
@@ -76,9 +74,8 @@ export function ServerCreator() {
       dispatch({type: "UPDATE_NAME", payload: sanitizeString(rawName)})
     }
 
-    const serverVersions = catalog?.versions?.[state.opts.TYPE ?? DEFAULT_SERVER_TYPE]
+    const serverVersions = catalog?.versions?.[SERVER_TYPE]
     const versionOptions = (serverVersions?.items ?? [])
-      .filter(version => showSnapshots || version.kind === "release")
       .map(version => ({
         value: version.id,
         label: version.id === serverVersions?.latestRelease ? `${version.id} (latest)` : version.id
@@ -115,16 +112,6 @@ export function ServerCreator() {
         </div>
       </>
     )
-  }
-
-  const toggleSnapshots = () => {
-    const serverVersions = catalog?.versions?.[state.opts.TYPE ?? DEFAULT_SERVER_TYPE]
-    const isSnapshot = serverVersions?.items.find(version => version.id === state.opts.VERSION)?.kind === "snapshot"
-    if (showSnapshots && isSnapshot) {
-      dispatch({type: "UPDATE_OPTS", payload: {VERSION: serverVersions?.latestRelease}})
-    }
-
-    setShowSnapshots(!showSnapshots)
   }
 
   const advancedSettings = () => {
@@ -176,7 +163,8 @@ export function ServerCreator() {
 
           <div className="flex flex-col">
             <label className="mc-label" htmlFor="player-limit">Player limit</label>
-            <input className="mc-input text-right" id="player-limit" type="text" value={state.opts.MAX_PLAYERS}
+            <input className="mc-input text-right" id="player-limit" type="text" value={state.opts.MAX_PLAYERS ?? ""}
+                   placeholder="Tier default"
                    onChange={updateMaxPlayers}/>
           </div>
         </div>
@@ -186,14 +174,9 @@ export function ServerCreator() {
           <input className="mc-input" id="operators" type="text" value={state.opts.OPS} onChange={updateOperators}/>
         </div>
 
-        <div className="grid sm:grid-cols-2">
-          <FormControlLabel sx={{margin: 0}}
-                            control={<Checkbox checked={state.opts.ONLINE_MODE === 'true'} onClick={toggleOnlineMode}/>}
-                            label="Online mode"/>
-          <FormControlLabel sx={{margin: 0}}
-                            control={<Checkbox checked={showSnapshots} disabled={isTemplated()} onChange={toggleSnapshots}/>}
-                            label="Show snapshot versions"/>
-        </div>
+        <FormControlLabel sx={{margin: 0}}
+                          control={<Checkbox checked={state.opts.ONLINE_MODE === 'true'} onClick={toggleOnlineMode}/>}
+                          label="Online mode"/>
       </>
     )
   }

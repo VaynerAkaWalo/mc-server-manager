@@ -242,7 +242,7 @@ func TestDeleteServerKeepsRecordWhenClusterFails(t *testing.T) {
 }
 
 var testVersions = definition.VersionSet{
-	"VANILLA": {LatestRelease: "1.21.3", Items: []definition.Version{{ID: "1.21.3", Kind: definition.KindRelease}}},
+	definition.ServerType: {LatestRelease: "1.21.3", Items: []definition.Version{{ID: "1.21.3", Kind: definition.KindRelease}}},
 }
 
 func TestProvisionRejectsUnknownVersion(t *testing.T) {
