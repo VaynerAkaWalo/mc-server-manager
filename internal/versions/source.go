@@ -110,7 +110,6 @@ type modrinthVersion struct {
 	VersionType  string   `json:"version_type"`
 }
 
-// Mods are optional, so a Modrinth outage keeps the mods of the previous refresh and never hides a game version.
 func (s *Source) fetch(ctx context.Context, previous definition.VersionSet) (set definition.VersionSet, healthy bool, err error) {
 	var fabric []fabricGameVersion
 	if err := s.getJSON(ctx, s.fabricURL, &fabric); err != nil {
@@ -144,7 +143,6 @@ func (s *Source) fetch(ctx context.Context, previous definition.VersionSet) (set
 	return definition.VersionSet{definition.ServerType: versions}, modsErr == nil, nil
 }
 
-// The server image installs only release builds of Modrinth projects, so a mod counts for a game version only when it has one.
 func (s *Source) modsByGameVersion(ctx context.Context) (map[string][]string, error) {
 	modsByVersion := make(map[string][]string)
 	for _, mod := range s.mods {

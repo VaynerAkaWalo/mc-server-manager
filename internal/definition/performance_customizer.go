@@ -6,7 +6,6 @@ import (
 	"strings"
 )
 
-// Every server runs Fabric so these server-side mods can be added, while players still join with a vanilla client.
 var OptimizationMods = []string{"lithium", "ferrite-core", "c2me-fabric", "scalablelux", "krypton"}
 
 func customizePerformance(versions VersionSource) customizer {
