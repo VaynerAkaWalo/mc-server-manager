@@ -7,6 +7,7 @@ import {sanitizeString} from "../utils/StringSanitizer.ts";
 import {UpdateNotification} from "../App.tsx";
 import {CatalogResponse, CreateServerRequest, ManagerClient, Opts, problemMessage, Tier} from "../clients/ManagerClient.ts";
 import {randomServerName} from "./randomServerName.ts";
+import {Spinner} from "../base/Spinner.tsx";
 
 interface Server {
   name: string
@@ -58,6 +59,7 @@ export function ServerCreator() {
   const navigate = useNavigate()
   const [showSnapshots, setShowSnapshots] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [isSwitching, setIsSwitching] = useState(false)
 
   useEffect(() => {
     if (!catalog) {
@@ -67,6 +69,20 @@ export function ServerCreator() {
 
   function isTemplated(): boolean {
     return templateName && templateOps
+  }
+
+  useEffect(() => {
+    if (!isSwitching) {
+      return
+    }
+
+    const timer = setTimeout(() => setIsSwitching(false), 500)
+    return () => clearTimeout(timer)
+  }, [isSwitching]);
+
+  const toggleAdvanced = () => {
+    setShowAdvanced(!showAdvanced)
+    setIsSwitching(true)
   }
 
   const basicSettings = () => {
@@ -249,7 +265,7 @@ export function ServerCreator() {
     <div className="mc-modal">
       <div className="flex flex-row items-center justify-between gap-4 px-6 pt-6">
         <h2 className="font-pixel text-2xl">{showAdvanced ? "Advanced" : "New server"}</h2>
-        <button className="mc-button-secondary grid py-1 text-sm" onClick={() => setShowAdvanced(!showAdvanced)}>
+        <button className="mc-button-secondary grid py-1 text-sm" onClick={toggleAdvanced}>
           <span className={`[grid-area:1/1] ${showAdvanced ? "invisible" : ""}`}>Advanced</span>
           <span className={`[grid-area:1/1] ${showAdvanced ? "" : "invisible"}`}>Back</span>
         </button>
@@ -257,15 +273,19 @@ export function ServerCreator() {
 
       {/* Both views share one grid cell so the modal keeps the height of the taller one when switching. */}
       <div className="grid flex-1 p-6">
-        <div className={`flex flex-col gap-5 [grid-area:1/1] ${showAdvanced ? "invisible" : ""}`} inert={showAdvanced}>
+        <div className={`flex flex-col gap-5 [grid-area:1/1] ${showAdvanced || isSwitching ? "invisible" : ""}`}
+             inert={showAdvanced || isSwitching}>
           {basicSettings()}
           {tierSettings()}
           <p className="text-sm text-content-muted">The server shuts down after 30 minutes without players.</p>
         </div>
 
-        <div className={`flex flex-col gap-4 [grid-area:1/1] ${showAdvanced ? "" : "invisible"}`} inert={!showAdvanced}>
+        <div className={`flex flex-col gap-4 [grid-area:1/1] ${showAdvanced && !isSwitching ? "" : "invisible"}`}
+             inert={!showAdvanced || isSwitching}>
           {advancedSettings()}
         </div>
+
+        {isSwitching && <div className="flex items-center justify-center [grid-area:1/1]"><Spinner/></div>}
       </div>
 
       <div className="flex items-center gap-2 w-full px-6 pb-6">
