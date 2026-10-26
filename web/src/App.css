@@ -64,15 +64,6 @@
     @apply mb-1 text-xs text-content-muted;
   }
 
-  .mc-tab {
-    @apply font-pixel text-content-muted hover:text-content border-b-2 border-transparent -mb-px;
-    padding: 10px clamp(8px, 2vw, 32px);
-  }
-
-  .mc-tab.active {
-    @apply text-content border-action-content;
-  }
-
   .mc-select__control {
     @apply bg-inset! border-edge! rounded-none! min-h-0! shadow-none!;
   }
