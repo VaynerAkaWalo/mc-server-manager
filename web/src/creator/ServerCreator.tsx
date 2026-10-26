@@ -76,7 +76,9 @@ export function ServerCreator() {
   useEffect(() => {
     if (!isSwitching) {
       if (restoreToggleFocus.current) {
-        toggleButton.current?.focus({preventScroll: true})
+        if (document.activeElement === document.body || document.activeElement === toggleButton.current) {
+          toggleButton.current?.focus({preventScroll: true})
+        }
         restoreToggleFocus.current = false
       }
       return
