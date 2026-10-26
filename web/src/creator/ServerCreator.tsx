@@ -212,24 +212,15 @@ export function ServerCreator() {
       <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-2">
         {catalog?.tiers.map(tier => (
           <label key={tier.id}
-                 className={`flex flex-col gap-1 cursor-pointer border bg-inset px-3 py-2 has-focus-visible:outline-2 has-focus-visible:outline-action-content ${state.tier === tier.id ? "border-action-content" : "border-edge hover:border-edge-strong"}`}>
+                 className={`cursor-pointer border bg-inset px-3 py-2 has-focus-visible:outline-2 has-focus-visible:outline-action-content ${state.tier === tier.id ? "border-action-content" : "border-edge hover:border-edge-strong"}`}>
             <input className="sr-only" type="radio" name="tier" value={tier.id} checked={state.tier === tier.id}
                    onChange={() => dispatch({type: "UPDATE_TIER", payload: tier.id})}/>
             <span className="text-sm">{tier.name}</span>
-            <span className="text-xs text-content-muted">{tier.description}</span>
           </label>
         ))}
       </div>
     </fieldset>
   )
-
-  const moreOptionsSummary = () => {
-    const onlineMode = state.opts.ONLINE_MODE === 'true' ? "online mode" : "offline mode"
-
-    const difficulty = state.opts.DIFFICULTY ?? "normal"
-
-    return `${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)} difficulty · ${state.opts.MAX_PLAYERS} players · ${onlineMode}`
-  }
 
   const createServer = async () => {
     if (state.name === "" || state.name.length < 3 || state.name.length > 25) {
@@ -271,10 +262,9 @@ export function ServerCreator() {
         {tierSettings()}
 
         <details className="group border border-edge bg-inset/40 px-4">
-          <summary className="flex cursor-pointer list-none flex-wrap [&::-webkit-details-marker]:hidden items-baseline gap-x-2 py-3 text-sm">
+          <summary className="flex cursor-pointer list-none [&::-webkit-details-marker]:hidden items-baseline gap-x-2 py-3 text-sm">
             <span className="group-open:rotate-90 transition-transform">›</span>
             More options
-            <span className="text-xs text-content-muted">{moreOptionsSummary()}</span>
           </summary>
           <div className="flex flex-col gap-4 pb-4">
             {advancedSettings()}
