@@ -101,9 +101,14 @@ function ServerPresence({server}: { server: ServerResponse }) {
   const hint = server.status === "expiring" && server.idleShutdownAt ? shutdownHint(server.idleShutdownAt) : label
 
   return (
-    <div className="flex items-center gap-2 self-start pt-1 text-xs" title={hint}>
+    <div className="group relative flex items-center gap-2 self-start pt-1 text-xs">
       <span className={`size-2 shrink-0 ${statusDots[server.status] ?? "bg-content-muted"}`} role="img" aria-label={hint}/>
       <span>{players ? `${players.online}/${players.max}` : label}</span>
+      {hint !== label && (
+        <span role="tooltip" className="pointer-events-none absolute right-0 top-full z-10 mt-1 hidden whitespace-nowrap px-2 py-1 bg-inset border border-edge group-hover:block">
+          {hint}
+        </span>
+      )}
     </div>
   )
 }
