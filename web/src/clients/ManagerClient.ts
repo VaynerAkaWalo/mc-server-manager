@@ -13,7 +13,6 @@ export interface Opts {
   DIFFICULTY?: string
   MAX_PLAYERS?: string
   VERSION?: string
-  TYPE?: string
   MOTD?: string
   OPS?: string
 }
@@ -22,7 +21,7 @@ export type Tier = string
 
 export interface GameVersion {
   id: string,
-  kind: "release" | "snapshot"
+  kind: "release"
 }
 
 export interface CatalogResponse {

@@ -28,7 +28,7 @@ func TestCatalogMatchesDefinitions(t *testing.T) {
 			}
 		}
 	}
-	if catalog.Versions["VANILLA"].LatestRelease != "1.21.10" {
+	if catalog.Versions[ServerType].LatestRelease != "1.21.10" {
 		t.Fatalf("versions = %+v", catalog.Versions)
 	}
 }
@@ -36,7 +36,7 @@ func TestCatalogMatchesDefinitions(t *testing.T) {
 func TestCatalogDoesNotExposeEnforcedOptions(t *testing.T) {
 	body, _ := json.Marshal(BuildCatalog(testVersions))
 
-	for _, hidden := range []string{"MODS", "MODRINTH_PROJECTS", "github.com", "MEMORY", "JVM_XX_OPTS", "EULA"} {
+	for _, hidden := range []string{"MODS", "MODRINTH_PROJECTS", "lithium", "github.com", "MEMORY", "JVM_XX_OPTS", "EULA"} {
 		if strings.Contains(string(body), hidden) {
 			t.Errorf("%s is exposed: %s", hidden, body)
 		}

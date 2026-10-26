@@ -12,7 +12,7 @@ import (
 
 func TestCatalogRoute(t *testing.T) {
 	mux := http.NewServeMux()
-	NewCatalogHandlers(definition.VersionSet{"VANILLA": {LatestRelease: "1.21.10"}}).RegisterRoutes(&xhttp.Router{ServeMux: mux})
+	NewCatalogHandlers(definition.VersionSet{definition.ServerType: {LatestRelease: "1.21.10"}}).RegisterRoutes(&xhttp.Router{ServeMux: mux})
 
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/api/v1/catalog", nil))

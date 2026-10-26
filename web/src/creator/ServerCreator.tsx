@@ -14,7 +14,7 @@ interface Server {
   tier: Tier,
 }
 
-const DEFAULT_SERVER_TYPE = "VANILLA"
+const SERVER_TYPE = "FABRIC"
 
 const initialServer: Server = {
   name: "",
@@ -48,7 +48,6 @@ export function ServerCreator() {
   const {templateName, templatePreset, templateOps} = useLocation().state || {}
   const navigate = useNavigate()
   const [catalog, setCatalog] = useState<CatalogResponse | null>(null)
-  const [showSnapshots, setShowSnapshots] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
 
   useEffect(() => {
@@ -56,7 +55,7 @@ export function ServerCreator() {
       setCatalog(data)
       dispatch({type: "UPDATE_TIER", payload: (data.tiers.find(tier => tier.default) ?? data.tiers[0])?.id ?? ""})
       if (!isTemplated()) {
-        dispatch({type: "UPDATE_OPTS", payload: {VERSION: data.versions?.[DEFAULT_SERVER_TYPE]?.latestRelease}})
+        dispatch({type: "UPDATE_OPTS", payload: {VERSION: data.versions?.[SERVER_TYPE]?.latestRelease}})
       }
     }).catch(err => setNotificationMessage("Failed to load server options: " + problemMessage(err)))
   }, []);
@@ -78,9 +77,8 @@ export function ServerCreator() {
       dispatch({type: "UPDATE_NAME", payload: sanitizeString(rawName)})
     }
 
-    const serverVersions = catalog?.versions?.[state.opts.TYPE ?? DEFAULT_SERVER_TYPE]
+    const serverVersions = catalog?.versions?.[SERVER_TYPE]
     const versionOptions = (serverVersions?.items ?? [])
-      .filter(version => showSnapshots || version.kind === "release")
       .map(version => ({
         value: version.id,
         label: version.id === serverVersions?.latestRelease ? `${version.id} (latest)` : version.id
@@ -117,16 +115,6 @@ export function ServerCreator() {
         </div>
       </>
     )
-  }
-
-  const toggleSnapshots = () => {
-    const serverVersions = catalog?.versions?.[state.opts.TYPE ?? DEFAULT_SERVER_TYPE]
-    const isSnapshot = serverVersions?.items.find(version => version.id === state.opts.VERSION)?.kind === "snapshot"
-    if (showSnapshots && isSnapshot) {
-      dispatch({type: "UPDATE_OPTS", payload: {VERSION: serverVersions?.latestRelease}})
-    }
-
-    setShowSnapshots(!showSnapshots)
   }
 
   const advancedSettings = () => {
@@ -188,14 +176,9 @@ export function ServerCreator() {
           <input className="mc-input" id="operators" type="text" value={state.opts.OPS} onChange={updateOperators}/>
         </div>
 
-        <div className="grid sm:grid-cols-2">
-          <FormControlLabel sx={{margin: 0}}
-                            control={<Checkbox checked={state.opts.ONLINE_MODE === 'true'} onClick={toggleOnlineMode}/>}
-                            label="Online mode"/>
-          <FormControlLabel sx={{margin: 0}}
-                            control={<Checkbox checked={showSnapshots} disabled={isTemplated()} onChange={toggleSnapshots}/>}
-                            label="Show snapshot versions"/>
-        </div>
+        <FormControlLabel sx={{margin: 0}}
+                          control={<Checkbox checked={state.opts.ONLINE_MODE === 'true'} onClick={toggleOnlineMode}/>}
+                          label="Online mode"/>
       </>
     )
   }

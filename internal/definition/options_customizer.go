@@ -25,7 +25,6 @@ func text(valid func(string) bool) optionSpec {
 var userSettableOpts = map[Option]optionSpec{
 	VERSION:       text(identifierList),
 	ONLINE_MODE:   oneOf("true", "false"),
-	TYPE:          oneOf("VANILLA", "FABRIC"),
 	MOTD:          text(freeText),
 	OPS:           text(identifierList),
 	MAX_PLAYERS:   text(identifierList),

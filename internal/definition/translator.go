@@ -12,6 +12,7 @@ func TranslateDefinition(ctx context.Context, definition ServerDefinition, versi
 		customizeOptions(versions),
 		customizePreset,
 		customizeVersionRequired,
+		customizePerformance(versions),
 		customizeName,
 		customizeOperators,
 		customizeContainer,

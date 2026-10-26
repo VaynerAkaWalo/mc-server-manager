@@ -26,12 +26,11 @@ func TestCustomizeOptions(t *testing.T) {
 		{"enforced option", map[Option]string{MEMORY: "64Gi"}, true},
 		{"jvm options", map[Option]string{JVM_XX_OPTS: "-XX:+UnlockDiagnosticVMOptions"}, true},
 		{"unknown option", map[Option]string{"CUSTOM_SERVER": "https://evil.example/server.jar"}, true},
-		{"unknown server type", map[Option]string{TYPE: "CUSTOM"}, true},
+		{"server type", map[Option]string{TYPE: "VANILLA"}, true},
 		{"newline in motd", map[Option]string{MOTD: "hi\nEULA=false"}, true},
 		{"known version", map[Option]string{VERSION: "1.21.3"}, false},
-		{"snapshot", map[Option]string{VERSION: "25w41a"}, false},
+		{"snapshot", map[Option]string{VERSION: "25w41a"}, true},
 		{"unknown version", map[Option]string{VERSION: "1.99"}, true},
-		{"version of another type", map[Option]string{TYPE: "FABRIC", VERSION: "1.21.10"}, true},
 		{"url in version", map[Option]string{VERSION: "https://evil.example/server.jar"}, true},
 	}
 
@@ -55,8 +54,10 @@ func TestCustomizeOptionsRejectsValuesOutsideEnums(t *testing.T) {
 }
 
 var testVersions = VersionSet{
-	"VANILLA": {LatestRelease: "1.21.10", Items: []Version{{"1.21.10", KindRelease}, {"25w41a", KindSnapshot}, {"1.21.3", KindRelease}}},
-	"FABRIC":  {LatestRelease: "1.21.3", Items: []Version{{"1.21.3", KindRelease}}},
+	ServerType: {LatestRelease: "1.21.10", Items: []Version{
+		{ID: "1.21.10", Kind: KindRelease, Mods: []string{"lithium", "krypton"}},
+		{ID: "1.21.3", Kind: KindRelease},
+	}},
 }
 
 func TestCustomizeOptionsWithoutVersionList(t *testing.T) {
