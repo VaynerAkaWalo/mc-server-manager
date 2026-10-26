@@ -78,7 +78,7 @@ export function ServerCreator() {
 
     const timer = setTimeout(() => setIsSwitching(false), 500)
     return () => clearTimeout(timer)
-  }, [isSwitching]);
+  }, [isSwitching, showAdvanced]);
 
   const toggleAdvanced = () => {
     setShowAdvanced(!showAdvanced)
