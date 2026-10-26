@@ -26,7 +26,7 @@ const (
 
 var tierMapping = map[Tier]serverInstance{
 	Wooden: {name: "Wooden", description: "When chunks are already generated", memory: MemorySmall, instanceType: Shared},
-	Iron:   {name: "Iron", description: "Default option, should handle up to 10 players", memory: MemoryMedium, instanceType: Shared},
+	Iron:   {name: "Iron", description: "Default option, should handle up to 12 players", memory: MemoryMedium, instanceType: Shared},
 }
 
 const defaultTier = Iron

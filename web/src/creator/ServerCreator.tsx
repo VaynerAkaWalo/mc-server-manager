@@ -1,4 +1,4 @@
-import {useLocation, useNavigate} from "react-router-dom";
+import {useLoaderData, useLocation, useNavigate} from "react-router-dom";
 import Select, {SingleValue} from "react-select";
 import * as React from "react";
 import {useEffect, useReducer, useState} from "react";
@@ -20,7 +20,6 @@ const initialServer: Server = {
   name: "",
   opts: {
     ONLINE_MODE: 'true',
-    MAX_PLAYERS: "20",
     DIFFICULTY: "normal"
   },
   tier: "",
@@ -43,32 +42,30 @@ function serverReducer(state: Server, action: ServerUpdateAction): Server {
 }
 
 export function ServerCreator() {
-  const [state, dispatch] = useReducer(serverReducer, {...initialServer, name: randomServerName()})
-  const {setNotificationMessage} = UpdateNotification()
+  const catalog = useLoaderData<CatalogResponse | null>()
   const {templateName, templatePreset, templateOps} = useLocation().state || {}
+  const [state, dispatch] = useReducer(serverReducer, undefined, (): Server => ({
+    ...initialServer,
+    name: randomServerName(),
+    tier: (catalog?.tiers.find(tier => tier.default) ?? catalog?.tiers[0])?.id ?? "",
+    opts: {
+      ...initialServer.opts,
+      ...(templateName && templateOps ? templateOps : {VERSION: catalog?.versions?.[SERVER_TYPE]?.latestRelease}),
+    },
+  }))
+  const {setNotificationMessage} = UpdateNotification()
   const navigate = useNavigate()
-  const [catalog, setCatalog] = useState<CatalogResponse | null>(null)
   const [showAdvanced, setShowAdvanced] = useState(false)
 
   useEffect(() => {
-    ManagerClient.getCatalog().then(({data}) => {
-      setCatalog(data)
-      dispatch({type: "UPDATE_TIER", payload: (data.tiers.find(tier => tier.default) ?? data.tiers[0])?.id ?? ""})
-      if (!isTemplated()) {
-        dispatch({type: "UPDATE_OPTS", payload: {VERSION: data.versions?.[SERVER_TYPE]?.latestRelease}})
-      }
-    }).catch(err => setNotificationMessage("Failed to load server options: " + problemMessage(err)))
+    if (!catalog) {
+      setNotificationMessage("Failed to load server options, try again later")
+    }
   }, []);
 
   function isTemplated(): boolean {
     return templateName && templateOps
   }
-
-  useEffect(() => {
-    if (isTemplated()) {
-      dispatch({type: "UPDATE_OPTS", payload: templateOps})
-    }
-  }, []);
 
   const basicSettings = () => {
     const updateName = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -166,7 +163,8 @@ export function ServerCreator() {
 
           <div className="flex flex-col">
             <label className="mc-label" htmlFor="player-limit">Player limit</label>
-            <input className="mc-input text-right" id="player-limit" type="text" value={state.opts.MAX_PLAYERS}
+            <input className="mc-input text-right" id="player-limit" type="text" value={state.opts.MAX_PLAYERS ?? ""}
+                   placeholder="Tier default"
                    onChange={updateMaxPlayers}/>
           </div>
         </div>

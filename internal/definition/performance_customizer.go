@@ -2,6 +2,7 @@ package definition
 
 import (
 	"context"
+	"slices"
 	"strings"
 )
 
@@ -12,14 +13,22 @@ func customizePerformance(versions VersionSource) customizer {
 	return func(ctx context.Context, definition ServerDefinition) (ServerDefinition, error) {
 		definition.Options[TYPE] = ServerType
 
-		if definition.Options[MODRINTH_PROJECTS] != "" {
+		version, found := versions.Versions(ctx)[ServerType].Find(definition.Options[VERSION])
+		if !found || len(version.Mods) == 0 {
 			return definition, nil
 		}
 
-		version, found := versions.Versions(ctx)[ServerType].Find(definition.Options[VERSION])
-		if found && len(version.Mods) > 0 {
-			definition.Options[MODRINTH_PROJECTS] = strings.Join(version.Mods, ",")
+		var mods []string
+		if existing := definition.Options[MODRINTH_PROJECTS]; existing != "" {
+			mods = strings.Split(existing, ",")
 		}
+
+		for _, mod := range version.Mods {
+			if !slices.Contains(mods, mod) {
+				mods = append(mods, mod)
+			}
+		}
+		definition.Options[MODRINTH_PROJECTS] = strings.Join(mods, ",")
 
 		return definition, nil
 	}

@@ -14,7 +14,7 @@ func TestCustomizePerformance(t *testing.T) {
 		{"mods with a release for the version", map[Option]string{VERSION: "1.21.10"}, "lithium,krypton"},
 		{"no mods for the version", map[Option]string{VERSION: "1.21.3"}, ""},
 		{"unknown version", map[Option]string{VERSION: "1.99"}, ""},
-		{"preset mods", map[Option]string{VERSION: "1.21.10", MODRINTH_PROJECTS: "fabric-api,lithium"}, "fabric-api,lithium"},
+		{"preset mods", map[Option]string{VERSION: "1.21.10", MODRINTH_PROJECTS: "fabric-api,lithium"}, "fabric-api,lithium,krypton"},
 	}
 
 	for _, tt := range tests {
