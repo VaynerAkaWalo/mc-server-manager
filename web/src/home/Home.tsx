@@ -49,8 +49,8 @@ export function Home() {
       </div>
 
       <section className="mc-panel w-full p-6">
-        <h2 className="font-pixel text-xl mb-2">What's new</h2>
-        <ul>
+        <h2 id="whats-new-heading" className="font-pixel text-xl mb-2">What's new</h2>
+        <ul className="max-h-80 sm:max-h-64 overflow-y-auto focus-visible:outline focus-visible:outline-action-content" tabIndex={0} aria-labelledby="whats-new-heading">
           {news.map(item => (
             <li key={item.title} className="py-3 border-t border-edge first:border-t-0">
               <div className="flex flex-wrap items-baseline justify-between gap-x-4">
