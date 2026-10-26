@@ -2,17 +2,11 @@ import {useLocation, useNavigate} from "react-router-dom";
 import Select, {SingleValue} from "react-select";
 import * as React from "react";
 import {useEffect, useReducer, useState} from "react";
-import {Checkbox, FormControlLabel, Tooltip} from "@mui/material";
+import {Checkbox, FormControlLabel} from "@mui/material";
 import {sanitizeString} from "../utils/StringSanitizer.ts";
 import {UpdateNotification} from "../App.tsx";
 import {CatalogResponse, CreateServerRequest, ManagerClient, Opts, problemMessage, Tier} from "../clients/ManagerClient.ts";
-
-enum CreatorTab {
-  BASIC,
-  ADVANCED,
-  PLAYERS,
-  TIER,
-}
+import {randomServerName} from "./randomServerName.ts";
 
 interface Server {
   name: string
@@ -49,13 +43,13 @@ function serverReducer(state: Server, action: ServerUpdateAction): Server {
 }
 
 export function ServerCreator() {
-  const [activeTab, setActiveTab] = useState<CreatorTab>(CreatorTab.BASIC)
-  const [state, dispatch] = useReducer(serverReducer, initialServer)
+  const [state, dispatch] = useReducer(serverReducer, {...initialServer, name: randomServerName()})
   const {setNotificationMessage} = UpdateNotification()
   const {templateName, templatePreset, templateOps} = useLocation().state || {}
   const navigate = useNavigate()
   const [catalog, setCatalog] = useState<CatalogResponse | null>(null)
   const [showSnapshots, setShowSnapshots] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(false)
 
   useEffect(() => {
     ManagerClient.getCatalog().then(({data}) => {
@@ -100,38 +94,39 @@ export function ServerCreator() {
       dispatch({type: "UPDATE_OPTS", payload: {VERSION: selected?.value}})
     }
 
-    const updateShowSnapshots = () => {
-      const isSnapshot = serverVersions?.items.find(version => version.id === state.opts.VERSION)?.kind === "snapshot"
-      if (showSnapshots && isSnapshot) {
-        dispatch({type: "UPDATE_OPTS", payload: {VERSION: serverVersions?.latestRelease}})
-      }
-      setShowSnapshots(!showSnapshots)
-    }
-
     return (
       <>
         <div className="flex flex-col">
           <label className="mc-label" htmlFor="server-name-input">Server name</label>
-          <input className="mc-input" id="server-name-input" type="text" placeholder="My Minecraft Server"
-                 value={state.name} onChange={updateName}/>
+          <div className="flex flex-row gap-2">
+            <input className="mc-input flex-1 min-w-0" id="server-name-input" type="text" placeholder="My Minecraft Server"
+                   value={state.name} onChange={updateName}/>
+            <button className="mc-button-secondary px-3" type="button" title="Generate another name"
+                    aria-label="Generate another name"
+                    onClick={() => dispatch({type: "UPDATE_NAME", payload: randomServerName()})}>
+              ↻
+            </button>
+          </div>
         </div>
 
         <div className="flex flex-col">
-          <div className="flex flex-row items-center justify-between">
-            <label className="mc-label mb-0" htmlFor="server-version">Server version</label>
-            <FormControlLabel sx={{margin: 0, gap: 0.5}}
-                              control={<Checkbox size="small" sx={{padding: 0}} checked={showSnapshots}
-                                                 disabled={isTemplated()} onChange={updateShowSnapshots}/>}
-                              label="Snapshots"/>
-          </div>
+          <label className="mc-label" htmlFor="server-version">Server version</label>
           <Select inputId="server-version" classNamePrefix="mc-select" options={versionOptions}
                   placeholder={"Select a version"} isDisabled={isTemplated()}
                   onChange={updateVersion} value={selectedVersion}/>
         </div>
-
-        <p className="text-sm text-content-muted">The server shuts down after 30 minutes without players.</p>
       </>
     )
+  }
+
+  const toggleSnapshots = () => {
+    const serverVersions = catalog?.versions?.[state.opts.TYPE ?? DEFAULT_SERVER_TYPE]
+    const isSnapshot = serverVersions?.items.find(version => version.id === state.opts.VERSION)?.kind === "snapshot"
+    if (showSnapshots && isSnapshot) {
+      dispatch({type: "UPDATE_OPTS", payload: {VERSION: serverVersions?.latestRelease}})
+    }
+
+    setShowSnapshots(!showSnapshots)
   }
 
   const advancedSettings = () => {
@@ -148,25 +143,6 @@ export function ServerCreator() {
       dispatch({type: "UPDATE_OPTS", payload: {DIFFICULTY: selectedDifficulty?.value}})
     }
 
-    return (
-      <>
-        <div className="flex flex-col">
-          <label className="mc-label" htmlFor="message-of-the-day">Message of the day</label>
-          <input className={"mc-input"} id={"message-of-the-day"} type={"text"} placeholder={"Welcome to the server!"}
-                 value={state.opts.MOTD} onChange={updateMessageOfDay}/>
-        </div>
-
-        <div className="flex flex-col">
-          <label className="mc-label" htmlFor={"server-difficulty"}>Server difficulty</label>
-          <Select inputId={"server-difficulty"} classNamePrefix="mc-select" options={difficultOptions}
-                  onChange={updateDifficulty}
-                  value={difficultOptions.find(option => option.value === state.opts.DIFFICULTY)}/>
-        </div>
-      </>
-    )
-  }
-
-  const playerSettings = () => {
     const updateMaxPlayers = (e: React.ChangeEvent<HTMLInputElement>) => {
       const value = e.target.value
       if (!isNaN(Number(value))) {
@@ -187,9 +163,24 @@ export function ServerCreator() {
     return (
       <>
         <div className="flex flex-col">
-          <label className="mc-label" htmlFor="player-limit">Player limit</label>
-          <input className="mc-input text-right" id="player-limit" type="text" value={state.opts.MAX_PLAYERS}
-                 onChange={updateMaxPlayers}/>
+          <label className="mc-label" htmlFor="message-of-the-day">Message of the day</label>
+          <input className={"mc-input"} id={"message-of-the-day"} type={"text"} placeholder={"Welcome to the server!"}
+                 value={state.opts.MOTD} onChange={updateMessageOfDay}/>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="flex flex-col">
+            <label className="mc-label" htmlFor={"server-difficulty"}>Server difficulty</label>
+            <Select inputId={"server-difficulty"} classNamePrefix="mc-select" options={difficultOptions}
+                    onChange={updateDifficulty}
+                    value={difficultOptions.find(option => option.value === state.opts.DIFFICULTY)}/>
+          </div>
+
+          <div className="flex flex-col">
+            <label className="mc-label" htmlFor="player-limit">Player limit</label>
+            <input className="mc-input text-right" id="player-limit" type="text" value={state.opts.MAX_PLAYERS}
+                   onChange={updateMaxPlayers}/>
+          </div>
         </div>
 
         <div className="flex flex-col">
@@ -197,49 +188,33 @@ export function ServerCreator() {
           <input className="mc-input" id="operators" type="text" value={state.opts.OPS} onChange={updateOperators}/>
         </div>
 
-        <div className="flex flex-row items-center">
-          <FormControlLabel control={<Checkbox checked={state.opts.ONLINE_MODE === 'true'} onClick={toggleOnlineMode}/>}
+        <div className="grid sm:grid-cols-2">
+          <FormControlLabel sx={{margin: 0}}
+                            control={<Checkbox checked={state.opts.ONLINE_MODE === 'true'} onClick={toggleOnlineMode}/>}
                             label="Online mode"/>
+          <FormControlLabel sx={{margin: 0}}
+                            control={<Checkbox checked={showSnapshots} disabled={isTemplated()} onChange={toggleSnapshots}/>}
+                            label="Show snapshot versions"/>
         </div>
       </>
     )
   }
 
-  const tierSettings = () => {
-
-    const updateTier = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const newValue = e.target.value as Tier
-      dispatch({type: "UPDATE_TIER", payload: newValue})
-    }
-
-    return (
-      <>
-        <div className="flex flex-col">
-          <label className="mc-label" htmlFor={"tier-settings"}>Server tier</label>
-          <div id={"tier-settings"} className={"flex flex-row"}>
-            {catalog?.tiers.map(tier => (
-              <Tooltip key={tier.id} title={tier.description}>
-                <FormControlLabel
-                  control={<Checkbox value={tier.id} checked={state.tier === tier.id} onChange={updateTier}/>}
-                  label={tier.name}/>
-              </Tooltip>
-            ))}
-          </div>
-        </div>
-        <div className="flex flex-col">
-          <label className="mc-label" htmlFor={"optimization-settings"}>Server type</label>
-          <div id={"optimization-settings"} className={"flex flex-row"}>
-            <Tooltip title={"Default option, uses vanilla server"}>
-              <FormControlLabel control={<Checkbox checked={true} value={"vanilla"}/>} label="Vanilla"/>
-            </Tooltip>
-            <Tooltip title={"Highly optimized fabric server, gameplay should not be affected"}>
-              <FormControlLabel control={<Checkbox checked={false} value={"fabric"}/>} label="Fabric"/>
-            </Tooltip>
-          </div>
-        </div>
-      </>
-    )
-  }
+  const tierSettings = () => (
+    <fieldset className="flex flex-col">
+      <legend className="mc-label">Server tier</legend>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-2">
+        {catalog?.tiers.map(tier => (
+          <label key={tier.id}
+                 className={`cursor-pointer border bg-inset px-3 py-2 has-focus-visible:outline-2 has-focus-visible:outline-action-content ${state.tier === tier.id ? "border-action-content" : "border-edge hover:border-edge-strong"}`}>
+            <input className="sr-only" type="radio" name="tier" value={tier.id} checked={state.tier === tier.id}
+                   onChange={() => dispatch({type: "UPDATE_TIER", payload: tier.id})}/>
+            <span className="text-sm">{tier.name}</span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  )
 
   const createServer = async () => {
     if (state.name === "" || state.name.length < 3 || state.name.length > 25) {
@@ -272,42 +247,26 @@ export function ServerCreator() {
     navigate("/my-servers")
   }
 
-  const tabs = [
-    {tab: CreatorTab.BASIC, label: "Basic"},
-    {tab: CreatorTab.TIER, label: "Tier"},
-    {tab: CreatorTab.ADVANCED, label: "Advanced"},
-    {tab: CreatorTab.PLAYERS, label: "Players"},
-  ]
-
-  const selectTabWithArrows = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    const step = {ArrowRight: 1, ArrowLeft: -1}[e.key]
-    if (!step) return
-
-    const index = tabs.findIndex(({tab}) => tab === activeTab)
-    const next = tabs[(index + step + tabs.length) % tabs.length].tab
-    setActiveTab(next)
-    document.getElementById(`creator-tab-${next}`)?.focus()
-  }
-
   return (
     <div className="mc-modal">
-      <div className="flex flex-row flex-wrap justify-evenly border-b border-edge" role="tablist"
-           onKeyDown={selectTabWithArrows}>
-        {tabs.map(({tab, label}) => (
-          <button key={tab} id={`creator-tab-${tab}`} className={`mc-tab ${activeTab === tab ? "active" : ""}`}
-                  role="tab" aria-selected={activeTab === tab} aria-controls="creator-tab-panel"
-                  tabIndex={activeTab === tab ? 0 : -1} onClick={() => setActiveTab(tab)}>
-            {label}
-          </button>
-        ))}
+      <div className="flex flex-row items-center justify-between gap-4 px-6 pt-6">
+        <h2 className="font-pixel text-2xl">{showAdvanced ? "Advanced" : "New server"}</h2>
+        <button className="mc-button-secondary py-1 text-sm" onClick={() => setShowAdvanced(!showAdvanced)}>
+          {showAdvanced ? "Back" : "Advanced"}
+        </button>
       </div>
 
-      <div className="flex flex-1 flex-col gap-5 p-6" id="creator-tab-panel" role="tabpanel"
-           aria-labelledby={`creator-tab-${activeTab}`}>
-        {activeTab === CreatorTab.BASIC && basicSettings()}
-        {activeTab === CreatorTab.ADVANCED && advancedSettings()}
-        {activeTab === CreatorTab.PLAYERS && playerSettings()}
-        {activeTab === CreatorTab.TIER && tierSettings()}
+      {/* Both views share one grid cell so the modal keeps the height of the taller one when switching. */}
+      <div className="grid flex-1 p-6">
+        <div className={`flex flex-col gap-5 [grid-area:1/1] ${showAdvanced ? "invisible" : ""}`} inert={showAdvanced}>
+          {basicSettings()}
+          {tierSettings()}
+          <p className="text-sm text-content-muted">The server shuts down after 30 minutes without players.</p>
+        </div>
+
+        <div className={`flex flex-col gap-4 [grid-area:1/1] ${showAdvanced ? "" : "invisible"}`} inert={!showAdvanced}>
+          {advancedSettings()}
+        </div>
       </div>
 
       <div className="flex items-center gap-2 w-full px-6 pb-6">

@@ -37,11 +37,8 @@
 
 @layer components {
   .mc-modal {
-    @apply mc-panel absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col;
+    @apply mc-panel my-6 flex flex-col;
     width: min(32rem, 92vw);
-    min-height: min(28rem, 92vh);
-    max-height: 92vh;
-    overflow-y: auto;
   }
 
   .mc-notification {
@@ -62,15 +59,6 @@
 
   .mc-label {
     @apply mb-1 text-xs text-content-muted;
-  }
-
-  .mc-tab {
-    @apply font-pixel text-content-muted hover:text-content border-b-2 border-transparent -mb-px;
-    padding: 10px clamp(8px, 2vw, 32px);
-  }
-
-  .mc-tab.active {
-    @apply text-content border-action-content;
   }
 
   .mc-select__control {
