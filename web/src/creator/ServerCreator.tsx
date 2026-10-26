@@ -249,8 +249,9 @@ export function ServerCreator() {
     <div className="mc-modal">
       <div className="flex flex-row items-center justify-between gap-4 px-6 pt-6">
         <h2 className="font-pixel text-2xl">{showAdvanced ? "Advanced" : "New server"}</h2>
-        <button className="mc-button-secondary py-1 text-sm" onClick={() => setShowAdvanced(!showAdvanced)}>
-          {showAdvanced ? "Back" : "Advanced"}
+        <button className="mc-button-secondary grid py-1 text-sm" onClick={() => setShowAdvanced(!showAdvanced)}>
+          <span className={`[grid-area:1/1] ${showAdvanced ? "invisible" : ""}`}>Advanced</span>
+          <span className={`[grid-area:1/1] ${showAdvanced ? "" : "invisible"}`}>Back</span>
         </button>
       </div>
 
