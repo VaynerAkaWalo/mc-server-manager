@@ -1,9 +1,10 @@
 import './App.css'
 import {Footer} from "./base/Footer.tsx";
-import {Outlet, useOutletContext} from "react-router-dom";
+import {Outlet, useNavigation, useOutletContext} from "react-router-dom";
 import {Notification} from "./base/Notification.tsx";
 import {useEffect, useState} from "react";
 import {Header} from "./base/Header.tsx";
+import {Spinner} from "./base/Spinner.tsx";
 import {createTheme, ThemeProvider} from "@mui/material";
 
 type NotificationContext =  { setNotificationMessage: React.Dispatch<React.SetStateAction<string>> }
@@ -11,6 +12,7 @@ type NotificationContext =  { setNotificationMessage: React.Dispatch<React.SetSt
 function App() {
   const [notificationMessage, setNotificationMessage] = useState<string>("")
   const [showNotification, setShowNotification] = useState<boolean>(false)
+  const isNavigating = useNavigation().state === "loading"
 
   const theme = createTheme({
     palette: {
@@ -44,7 +46,9 @@ function App() {
         <div className="h-screen flex flex-col">
           <Header/>
           <div className="flex flex-1 min-h-0 justify-center items-center-safe overflow-y-auto">
-            <Outlet context={{ setNotificationMessage } satisfies NotificationContext } />
+            {isNavigating
+              ? <Spinner/>
+              : <Outlet context={{ setNotificationMessage } satisfies NotificationContext } />}
           </div>
           {showNotification && <Notification message={notificationMessage}/>}
         </div>

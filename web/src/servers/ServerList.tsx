@@ -1,14 +1,13 @@
 import {useEffect, useState} from "react";
-import {Link} from "react-router-dom";
-import {ManagerClient, ServerResponse, ServerStatus} from "../clients/ManagerClient.ts";
+import {Link, useLoaderData} from "react-router-dom";
+import {ServerResponse, ServerStatus} from "../clients/ManagerClient.ts";
 import {UpdateNotification} from "../App.tsx";
+import {activeServers} from "./activeServers.ts";
 
 function shutdownHint(idleShutdownAt: string) {
   const minutes = Math.round((new Date(idleShutdownAt).getTime() - Date.now()) / 60_000)
   return minutes < 1 ? "Shuts down any moment" : `Shuts down in ${minutes}m`
 }
-
-const activeStatuses: ServerStatus[] = ["new", "running", "degraded", "expiring"]
 
 const statusDots: Partial<Record<ServerStatus, string>> = {
   new: "bg-starting motion-safe:animate-pulse",
@@ -28,7 +27,7 @@ const statusLabels: Record<ServerStatus, string> = {
 
 export function ServerList() {
   const {setNotificationMessage} = UpdateNotification()
-  const [servers, setServers] = useState<ServerResponse[] | null>(null)
+  const [servers, setServers] = useState(useLoaderData<ServerResponse[] | null>())
   const [search, setSearch] = useState("")
 
   const query = search.trim().toLowerCase()
@@ -48,21 +47,12 @@ export function ServerList() {
   useEffect(() => {
     const loadServers = async () => {
       try {
-        const items: ServerResponse[] = []
-        let cursor: string | undefined
-        do {
-          const {data} = await ManagerClient.listServers(cursor)
-          items.push(...data.items)
-          cursor = data.nextCursor || undefined
-        } while (cursor)
-
-        setServers(items.filter(server => activeStatuses.includes(server.status)))
+        setServers(await activeServers())
       } catch {
         // keep the last known list, the next poll retries
       }
     }
 
-    loadServers()
     const loader = setInterval(loadServers, 10000)
     return () => clearInterval(loader)
   }, [])

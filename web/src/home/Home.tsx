@@ -1,6 +1,5 @@
-import {Link} from "react-router-dom";
-import {useEffect, useState} from "react";
-import {ManagerClient, StatsResponse} from "../clients/ManagerClient.ts";
+import {Link, useLoaderData} from "react-router-dom";
+import {StatsResponse} from "../clients/ManagerClient.ts";
 
 const news = [
   {date: "2026-10-26", title: "Find your server", text: "Search servers by name, hostname or version, and scroll the list to find more worlds."},
@@ -10,32 +9,17 @@ const news = [
   {date: "2026-10-25", title: "Alpha 0.0.1", text: "We are now in alpha 0.0.1 and available at mc-server.blamedevs.com."},
 ]
 
-function Stat({label, value}: { label: string, value?: number }) {
+function Stat({label, value}: { label: string, value: number }) {
   return (
     <div className="mc-panel flex-1 flex flex-col items-center gap-1 py-4 px-6">
-      {value === undefined
-        ? <span className="font-pixel text-3xl motion-safe:animate-pulse" aria-label="Loading">...</span>
-        : <span className="font-pixel text-3xl">{value}</span>}
+      <span className="font-pixel text-3xl">{value}</span>
       <span className="text-sm text-content-muted">{label}</span>
     </div>
   )
 }
 
 export function Home() {
-  const [stats, setStats] = useState<StatsResponse>()
-
-  useEffect(() => {
-    const loadStats = async () => {
-      try {
-        const {data} = await ManagerClient.getStats()
-        setStats(data)
-      } catch {
-        setStats({online: 0, created: 0})
-      }
-    }
-
-    loadStats()
-  }, [])
+  const stats = useLoaderData<StatsResponse>()
 
   return (
     <div className="flex flex-col items-center gap-6 w-full max-w-3xl p-4 my-auto">
@@ -45,8 +29,8 @@ export function Home() {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 w-full">
-        <Stat label="Servers online" value={stats?.online}/>
-        <Stat label="Servers created" value={stats?.created}/>
+        <Stat label="Servers online" value={stats.online}/>
+        <Stat label="Servers created" value={stats.created}/>
       </div>
 
       <section className="mc-panel w-full p-6">
