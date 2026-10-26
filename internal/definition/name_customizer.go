@@ -14,7 +14,7 @@ var reservedNames = map[string]bool{
 }
 
 func customizeName(ctx context.Context, definition ServerDefinition) (ServerDefinition, error) {
-	definition.Name = strings.ReplaceAll(definition.Name, " ", "-")
+	definition.Name = strings.ToLower(strings.ReplaceAll(definition.Name, " ", "-"))
 
 	pattern := regexp.MustCompile("[^a-zA-Z0-9-]+")
 
