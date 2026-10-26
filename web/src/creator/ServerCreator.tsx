@@ -1,13 +1,12 @@
 import {useLoaderData, useLocation, useNavigate} from "react-router-dom";
 import Select, {SingleValue} from "react-select";
 import * as React from "react";
-import {useEffect, useReducer, useRef, useState} from "react";
+import {useEffect, useReducer, useState} from "react";
 import {Checkbox, FormControlLabel} from "@mui/material";
 import {sanitizeString} from "../utils/StringSanitizer.ts";
 import {UpdateNotification} from "../App.tsx";
 import {CatalogResponse, CreateServerRequest, ManagerClient, Opts, problemMessage, Tier} from "../clients/ManagerClient.ts";
 import {randomServerName} from "./randomServerName.ts";
-import {Spinner} from "../base/Spinner.tsx";
 
 interface Server {
   name: string
@@ -59,9 +58,6 @@ export function ServerCreator() {
   const navigate = useNavigate()
   const [showSnapshots, setShowSnapshots] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
-  const [isSwitching, setIsSwitching] = useState(false)
-  const toggleButton = useRef<HTMLButtonElement>(null)
-  const restoreToggleFocus = useRef(false)
 
   useEffect(() => {
     if (!catalog) {
@@ -71,27 +67,6 @@ export function ServerCreator() {
 
   function isTemplated(): boolean {
     return templateName && templateOps
-  }
-
-  useEffect(() => {
-    if (!isSwitching) {
-      if (restoreToggleFocus.current) {
-        if (document.activeElement === document.body || document.activeElement === toggleButton.current) {
-          toggleButton.current?.focus({preventScroll: true})
-        }
-        restoreToggleFocus.current = false
-      }
-      return
-    }
-
-    const timer = setTimeout(() => setIsSwitching(false), 500)
-    return () => clearTimeout(timer)
-  }, [isSwitching, showAdvanced]);
-
-  const toggleAdvanced = () => {
-    restoreToggleFocus.current = true
-    setShowAdvanced(!showAdvanced)
-    setIsSwitching(true)
   }
 
   const basicSettings = () => {
@@ -271,41 +246,37 @@ export function ServerCreator() {
   }
 
   return (
-    <div className="mc-modal relative" aria-busy={isSwitching}>
-      <div className={`flex flex-col flex-1 ${isSwitching ? "invisible opacity-0" : ""}`} inert={isSwitching}>
-        <div className="flex flex-row items-center justify-between gap-4 px-6 pt-6">
-          <h2 className="font-pixel text-2xl grid">
-            <span className={`[grid-area:1/1] ${showAdvanced ? "invisible" : ""}`} aria-hidden={showAdvanced}>New server</span>
-            <span className={`[grid-area:1/1] ${showAdvanced ? "" : "invisible"}`} aria-hidden={!showAdvanced}>Advanced</span>
-          </h2>
-          <button ref={toggleButton} className="mc-button-secondary grid py-1 text-sm" onClick={toggleAdvanced}>
-            <span className={`[grid-area:1/1] ${showAdvanced ? "invisible" : ""}`}>Advanced</span>
-            <span className={`[grid-area:1/1] ${showAdvanced ? "" : "invisible"}`}>Back</span>
-          </button>
+    <div className="mc-modal">
+      <div className="flex flex-row items-center justify-between gap-4 px-6 pt-6">
+        <h2 className="font-pixel text-2xl grid">
+          <span className={`[grid-area:1/1] ${showAdvanced ? "invisible" : ""}`} aria-hidden={showAdvanced}>New server</span>
+          <span className={`[grid-area:1/1] ${showAdvanced ? "" : "invisible"}`} aria-hidden={!showAdvanced}>Advanced</span>
+        </h2>
+        <button className="mc-button-secondary grid py-1 text-sm" onClick={() => setShowAdvanced(advanced => !advanced)}>
+          <span className={`[grid-area:1/1] ${showAdvanced ? "invisible" : ""}`}>Advanced</span>
+          <span className={`[grid-area:1/1] ${showAdvanced ? "" : "invisible"}`}>Back</span>
+        </button>
+      </div>
+
+      {/* Both views share one grid cell so the modal keeps the height of the taller one when switching. */}
+      <div className="grid flex-1 p-6">
+        <div className={`flex flex-col gap-5 [grid-area:1/1] ${showAdvanced ? "opacity-0" : ""}`}
+             inert={showAdvanced} aria-hidden={showAdvanced}>
+          {basicSettings()}
+          {tierSettings()}
+          <p className="text-sm text-content-muted">The server shuts down after 30 minutes without players.</p>
         </div>
 
-        {/* Both views share one grid cell so the modal keeps the height of the taller one when switching. */}
-        <div className="grid flex-1 p-6">
-          <div className={`flex flex-col gap-5 [grid-area:1/1] ${showAdvanced ? "invisible opacity-0" : ""}`}
-               inert={showAdvanced}>
-            {basicSettings()}
-            {tierSettings()}
-            <p className="text-sm text-content-muted">The server shuts down after 30 minutes without players.</p>
-          </div>
-
-          <div className={`flex flex-col gap-4 [grid-area:1/1] ${showAdvanced ? "" : "invisible opacity-0"}`}
-               inert={!showAdvanced}>
-            {advancedSettings()}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 w-full px-6 pb-6">
-          <button className="mc-button-secondary flex-1 whitespace-nowrap" onClick={() => navigate("/my-servers")}>Cancel</button>
-          <button className="mc-button flex-1 whitespace-nowrap" onClick={createServer}>Create server</button>
+        <div className={`flex flex-col gap-4 [grid-area:1/1] ${showAdvanced ? "" : "opacity-0"}`}
+             inert={!showAdvanced} aria-hidden={!showAdvanced}>
+          {advancedSettings()}
         </div>
       </div>
 
-      {isSwitching && <div className="absolute inset-0 flex items-center justify-center"><Spinner/></div>}
+      <div className="flex items-center gap-2 w-full px-6 pb-6">
+        <button className="mc-button-secondary flex-1 whitespace-nowrap" onClick={() => navigate("/my-servers")}>Cancel</button>
+        <button className="mc-button flex-1 whitespace-nowrap" onClick={createServer}>Create server</button>
+      </div>
     </div>
   )
 }
