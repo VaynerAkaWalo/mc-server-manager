@@ -46,4 +46,5 @@ type Tier string
 
 const (
 	Guest Tier = "guest"
+	Free  Tier = "free"
 )

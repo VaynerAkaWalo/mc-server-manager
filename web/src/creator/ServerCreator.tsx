@@ -47,6 +47,10 @@ function Included({value}: { value: boolean }) {
     : <span className="text-warning" aria-label="No">✗</span>
 }
 
+function Limit({value, base}: { value: number, base: number }) {
+  return <span className={value > base ? "text-online" : ""}>{value}</span>
+}
+
 export function ServerCreator() {
   const catalog = useLoaderData<CatalogResponse | null>()
   const {templateName, templatePreset, templateOps} = useLocation().state || {}
@@ -180,21 +184,31 @@ export function ServerCreator() {
                  className={`cursor-pointer border bg-inset px-3 py-2 has-focus-visible:outline-2 has-focus-visible:outline-action-content ${state.tier === tier.id ? "border-action-content" : "border-edge hover:border-edge-strong"}`}>
             <input className="sr-only" type="radio" name="tier" value={tier.id} checked={state.tier === tier.id}
                    onChange={() => dispatch({type: "UPDATE_TIER", payload: tier.id})}/>
-            <span className="text-sm">{tier.name}</span>
+            <span className="flex items-baseline justify-between gap-2 text-sm">
+              <span className={tier.available ? "" : "text-content-muted"}>{tier.name}</span>
+              {!tier.available && <span className="text-xs text-content-muted">Coming soon</span>}
+            </span>
           </label>
         ))}
       </div>
     </fieldset>
   )
 
+  const selectedTier = catalog?.tiers.find(candidate => candidate.id === state.tier)
+
   const summary = () => {
-    const tier = catalog?.tiers.find(candidate => candidate.id === state.tier)
+    const tier = selectedTier
     if (!tier) return null
+
+    const baseline = catalog?.tiers.find(candidate => candidate.default) ?? tier
 
     const version = isTemplated() ? `${templateName}-${templateOps.VERSION}` : state.opts.VERSION
     const groups: [string, React.ReactNode][][] = [
-      [["Version", version], ["Players", tier.maxPlayers]],
-      [["Render distance", tier.viewDistance], ["Simulation distance", tier.simulationDistance]],
+      [["Version", version], ["Players", <Limit value={tier.maxPlayers} base={baseline.maxPlayers}/>]],
+      [
+        ["Render distance", <Limit value={tier.viewDistance} base={baseline.viewDistance}/>],
+        ["Simulation distance", <Limit value={tier.simulationDistance} base={baseline.simulationDistance}/>],
+      ],
       [["Idle shutdown", "30 min"], ["World saved", <Included value={tier.persistent}/>], ["Name reserved", <Included value={tier.nameReserved}/>]],
     ]
 
@@ -281,7 +295,10 @@ export function ServerCreator() {
 
       <div className="flex items-center gap-2 w-full p-6 sm:pt-0">
         <button className="mc-button-secondary flex-1 whitespace-nowrap" onClick={() => navigate("/my-servers")}>Cancel</button>
-        <button className="mc-button flex-1 whitespace-nowrap" onClick={createServer}>Create server</button>
+        <button className="mc-button flex-1 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-action"
+                disabled={!selectedTier?.available} onClick={createServer}>
+          {selectedTier?.available === false ? "Coming soon" : "Create server"}
+        </button>
       </div>
     </div>
   )

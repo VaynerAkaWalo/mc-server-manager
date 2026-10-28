@@ -19,6 +19,7 @@ type CatalogTier struct {
 	SimulationDistance int    `json:"simulationDistance"`
 	Persistent         bool   `json:"persistent"`
 	NameReserved       bool   `json:"nameReserved"`
+	Available          bool   `json:"available"`
 }
 
 type CatalogPreset struct {
@@ -60,6 +61,7 @@ func catalogTiers() []CatalogTier {
 			SimulationDistance: instance.simulationDistance,
 			Persistent:         instance.persistent,
 			NameReserved:       instance.nameReserved,
+			Available:          instance.available,
 		})
 	}
 

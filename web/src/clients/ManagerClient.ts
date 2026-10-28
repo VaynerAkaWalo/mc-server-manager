@@ -24,7 +24,7 @@ export interface GameVersion {
 }
 
 export interface CatalogResponse {
-  tiers: { id: Tier, name: string, description: string, default: boolean, maxPlayers: number, viewDistance: number, simulationDistance: number, persistent: boolean, nameReserved: boolean }[],
+  tiers: { id: Tier, name: string, description: string, default: boolean, maxPlayers: number, viewDistance: number, simulationDistance: number, persistent: boolean, nameReserved: boolean, available: boolean }[],
   presets: { id: string, name: string, description: string, options: Opts }[],
   options: { id: string, values?: string[] }[],
   versions: Record<string, { latestRelease: string, items: GameVersion[] }>
