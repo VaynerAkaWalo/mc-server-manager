@@ -1,5 +1,7 @@
 body {
-  background: url("/public/background.jpg") repeat;
+  /* The dirt texture stays as atmosphere; the scrim keeps it behind the content. */
+  background: linear-gradient(var(--color-scrim), var(--color-scrim)), url("/background.jpg") repeat;
+  background-color: var(--color-chrome);
   font-family: var(--font-sans);
   color: var(--color-content)
 }

@@ -37,18 +37,20 @@ function App() {
         <div className="h-dvh flex flex-col">
           <Header/>
           <div className="flex flex-1 min-h-0">
-            <aside className="hidden w-40 shrink-0 overflow-y-auto border-r border-edge-strong bg-surface md:block">
+            <aside className="mc-chrome hidden w-sidebar shrink-0 overflow-y-auto border-r md:block">
               <Navigation/>
             </aside>
-            <main className="flex min-w-0 flex-1 justify-center items-center-safe overflow-y-auto">
-              {isNavigating
-                ? <Spinner/>
-                : <Outlet context={{ setNotificationMessage } satisfies NotificationContext } />}
+            <main className="flex min-w-0 flex-1 flex-col overflow-y-auto">
+              <div className="flex flex-1 justify-center items-center-safe">
+                {isNavigating
+                  ? <Spinner/>
+                  : <Outlet context={{ setNotificationMessage } satisfies NotificationContext } />}
+              </div>
+              <Footer/>
             </main>
           </div>
           {showNotification && <Notification message={notificationMessage}/>}
         </div>
-        <Footer/>
       </ThemeProvider>
     </>
   )

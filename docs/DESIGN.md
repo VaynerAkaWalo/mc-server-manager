@@ -4,7 +4,7 @@ Read this before changing anything in `web/src`. If a rule blocks the task, stop
 
 ## Source of truth
 
-- All colors, the type scale, radii and the content width live in `@theme` in `web/src/App.css`. Tailwind's default palette, type scale and radii are switched off there, so only these tokens exist as utilities.
+- All colors, the type scale, radii, shadows, the content width and the frame sizes live in `@theme` in `web/src/App.css`. Tailwind's default palette, type scale, radii and shadows are switched off there, so only these tokens exist as utilities.
 - Adding a token is its own, deliberate change in `@theme`. Never hardcode a value on a page instead.
 
 ## Never
@@ -12,8 +12,27 @@ Read this before changing anything in `web/src`. If a rule blocks the task, stop
 - Raw colors (`#hex`, `rgb()`) in TSX, or in CSS outside `@theme`.
 - Arbitrary Tailwind values (`w-[...]`, `p-[...]`, `text-[13px]`). The only exception is a grid template (`grid-cols-[...]`) or `[grid-area:...]`.
 - Importing `@mui/*` outside `web/src/ui/mui.ts`.
-- Gradients, shadows, rounded corners, glow, emoji in the UI, or decorative illustrations.
+- Gradients, rounded corners, glow, emoji in the UI, or decorative illustrations. Shadows only from the elevation scale below. (The page scrim in `index.css` is a flat color layer, not a gradient.)
 - Status colors for other meanings. `online`, `starting` and `warning` describe a server's status (and `warning` a real warning). "Not included" is plain `text-content-muted`, a better-than-default value is `text-action-content`.
+
+## Layout and elevation
+
+- The app frame is header, sidebar (from `md` up, a drawer below) and footer. Their sizes are tokens: `h-header` (56 px), `w-sidebar` (224 px), `min-h-footer` (48 px). Do not size them by hand.
+- Header, sidebar and footer use `mc-chrome` (flat `bg-chrome`, `edge` border). The header holds the wordmark (grass block and "Minecraft server hosting") on the left and account actions on the right. Navigation lives in the sidebar, not the header.
+- Sidebar links are `mc-sidebar-link`: 20 px icon, `font-pixel text-sm` label, 44 px high. Hover lifts them to `surface`; the active link is `surface-hover` with a 3 px `action-content` bar on the left and an `action-content` icon.
+- The footer sits at the bottom of the main column and repeats the wordmark at `text-xs`.
+- Depth, back to front. Every element belongs to exactly one level:
+
+  | Level | Background | Shadow | Used for |
+  | --- | --- | --- | --- |
+  | Page | dirt texture under `--color-scrim` | none | the area behind content |
+  | Chrome | `bg-chrome` | `shadow-chrome` (header only) | header, sidebar, footer |
+  | Panel | `bg-surface` (`mc-panel` / `Panel`) | `shadow-panel` | cards, forms, lists |
+  | Raised | `bg-surface-hover`, buttons | `shadow-raised` | buttons, the active nav link, selected items |
+  | Overlay | `bg-overlay` (`mc-overlay`) | `shadow-overlay` | menus, the drawer, select menus, notifications |
+
+- Never put a panel inside a panel to get depth; use `bg-inset` for wells inside a panel (inputs, code, summaries).
+- The page scrim dims the background so content is always the foreground. Do not lighten it or add more background imagery.
 
 ## Components (`web/src/ui`)
 
