@@ -1,13 +1,13 @@
 import {NavLink, useLocation} from "react-router-dom";
 import {useUser} from "../auth/useUser.ts";
-import {userManager} from "../auth/userManager.ts";
 
 export function Header() {
-  const user = useUser()
+  const {user, loading, error, logOut} = useUser()
   const location = useLocation()
 
-  const logIn = () => userManager.signinRedirect({state: location.pathname + location.search})
-  const logOut = () => userManager.removeUser()
+  const logIn = () => {
+    window.location.assign("/auth/login?returnTo=" + encodeURIComponent(location.pathname + location.search + location.hash))
+  }
 
   return (
     <ul className="flex flex-row flex-wrap bg-surface border-b border-edge-strong justify-around items-center w-full min-h-12">
@@ -17,8 +17,9 @@ export function Header() {
       <li><NavLink className="mc-nav-link" to={"/server-templates"}>Templates</NavLink></li>
       <li>
         {user
-          ? <button className="mc-nav-link cursor-pointer" onClick={logOut}>Log out</button>
-          : <button className="mc-nav-link cursor-pointer" onClick={logIn}>Log in</button>}
+          ? <button className="mc-nav-link cursor-pointer" disabled={loading} onClick={logOut}>Log out</button>
+          : <button className="mc-nav-link cursor-pointer" disabled={loading} onClick={logIn}>Log in</button>}
+        {error && <span role="status" className="text-sm text-content-muted"> Login status unavailable. Try again.</span>}
       </li>
     </ul>
   )
