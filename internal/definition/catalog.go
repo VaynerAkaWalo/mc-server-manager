@@ -18,6 +18,7 @@ type CatalogTier struct {
 	ViewDistance       int    `json:"viewDistance"`
 	SimulationDistance int    `json:"simulationDistance"`
 	Persistent         bool   `json:"persistent"`
+	NameReserved       bool   `json:"nameReserved"`
 }
 
 type CatalogPreset struct {
@@ -58,6 +59,7 @@ func catalogTiers() []CatalogTier {
 			ViewDistance:       instance.viewDistance,
 			SimulationDistance: instance.simulationDistance,
 			Persistent:         instance.persistent,
+			NameReserved:       instance.nameReserved,
 		})
 	}
 

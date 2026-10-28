@@ -19,6 +19,7 @@ type serverInstance struct {
 	viewDistance       int
 	simulationDistance int
 	persistent         bool
+	nameReserved       bool
 }
 
 // Game nodes have about 6.5Gi allocatable, so two small servers share a node.
@@ -37,6 +38,7 @@ var tierMapping = map[Tier]serverInstance{
 		viewDistance:       6,
 		simulationDistance: 4,
 		persistent:         false,
+		nameReserved:       false,
 	},
 }
 

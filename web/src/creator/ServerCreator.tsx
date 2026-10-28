@@ -41,6 +41,12 @@ function serverReducer(state: Server, action: ServerUpdateAction): Server {
   }
 }
 
+function Included({value}: { value: boolean }) {
+  return value
+    ? <span className="text-online" aria-label="Yes">✓</span>
+    : <span className="text-warning" aria-label="No">✗</span>
+}
+
 export function ServerCreator() {
   const catalog = useLoaderData<CatalogResponse | null>()
   const {templateName, templatePreset, templateOps} = useLocation().state || {}
@@ -185,15 +191,19 @@ export function ServerCreator() {
     const tier = catalog?.tiers.find(candidate => candidate.id === state.tier)
     if (!tier) return null
 
-    const rows: [string, string][] = [
-      ["Players", `${tier.maxPlayers}`],
-      ["Render", `${tier.viewDistance} chunks`],
-      ["Simulation", `${tier.simulationDistance} chunks`],
-      ["World", tier.persistent ? "Saved" : "Not saved"],
+    const version = isTemplated() ? `${templateName}-${templateOps.VERSION}` : state.opts.VERSION
+    const rows: [string, React.ReactNode][] = [
+      ["Version", version],
+      ["Players", tier.maxPlayers],
+      ["Render distance", tier.viewDistance],
+      ["Simulation distance", tier.simulationDistance],
+      ["Idle shutdown", "30 min"],
+      ["World saved", <Included value={tier.persistent}/>],
+      ["Name reserved", <Included value={tier.nameReserved}/>],
     ]
 
     return (
-      <aside className="flex flex-col gap-3 border-t border-edge bg-inset p-6 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:w-52 sm:border-t-0 sm:border-l" aria-labelledby="server-summary-heading">
+      <aside className="flex flex-col gap-3 border-t border-edge bg-inset p-6 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:w-60 sm:border-t-0 sm:border-l" aria-labelledby="server-summary-heading">
         <h3 id="server-summary-heading" className="font-pixel">{tier.name} tier</h3>
         <dl className="flex flex-col gap-1.5 text-sm">
           {rows.map(([label, value]) => (
@@ -258,7 +268,6 @@ export function ServerCreator() {
                inert={showAdvanced} aria-hidden={showAdvanced}>
             {basicSettings()}
             {tierSettings()}
-            <p className="text-sm text-content-muted">The server shuts down after 30 minutes without players.</p>
           </div>
 
           <div className={`flex flex-col gap-4 [grid-area:1/1] ${showAdvanced ? "" : "opacity-0"}`}
