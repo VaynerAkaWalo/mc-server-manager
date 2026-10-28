@@ -1,8 +1,12 @@
 import {useEffect, useState} from "react";
-import {Link, useLoaderData} from "react-router-dom";
+import {useLoaderData} from "react-router-dom";
 import {ServerResponse, ServerStatus} from "../clients/ManagerClient.ts";
 import {UpdateNotification} from "../App.tsx";
 import {activeServers} from "./activeServers.ts";
+import {LinkButton} from "../ui/Button.tsx";
+import {Heading} from "../ui/Heading.tsx";
+import {Panel} from "../ui/Panel.tsx";
+import {TextInput} from "../ui/Field.tsx";
 
 function shutdownHint(idleShutdownAt: string) {
   const minutes = Math.round((new Date(idleShutdownAt).getTime() - Date.now()) / 60_000)
@@ -58,18 +62,18 @@ export function ServerList() {
   }, [])
 
   return (
-    <section className="mc-panel w-[min(60rem,calc(100%-2rem))] my-6 p-[clamp(1rem,3vw,2rem)] font-sans text-sm">
+    <Panel as="section" className="mx-4 my-6 flex-1 max-w-content p-4 sm:p-8 font-sans text-sm">
       <header className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <h2 id="servers-heading" className="font-pixel text-2xl">Servers</h2>
-        <Link className="mc-button" to="/server-creator">Create server</Link>
+        <Heading level={2} id="servers-heading">Servers</Heading>
+        <LinkButton to="/server-creator">Create server</LinkButton>
       </header>
 
       <label className="sr-only" htmlFor="server-search">Search servers</label>
-      <input id="server-search" type="search" className="mc-input w-full mb-4"
+      <TextInput id="server-search" type="search" className="w-full mb-4"
              placeholder="Search by name, hostname or version"
              value={search} onChange={event => setSearch(event.target.value)}/>
 
-      <div className="h-[34rem] overflow-y-auto focus-visible:outline focus-visible:outline-action-content"
+      <div className="max-h-136 overflow-y-auto focus-ring"
            role="region" aria-labelledby="servers-heading" tabIndex={0}>
         {servers === null ? (
           <p className="py-8 text-content-muted" role="status">Loading servers...</p>
@@ -82,13 +86,13 @@ export function ServerList() {
             {matchingServers.map(server => (
               <li key={server.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-2 py-4 px-1 border-t border-edge">
                 <div className="min-w-0">
-                  <h3 className="font-pixel text-base wrap-anywhere">{server.name}</h3>
+                  <Heading level={3} className="wrap-anywhere">{server.name}</Heading>
                   <p className="text-content-muted">{server.options.VERSION ?? "Unknown version"}</p>
                 </div>
 
                 <ServerPresence server={server}/>
 
-                <button className="col-span-full flex items-center justify-between gap-4 px-3 py-2 bg-inset hover:bg-surface-hover text-left cursor-pointer"
+                <button className="col-span-full flex items-center justify-between gap-4 px-3 py-2 bg-inset hover:bg-surface-hover text-left cursor-pointer focus-ring"
                         aria-label={`Copy hostname ${server.hostname}`}
                         onClick={() => copyHostname(server.hostname)}>
                   <span className="font-mono text-xs text-content-muted wrap-anywhere">{server.hostname}</span>
@@ -99,7 +103,7 @@ export function ServerList() {
           </ul>
         )}
       </div>
-    </section>
+    </Panel>
   )
 }
 

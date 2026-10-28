@@ -1,4 +1,7 @@
-import {Link, useLoaderData} from "react-router-dom";
+import {useLoaderData} from "react-router-dom";
+import {LinkButton} from "../ui/Button.tsx";
+import {Heading} from "../ui/Heading.tsx";
+import {Panel} from "../ui/Panel.tsx";
 import {StatsResponse} from "../clients/ManagerClient.ts";
 
 const news = [
@@ -14,10 +17,10 @@ const news = [
 
 function Stat({label, value}: { label: string, value: number }) {
   return (
-    <div className="mc-panel flex-1 flex flex-col items-center gap-1 py-4 px-6">
+    <Panel className="flex-1 flex flex-col items-center gap-1 py-4 px-6">
       <span className="font-pixel text-3xl">{value}</span>
       <span className="text-sm text-content-muted">{label}</span>
-    </div>
+    </Panel>
   )
 }
 
@@ -26,30 +29,30 @@ export function Home() {
 
   return (
     <div className="flex flex-col items-center gap-6 w-full max-w-3xl p-4 my-auto">
-      <div className="mc-panel w-full flex flex-col items-center gap-6 py-8 px-6 text-center">
-        <h1 className="font-pixel text-2xl sm:text-3xl text-balance">Host a server in minutes and play with your friends</h1>
-        <Link className="mc-button whitespace-nowrap" to="/server-creator">Get started</Link>
-      </div>
+      <Panel className="w-full flex flex-col items-center gap-6 py-8 px-6 text-center">
+        <Heading level={1} className="text-balance">Host a server in minutes and play with your friends</Heading>
+        <LinkButton className="whitespace-nowrap" to="/server-creator">Get started</LinkButton>
+      </Panel>
 
       <div className="flex flex-col sm:flex-row gap-4 w-full">
         <Stat label="Servers online" value={stats.online}/>
         <Stat label="Servers created" value={stats.created}/>
       </div>
 
-      <section className="mc-panel w-full p-6">
-        <h2 id="whats-new-heading" className="font-pixel text-xl mb-2">What's new</h2>
-        <ul className="max-h-80 sm:max-h-64 overflow-y-auto focus-visible:outline focus-visible:outline-action-content" tabIndex={0} aria-labelledby="whats-new-heading">
+      <Panel as="section" className="w-full p-6">
+        <Heading level={2} id="whats-new-heading" className="mb-2">What's new</Heading>
+        <ul className="max-h-80 sm:max-h-64 overflow-y-auto focus-ring" tabIndex={0} aria-labelledby="whats-new-heading">
           {news.map(item => (
             <li key={item.title} className="py-3 border-t border-edge first:border-t-0">
               <div className="flex flex-wrap items-baseline justify-between gap-x-4">
-                <h3 className="font-pixel">{item.title}</h3>
+                <Heading level={3}>{item.title}</Heading>
                 <span className="text-xs text-content-muted">{item.date}</span>
               </div>
               <p className="text-sm text-content-muted">{item.text}</p>
             </li>
           ))}
         </ul>
-      </section>
+      </Panel>
     </div>
   )
 }

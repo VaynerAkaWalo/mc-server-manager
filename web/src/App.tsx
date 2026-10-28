@@ -2,11 +2,11 @@ import './App.css'
 import {Footer} from "./base/Footer.tsx";
 import {Outlet, useNavigation, useOutletContext} from "react-router-dom";
 import {Notification} from "./base/Notification.tsx";
-import {useEffect, useState} from "react";
+import {useEffect, useMemo, useState} from "react";
 import {Header} from "./base/Header.tsx";
 import {Navigation} from "./base/Navigation.tsx";
 import {Spinner} from "./base/Spinner.tsx";
-import {createTheme, ThemeProvider} from "@mui/material";
+import {createAppTheme, ThemeProvider} from "./ui/mui.ts";
 
 type NotificationContext =  { setNotificationMessage: React.Dispatch<React.SetStateAction<string>> }
 
@@ -15,17 +15,7 @@ function App() {
   const [showNotification, setShowNotification] = useState<boolean>(false)
   const isNavigating = useNavigation().state === "loading"
 
-  const theme = createTheme({
-    palette: {
-      mode: "dark",
-      primary: {main: "#c5d9ae"},
-      text: {primary: "#edf0e9", secondary: "#a5ada3"},
-    },
-    typography: {
-      fontFamily: "system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif",
-      fontSize: 13,
-    }
-  })
+  const theme = useMemo(createAppTheme, [])
 
   useEffect(() => {
     if (notificationMessage === "") {
