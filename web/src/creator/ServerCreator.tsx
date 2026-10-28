@@ -192,24 +192,24 @@ export function ServerCreator() {
     if (!tier) return null
 
     const version = isTemplated() ? `${templateName}-${templateOps.VERSION}` : state.opts.VERSION
-    const rows: [string, React.ReactNode][] = [
-      ["Version", version],
-      ["Players", tier.maxPlayers],
-      ["Render distance", tier.viewDistance],
-      ["Simulation distance", tier.simulationDistance],
-      ["Idle shutdown", "30 min"],
-      ["World saved", <Included value={tier.persistent}/>],
-      ["Name reserved", <Included value={tier.nameReserved}/>],
+    const groups: [string, React.ReactNode][][] = [
+      [["Version", version], ["Players", tier.maxPlayers]],
+      [["Render distance", tier.viewDistance], ["Simulation distance", tier.simulationDistance]],
+      [["Idle shutdown", "30 min"], ["World saved", <Included value={tier.persistent}/>], ["Name reserved", <Included value={tier.nameReserved}/>]],
     ]
 
     return (
       <aside className="flex flex-col gap-3 border-t border-edge bg-inset p-6 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:w-60 sm:border-t-0 sm:border-l" aria-labelledby="server-summary-heading">
         <h3 id="server-summary-heading" className="font-pixel">{tier.name} tier</h3>
-        <dl className="flex flex-col gap-1.5 text-sm">
-          {rows.map(([label, value]) => (
-            <div key={label} className="flex justify-between gap-2">
-              <dt className="text-content-muted">{label}</dt>
-              <dd>{value}</dd>
+        <dl className="flex flex-col text-sm">
+          {groups.map(rows => (
+            <div key={rows[0][0]} className="flex flex-col gap-1.5 border-t border-edge py-3 first:border-t-0 first:pt-0">
+              {rows.map(([label, value]) => (
+                <div key={label} className="flex justify-between gap-2">
+                  <dt className="text-content-muted">{label}</dt>
+                  <dd>{value}</dd>
+                </div>
+              ))}
             </div>
           ))}
         </dl>
