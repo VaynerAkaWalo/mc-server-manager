@@ -38,7 +38,7 @@
 @layer components {
   .mc-modal {
     @apply mc-panel my-6 flex flex-col;
-    width: min(48rem, 92vw);
+    width: min(44rem, 92vw);
   }
 
   .mc-notification {

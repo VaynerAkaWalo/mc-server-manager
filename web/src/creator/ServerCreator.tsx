@@ -186,25 +186,23 @@ export function ServerCreator() {
     if (!tier) return null
 
     const rows: [string, string][] = [
-      ["Tier", tier.name],
-      ["Player limit", `${tier.maxPlayers}`],
-      ["Render distance", `${tier.viewDistance} chunks`],
-      ["Simulation distance", `${tier.simulationDistance} chunks`],
-      ["World save", tier.persistent ? "Kept when the server stops" : "Deleted when the server shuts down"],
+      ["Players", `${tier.maxPlayers}`],
+      ["Render", `${tier.viewDistance} chunks`],
+      ["Simulation", `${tier.simulationDistance} chunks`],
+      ["World", tier.persistent ? "Saved" : "Not saved"],
     ]
 
     return (
-      <aside className="flex flex-col gap-3 border-t border-edge p-6 sm:w-64 sm:shrink-0 sm:border-t-0 sm:border-l" aria-labelledby="server-summary-heading">
-        <h3 id="server-summary-heading" className="font-pixel text-lg">Summary</h3>
-        <dl className="flex flex-col gap-2 text-sm">
+      <aside className="flex flex-col gap-3 border-t border-edge bg-inset p-6 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:w-52 sm:border-t-0 sm:border-l" aria-labelledby="server-summary-heading">
+        <h3 id="server-summary-heading" className="font-pixel">{tier.name} tier</h3>
+        <dl className="flex flex-col gap-1.5 text-sm">
           {rows.map(([label, value]) => (
-            <div key={label} className="flex flex-col">
+            <div key={label} className="flex justify-between gap-2">
               <dt className="text-content-muted">{label}</dt>
               <dd>{value}</dd>
             </div>
           ))}
         </dl>
-        <p className="text-sm text-content-muted">The server shuts down after 30 minutes without players.</p>
       </aside>
     )
   }
@@ -241,25 +239,26 @@ export function ServerCreator() {
   }
 
   return (
-    <div className="mc-modal">
-      <div className="flex flex-row items-center justify-between gap-4 px-6 pt-6">
-        <h2 className="font-pixel text-2xl grid">
-          <span className={`[grid-area:1/1] ${showAdvanced ? "invisible" : ""}`} aria-hidden={showAdvanced}>New server</span>
-          <span className={`[grid-area:1/1] ${showAdvanced ? "" : "invisible"}`} aria-hidden={!showAdvanced}>Advanced</span>
-        </h2>
-        <button className="mc-button-secondary grid py-1 text-sm" onClick={() => setShowAdvanced(advanced => !advanced)}>
-          <span className={`[grid-area:1/1] ${showAdvanced ? "invisible" : ""}`}>Advanced</span>
-          <span className={`[grid-area:1/1] ${showAdvanced ? "" : "invisible"}`}>Back</span>
-        </button>
-      </div>
+    <div className="mc-modal sm:grid sm:grid-cols-[1fr_auto]">
+      <div className="flex flex-col">
+        <div className="flex flex-row items-center justify-between gap-4 px-6 pt-6">
+          <h2 className="font-pixel text-2xl grid">
+            <span className={`[grid-area:1/1] ${showAdvanced ? "invisible" : ""}`} aria-hidden={showAdvanced}>New server</span>
+            <span className={`[grid-area:1/1] ${showAdvanced ? "" : "invisible"}`} aria-hidden={!showAdvanced}>Advanced</span>
+          </h2>
+          <button className="mc-button-secondary grid py-1 text-sm" onClick={() => setShowAdvanced(advanced => !advanced)}>
+            <span className={`[grid-area:1/1] ${showAdvanced ? "invisible" : ""}`}>Advanced</span>
+            <span className={`[grid-area:1/1] ${showAdvanced ? "" : "invisible"}`}>Back</span>
+          </button>
+        </div>
 
-      {/* Both views share one grid cell so the modal keeps the height of the taller one when switching. */}
-      <div className="flex flex-1 flex-col sm:flex-row">
+        {/* Both views share one grid cell so the modal keeps the height of the taller one when switching. */}
         <div className="grid flex-1 p-6">
           <div className={`flex flex-col gap-5 [grid-area:1/1] ${showAdvanced ? "opacity-0" : ""}`}
                inert={showAdvanced} aria-hidden={showAdvanced}>
             {basicSettings()}
             {tierSettings()}
+            <p className="text-sm text-content-muted">The server shuts down after 30 minutes without players.</p>
           </div>
 
           <div className={`flex flex-col gap-4 [grid-area:1/1] ${showAdvanced ? "" : "opacity-0"}`}
@@ -267,11 +266,11 @@ export function ServerCreator() {
             {advancedSettings()}
           </div>
         </div>
-
-        {summary()}
       </div>
 
-      <div className="flex items-center gap-2 w-full px-6 pb-6">
+      {summary()}
+
+      <div className="flex items-center gap-2 w-full p-6 sm:pt-0">
         <button className="mc-button-secondary flex-1 whitespace-nowrap" onClick={() => navigate("/my-servers")}>Cancel</button>
         <button className="mc-button flex-1 whitespace-nowrap" onClick={createServer}>Create server</button>
       </div>
