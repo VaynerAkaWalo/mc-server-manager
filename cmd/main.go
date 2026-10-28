@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/VaynerAkaWalo/go-toolkit/xhttp"
 	"github.com/VaynerAkaWalo/go-toolkit/xlog"
+	"github.com/VaynerAkaWalo/mc-server-manager/internal/auth"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/catalog"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/cluster"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/frontend"
@@ -48,6 +49,13 @@ func main() {
 		os.Exit(-1)
 	}
 
+	authHandlers, err := auth.NewHandlers(os.Getenv("OIDC_ISSUER"), os.Getenv("OIDC_CLIENT_ID"), os.Getenv("APP_URL"), serverStore)
+	if err != nil {
+		slog.Error("Failed to configure authentication", "error", err)
+		os.Exit(1)
+	}
+	go authHandlers.RunCleanup(context.Background())
+
 	gameVersions := versions.NewSource()
 
 	serverService := server.CreateServerService(cluster.CreateClusterService(*clusterClient, *dynamicClient), serverStore, gameVersions)
@@ -61,7 +69,7 @@ func main() {
 
 	publicServer := xhttp.Server{
 		Addr:     ":8080",
-		Handlers: []xhttp.RouteHandler{serverHandlers, catalog.NewCatalogHandlers(gameVersions), frontendHandlers},
+		Handlers: []xhttp.RouteHandler{authHandlers, serverHandlers, catalog.NewCatalogHandlers(gameVersions), frontendHandlers},
 	}
 	internalServer := xhttp.Server{
 		Addr:     ":8081",

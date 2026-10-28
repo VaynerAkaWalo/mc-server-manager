@@ -4,6 +4,7 @@ import {Outlet, useNavigation, useOutletContext} from "react-router-dom";
 import {Notification} from "./base/Notification.tsx";
 import {useEffect, useState} from "react";
 import {Header} from "./base/Header.tsx";
+import {Navigation} from "./base/Navigation.tsx";
 import {Spinner} from "./base/Spinner.tsx";
 import {createTheme, ThemeProvider} from "@mui/material";
 
@@ -43,12 +44,17 @@ function App() {
   return (
     <>
       <ThemeProvider theme={theme}>
-        <div className="h-screen flex flex-col">
+        <div className="h-dvh flex flex-col">
           <Header/>
-          <div className="flex flex-1 min-h-0 justify-center items-center-safe overflow-y-auto">
-            {isNavigating
-              ? <Spinner/>
-              : <Outlet context={{ setNotificationMessage } satisfies NotificationContext } />}
+          <div className="flex flex-1 min-h-0">
+            <aside className="hidden w-40 shrink-0 overflow-y-auto border-r border-edge-strong bg-surface md:block">
+              <Navigation/>
+            </aside>
+            <main className="flex min-w-0 flex-1 justify-center items-center-safe overflow-y-auto">
+              {isNavigating
+                ? <Spinner/>
+                : <Outlet context={{ setNotificationMessage } satisfies NotificationContext } />}
+            </main>
           </div>
           {showNotification && <Notification message={notificationMessage}/>}
         </div>
