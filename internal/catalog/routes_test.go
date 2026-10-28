@@ -17,7 +17,7 @@ func TestCatalogRoute(t *testing.T) {
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/api/v1/catalog", nil))
 
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"tiers":[{"id":"wooden"`) || !strings.Contains(rec.Body.String(), `"latestRelease":"1.21.10"`) {
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"tiers":[{"id":"guest"`) || !strings.Contains(rec.Body.String(), `"latestRelease":"1.21.10"`) {
 		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body)
 	}
 }

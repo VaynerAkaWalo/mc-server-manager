@@ -13,8 +13,8 @@ func TestCatalogMatchesDefinitions(t *testing.T) {
 		t.Fatalf("tiers = %+v", catalog.Tiers)
 	}
 	for _, tier := range catalog.Tiers {
-		if _, err := translateTier(nil, Tier(tier.ID)); err != nil {
-			t.Errorf("catalog tier %s cannot be provisioned: %v", tier.ID, err)
+		if _, err := translateTier(nil, Tier(tier.ID)); (err == nil) != tier.Available {
+			t.Errorf("catalog tier %s is available %v but provisioning returned %v", tier.ID, tier.Available, err)
 		}
 	}
 

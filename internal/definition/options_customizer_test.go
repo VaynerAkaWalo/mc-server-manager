@@ -17,10 +17,11 @@ func TestCustomizeOptions(t *testing.T) {
 		{"creator form", map[Option]string{
 			MOTD:        "Hello, it's my server!",
 			DIFFICULTY:  "hard",
-			MAX_PLAYERS: "10",
 			ONLINE_MODE: "false",
 			OPS:         "Steve, Alex",
 		}, false},
+		{"player limit", map[Option]string{MAX_PLAYERS: "100"}, true},
+		{"view distance", map[Option]string{VIEW_DISTANCE: "32"}, true},
 		{"mod url", map[Option]string{MODS: presets["lockout"].options[MODS]}, true},
 		{"modrinth projects", map[Option]string{MODRINTH_PROJECTS: "fabric-api"}, true},
 		{"enforced option", map[Option]string{MEMORY: "64Gi"}, true},
@@ -84,7 +85,7 @@ func TestVersionIsRequiredUnlessPresetSetsIt(t *testing.T) {
 }
 
 func TestTranslateRequiresVersionAfterPreset(t *testing.T) {
-	base := ServerDefinition{Name: "my-server", Tier: Wooden, Duration: time.Hour, Options: map[Option]string{}}
+	base := ServerDefinition{Name: "my-server", Tier: Guest, Duration: time.Hour, Options: map[Option]string{}}
 
 	if _, err := TranslateDefinition(context.Background(), base, testVersions); err == nil {
 		t.Fatal("definition without version was translated")

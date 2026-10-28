@@ -41,6 +41,16 @@ function serverReducer(state: Server, action: ServerUpdateAction): Server {
   }
 }
 
+function Included({value}: { value: boolean }) {
+  return value
+    ? <span className="text-online" aria-label="Yes">✓</span>
+    : <span className="text-warning" aria-label="No">✗</span>
+}
+
+function Limit({value, base}: { value: number, base: number }) {
+  return <span className={value > base ? "text-online" : ""}>{value}</span>
+}
+
 export function ServerCreator() {
   const catalog = useLoaderData<CatalogResponse | null>()
   const {templateName, templatePreset, templateOps} = useLocation().state || {}
@@ -128,13 +138,6 @@ export function ServerCreator() {
       dispatch({type: "UPDATE_OPTS", payload: {DIFFICULTY: selectedDifficulty?.value}})
     }
 
-    const updateMaxPlayers = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = e.target.value
-      if (!isNaN(Number(value))) {
-        dispatch({type: "UPDATE_OPTS", payload: {MAX_PLAYERS: value}})
-      }
-    }
-
     const updateOperators = (e: React.ChangeEvent<HTMLInputElement>) => {
       const value = e.target.value
       dispatch({type: "UPDATE_OPTS", payload: {OPS: value}})
@@ -153,20 +156,11 @@ export function ServerCreator() {
                  value={state.opts.MOTD} onChange={updateMessageOfDay}/>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="flex flex-col">
-            <label className="mc-label" htmlFor={"server-difficulty"}>Server difficulty</label>
-            <Select inputId={"server-difficulty"} classNamePrefix="mc-select" options={difficultOptions}
-                    onChange={updateDifficulty}
-                    value={difficultOptions.find(option => option.value === state.opts.DIFFICULTY)}/>
-          </div>
-
-          <div className="flex flex-col">
-            <label className="mc-label" htmlFor="player-limit">Player limit</label>
-            <input className="mc-input text-right" id="player-limit" type="text" value={state.opts.MAX_PLAYERS ?? ""}
-                   placeholder="Tier default"
-                   onChange={updateMaxPlayers}/>
-          </div>
+        <div className="flex flex-col">
+          <label className="mc-label" htmlFor={"server-difficulty"}>Server difficulty</label>
+          <Select inputId={"server-difficulty"} classNamePrefix="mc-select" options={difficultOptions}
+                  onChange={updateDifficulty}
+                  value={difficultOptions.find(option => option.value === state.opts.DIFFICULTY)}/>
         </div>
 
         <div className="flex flex-col">
@@ -190,12 +184,52 @@ export function ServerCreator() {
                  className={`cursor-pointer border bg-inset px-3 py-2 has-focus-visible:outline-2 has-focus-visible:outline-action-content ${state.tier === tier.id ? "border-action-content" : "border-edge hover:border-edge-strong"}`}>
             <input className="sr-only" type="radio" name="tier" value={tier.id} checked={state.tier === tier.id}
                    onChange={() => dispatch({type: "UPDATE_TIER", payload: tier.id})}/>
-            <span className="text-sm">{tier.name}</span>
+            <span className="flex items-baseline justify-between gap-2 text-sm">
+              <span className={tier.available ? "" : "text-content-muted"}>{tier.name}</span>
+              {!tier.available && <span className="text-xs text-content-muted">Coming soon</span>}
+            </span>
           </label>
         ))}
       </div>
     </fieldset>
   )
+
+  const selectedTier = catalog?.tiers.find(candidate => candidate.id === state.tier)
+
+  const summary = () => {
+    const tier = selectedTier
+    if (!tier) return null
+
+    const baseline = catalog?.tiers.find(candidate => candidate.default) ?? tier
+
+    const version = isTemplated() ? `${templateName}-${templateOps.VERSION}` : state.opts.VERSION
+    const groups: [string, React.ReactNode][][] = [
+      [["Version", version], ["Players", <Limit value={tier.maxPlayers} base={baseline.maxPlayers}/>]],
+      [
+        ["Render distance", <Limit value={tier.viewDistance} base={baseline.viewDistance}/>],
+        ["Simulation distance", <Limit value={tier.simulationDistance} base={baseline.simulationDistance}/>],
+      ],
+      [["Idle shutdown", "30 min"], ["World saved", <Included value={tier.persistent}/>], ["Name reserved", <Included value={tier.nameReserved}/>]],
+    ]
+
+    return (
+      <aside className="flex flex-col gap-3 border-t border-edge bg-inset p-6 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:w-60 sm:border-t-0 sm:border-l" aria-labelledby="server-summary-heading">
+        <h3 id="server-summary-heading" className="font-pixel">{tier.name} tier</h3>
+        <dl className="flex flex-col text-sm">
+          {groups.map(rows => (
+            <div key={rows[0][0]} className="flex flex-col gap-1.5 border-t border-edge py-3 first:border-t-0 first:pt-0">
+              {rows.map(([label, value]) => (
+                <div key={label} className="flex justify-between gap-2">
+                  <dt className="text-content-muted">{label}</dt>
+                  <dd>{value}</dd>
+                </div>
+              ))}
+            </div>
+          ))}
+        </dl>
+      </aside>
+    )
+  }
 
   const createServer = async () => {
     if (state.name === "" || state.name.length < 3 || state.name.length > 25) {
@@ -229,36 +263,42 @@ export function ServerCreator() {
   }
 
   return (
-    <div className="mc-modal">
-      <div className="flex flex-row items-center justify-between gap-4 px-6 pt-6">
-        <h2 className="font-pixel text-2xl grid">
-          <span className={`[grid-area:1/1] ${showAdvanced ? "invisible" : ""}`} aria-hidden={showAdvanced}>New server</span>
-          <span className={`[grid-area:1/1] ${showAdvanced ? "" : "invisible"}`} aria-hidden={!showAdvanced}>Advanced</span>
-        </h2>
-        <button className="mc-button-secondary grid py-1 text-sm" onClick={() => setShowAdvanced(advanced => !advanced)}>
-          <span className={`[grid-area:1/1] ${showAdvanced ? "invisible" : ""}`}>Advanced</span>
-          <span className={`[grid-area:1/1] ${showAdvanced ? "" : "invisible"}`}>Back</span>
-        </button>
-      </div>
-
-      {/* Both views share one grid cell so the modal keeps the height of the taller one when switching. */}
-      <div className="grid flex-1 p-6">
-        <div className={`flex flex-col gap-5 [grid-area:1/1] ${showAdvanced ? "opacity-0" : ""}`}
-             inert={showAdvanced} aria-hidden={showAdvanced}>
-          {basicSettings()}
-          {tierSettings()}
-          <p className="text-sm text-content-muted">The server shuts down after 30 minutes without players.</p>
+    <div className="mc-modal sm:grid sm:grid-cols-[1fr_auto]">
+      <div className="flex flex-col">
+        <div className="flex flex-row items-center justify-between gap-4 px-6 pt-6">
+          <h2 className="font-pixel text-2xl grid">
+            <span className={`[grid-area:1/1] ${showAdvanced ? "invisible" : ""}`} aria-hidden={showAdvanced}>New server</span>
+            <span className={`[grid-area:1/1] ${showAdvanced ? "" : "invisible"}`} aria-hidden={!showAdvanced}>Advanced</span>
+          </h2>
+          <button className="mc-button-secondary grid py-1 text-sm" onClick={() => setShowAdvanced(advanced => !advanced)}>
+            <span className={`[grid-area:1/1] ${showAdvanced ? "invisible" : ""}`}>Advanced</span>
+            <span className={`[grid-area:1/1] ${showAdvanced ? "" : "invisible"}`}>Back</span>
+          </button>
         </div>
 
-        <div className={`flex flex-col gap-4 [grid-area:1/1] ${showAdvanced ? "" : "opacity-0"}`}
-             inert={!showAdvanced} aria-hidden={!showAdvanced}>
-          {advancedSettings()}
+        {/* Both views share one grid cell so the modal keeps the height of the taller one when switching. */}
+        <div className="grid flex-1 p-6">
+          <div className={`flex flex-col gap-5 [grid-area:1/1] ${showAdvanced ? "opacity-0" : ""}`}
+               inert={showAdvanced} aria-hidden={showAdvanced}>
+            {basicSettings()}
+            {tierSettings()}
+          </div>
+
+          <div className={`flex flex-col gap-4 [grid-area:1/1] ${showAdvanced ? "" : "opacity-0"}`}
+               inert={!showAdvanced} aria-hidden={!showAdvanced}>
+            {advancedSettings()}
+          </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 w-full px-6 pb-6">
+      {summary()}
+
+      <div className="flex items-center gap-2 w-full p-6 sm:pt-0">
         <button className="mc-button-secondary flex-1 whitespace-nowrap" onClick={() => navigate("/my-servers")}>Cancel</button>
-        <button className="mc-button flex-1 whitespace-nowrap" onClick={createServer}>Create server</button>
+        <button className="mc-button flex-1 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-action"
+                disabled={!selectedTier?.available} onClick={createServer}>
+          {selectedTier?.available === false ? "Coming soon" : "Create server"}
+        </button>
       </div>
     </div>
   )

@@ -11,7 +11,6 @@ export interface CreateServerRequest {
 export interface Opts {
   ONLINE_MODE?: string
   DIFFICULTY?: string
-  MAX_PLAYERS?: string
   VERSION?: string
   MOTD?: string
   OPS?: string
@@ -25,7 +24,7 @@ export interface GameVersion {
 }
 
 export interface CatalogResponse {
-  tiers: { id: Tier, name: string, description: string, default: boolean }[],
+  tiers: { id: Tier, name: string, description: string, default: boolean, maxPlayers: number, viewDistance: number, simulationDistance: number, persistent: boolean, nameReserved: boolean, available: boolean }[],
   presets: { id: string, name: string, description: string, options: Opts }[],
   options: { id: string, values?: string[] }[],
   versions: Record<string, { latestRelease: string, items: GameVersion[] }>

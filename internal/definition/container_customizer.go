@@ -11,27 +11,54 @@ var containerEnforcedOpts = map[Option]string{
 }
 
 type serverInstance struct {
-	name         string
-	description  string
-	memory       string
-	instanceType string
+	name               string
+	description        string
+	memory             string
+	instanceType       string
+	maxPlayers         int
+	viewDistance       int
+	simulationDistance int
+	persistent         bool
+	nameReserved       bool
+	available          bool
 }
 
-// Game nodes have about 6.5Gi allocatable, so two wooden servers share a node and an iron server takes a whole one.
+// Game nodes have about 6.5Gi allocatable, so two small servers share a node.
 const (
-	MemorySmall  string = "3000Mi"
-	MemoryMedium string = "6000Mi"
-	Shared       string = "shared"
+	MemorySmall string = "3000Mi"
+	Shared      string = "shared"
 )
 
 var tierMapping = map[Tier]serverInstance{
-	Wooden: {name: "Wooden", description: "When chunks are already generated", memory: MemorySmall, instanceType: Shared},
-	Iron:   {name: "Iron", description: "Default option, should handle up to 12 players", memory: MemoryMedium, instanceType: Shared},
+	Guest: {
+		name:               "Guest",
+		description:        "For playing without an account",
+		memory:             MemorySmall,
+		instanceType:       Shared,
+		maxPlayers:         3,
+		viewDistance:       6,
+		simulationDistance: 4,
+		persistent:         false,
+		nameReserved:       false,
+		available:          true,
+	},
+	Free: {
+		name:               "Free",
+		description:        "For players with an account",
+		memory:             MemorySmall,
+		instanceType:       Shared,
+		maxPlayers:         5,
+		viewDistance:       8,
+		simulationDistance: 6,
+		persistent:         false,
+		nameReserved:       true,
+		available:          false,
+	},
 }
 
-const defaultTier = Iron
+const defaultTier = Guest
 
-var tierOrder = []Tier{Wooden, Iron}
+var tierOrder = []Tier{Guest, Free}
 
 func customizeContainer(ctx context.Context, definition ServerDefinition) (ServerDefinition, error) {
 	for key, val := range containerEnforcedOpts {
@@ -43,7 +70,7 @@ func customizeContainer(ctx context.Context, definition ServerDefinition) (Serve
 
 func translateTier(ctx context.Context, tier Tier) (serverInstance, error) {
 	instance, found := tierMapping[tier]
-	if !found {
+	if !found || !instance.available {
 		return serverInstance{}, invalidf("tier %s is not available", tier)
 	}
 

@@ -45,7 +45,6 @@ const defaultImage = "docker.io/itzg/minecraft-server:latest"
 type Tier string
 
 const (
-	Wooden  Tier = "wooden"
-	Iron    Tier = "iron"
-	Diamond Tier = "diamond"
+	Guest Tier = "guest"
+	Free  Tier = "free"
 )
