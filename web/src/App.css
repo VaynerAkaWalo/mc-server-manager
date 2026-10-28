@@ -8,16 +8,46 @@
   src: url("/fonts/Minecraft.otf") format("opentype");
 }
 
+/*
+ * Design tokens: the single source of truth for colors, type and radii.
+ * Tailwind's default palette, type scale and radii are switched off, so only
+ * the values below exist as utilities. See docs/DESIGN.md before adding one.
+ */
 @theme {
+  --color-*: initial;
+  --text-*: initial;
+  --radius-*: initial;
+
   --font-pixel: Minecraft, serif;
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* Type scale: xs meta, sm labels and secondary text, base body and fields,
+     xl h3/section, 2xl h2, 3xl h1 and big numbers. */
+  --text-xs: 0.75rem;
+  --text-xs--line-height: calc(1 / 0.75);
+  --text-sm: 0.875rem;
+  --text-sm--line-height: calc(1.25 / 0.875);
+  --text-base: 1rem;
+  --text-base--line-height: 1.5;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: calc(1.75 / 1.25);
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: calc(2 / 1.5);
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: calc(2.25 / 1.875);
+
+  --container-content: 60rem;
+
+  --color-white: #fff;
 
   --color-surface: #20251f;
   --color-surface-hover: #30382a;
   --color-inset: #191d18;
   --color-edge: #3d4438;
   --color-edge-strong: #495044;
+  /* Borders of interactive controls (inputs, selects, choice cards): >= 3:1 against surface and inset. */
+  --color-edge-control: #6b7465;
   --color-content: #edf0e9;
   --color-content-muted: #a5ada3;
 
@@ -25,7 +55,10 @@
   --color-action-hover: #4a6830;
   --color-action-shade: #2f4220;
   --color-action-content: #c5d9ae;
+  /* The one focus ring color. */
+  --color-focus: var(--color-action-content);
 
+  /* Server status only (online, starting, warning). Do not reuse for other meanings. */
   --color-online: #a6d77b;
   --color-starting: #8bbfe7;
   --color-warning: #efb76d;
@@ -35,6 +68,10 @@
   @apply bg-surface text-content border border-edge-strong;
 }
 
+@utility focus-ring {
+  @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus;
+}
+
 @layer components {
   .mc-modal {
     @apply mc-panel my-6 flex flex-col;
@@ -42,31 +79,35 @@
   }
 
   .mc-notification {
-    @apply mc-panel fixed bottom-5 right-5 w-96 max-w-[calc(100vw-2.5rem)] px-4 py-3 font-sans text-sm;
+    @apply mc-panel fixed bottom-4 right-4 w-96 max-w-[calc(100vw-2rem)] px-4 py-3 font-sans text-sm;
   }
 
   .mc-input {
-    @apply bg-inset border border-edge px-3 py-1.5 focus:outline-none focus:border-action-content;
+    @apply h-10 bg-inset border border-edge-control px-3 focus:outline-none focus:border-focus focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus;
   }
 
   .mc-button {
-    @apply bg-action hover:bg-action-hover border-b-3 border-action-shade text-white font-pixel py-2 px-4 text-center;
+    @apply bg-action hover:bg-action-hover border-b-3 border-action-shade text-white font-pixel py-2 px-4 text-center focus-ring disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-action;
   }
 
   .mc-button-secondary {
-    @apply bg-surface-hover hover:bg-edge border-b-3 border-inset text-content font-pixel py-2 px-4 text-center;
+    @apply bg-surface-hover hover:bg-edge border-b-3 border-inset text-content font-pixel py-2 px-4 text-center focus-ring disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .mc-button-ghost {
+    @apply flex items-center gap-2 border border-edge-control px-3 py-2 text-sm text-content hover:bg-surface-hover focus-ring disabled:cursor-not-allowed disabled:opacity-60;
   }
 
   .mc-label {
-    @apply mb-1 text-xs text-content-muted;
+    @apply mb-1 text-sm text-content-muted;
   }
 
   .mc-select__control {
-    @apply bg-inset! border-edge! rounded-none! min-h-0! shadow-none!;
+    @apply bg-inset! border-edge-control! rounded-none! min-h-10! shadow-none!;
   }
 
   .mc-select__control--is-focused {
-    @apply border-action-content!;
+    @apply border-focus! outline-2 outline-offset-2 outline-focus;
   }
 
   .mc-select__single-value, .mc-select__input-container {
@@ -106,7 +147,7 @@
   }
 
   .mc-sidebar-link {
-    @apply flex items-center gap-3 px-3 py-3 font-pixel text-sm text-content-muted hover:bg-surface-hover hover:text-content focus-visible:outline-2 focus-visible:outline-action-content;
+    @apply flex items-center gap-3 p-3 font-pixel text-sm text-content-muted hover:bg-surface-hover hover:text-content focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus;
   }
 
   .mc-sidebar-link.active {
