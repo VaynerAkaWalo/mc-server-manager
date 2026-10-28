@@ -49,7 +49,7 @@ func main() {
 		os.Exit(-1)
 	}
 
-	authHandlers, err := auth.NewHandlers(context.Background(), os.Getenv("OIDC_ISSUER"), os.Getenv("OIDC_CLIENT_ID"), os.Getenv("APP_URL"), serverStore)
+	authHandlers, err := auth.NewHandlers(os.Getenv("OIDC_ISSUER"), os.Getenv("OIDC_CLIENT_ID"), os.Getenv("APP_URL"), serverStore)
 	if err != nil {
 		slog.Error("Failed to configure authentication", "error", err)
 		os.Exit(1)

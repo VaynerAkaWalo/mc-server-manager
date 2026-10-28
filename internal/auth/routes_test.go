@@ -5,11 +5,15 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/json"
+	"github.com/VaynerAkaWalo/go-toolkit/xhttp"
+	"github.com/VaynerAkaWalo/mc-server-manager/internal/frontend"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/store"
@@ -52,11 +56,13 @@ func (s *memoryStore) DeleteSession(_ context.Context, hash string) error {
 func (s *memoryStore) DeleteExpiredAuth(context.Context) error { return nil }
 
 type oidcFixture struct {
-	handlers   *Handlers
-	database   *memoryStore
-	claims     map[string]any
-	challenge  string
-	tokenCalls int
+	discoveryUnavailable atomic.Bool
+	discoveryCalls       atomic.Int32
+	handlers             *Handlers
+	database             *memoryStore
+	claims               map[string]any
+	challenge            string
+	tokenCalls           int
 }
 
 func newFixture(t *testing.T) *oidcFixture {
@@ -76,6 +82,11 @@ func newFixture(t *testing.T) *oidcFixture {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/.well-known/openid-configuration":
+			f.discoveryCalls.Add(1)
+			if f.discoveryUnavailable.Load() {
+				http.Error(w, "unavailable", http.StatusServiceUnavailable)
+				return
+			}
 			_ = json.NewEncoder(w).Encode(map[string]any{"issuer": issuer, "authorization_endpoint": issuer + "/authorize", "token_endpoint": issuer + "/token", "jwks_uri": issuer + "/keys", "id_token_signing_alg_values_supported": []string{"RS256"}})
 		case "/keys":
 			_ = json.NewEncoder(w).Encode(jose.JSONWebKeySet{Keys: []jose.JSONWebKey{{Key: &key.PublicKey, KeyID: "test-key", Algorithm: "RS256", Use: "sig"}}})
@@ -103,7 +114,7 @@ func newFixture(t *testing.T) *oidcFixture {
 	issuer = provider.URL
 	f.claims = map[string]any{"iss": issuer, "aud": "manager", "sub": "player", "exp": time.Now().Add(time.Minute).Unix(), "iat": time.Now().Unix()}
 
-	f.handlers, err = NewHandlers(context.Background(), issuer, "manager", "https://manager.test", f.database)
+	f.handlers, err = NewHandlers(issuer, "manager", "https://manager.test", f.database)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -247,5 +258,58 @@ func TestExpiredSession(t *testing.T) {
 	_ = f.handlers.current(w, r)
 	if w.Code != 401 || w.Result().Cookies()[0].MaxAge != -1 {
 		t.Fatal("expired session accepted")
+	}
+}
+
+func TestDiscoveryOutageDoesNotBlockAnonymousRoutesOrSessions(t *testing.T) {
+	f := newFixture(t)
+	f.discoveryUnavailable.Store(true)
+	if f.discoveryCalls.Load() != 0 {
+		t.Fatal("constructor contacted OIDC provider")
+	}
+
+	mux := http.NewServeMux()
+	router := &xhttp.Router{ServeMux: mux}
+	f.handlers.RegisterRoutes(router)
+	frontend.NewFrontendHandlers(fstest.MapFS{"index.html": {Data: []byte("app")}}).RegisterRoutes(router)
+	f.database.sessions[hashToken("existing")] = store.Session{Subject: "player", ExpiresAt: time.Now().Add(time.Hour)}
+
+	for _, path := range []string{"/", "/api/v1/sessions/current", "/auth/login?returnTo=/"} {
+		r := httptest.NewRequest(http.MethodGet, path, nil)
+		r.AddCookie(&http.Cookie{Name: "__Host-manager_session", Value: "existing"})
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, r)
+
+		want := http.StatusOK
+		if path == "/auth/login?returnTo=/" {
+			want = http.StatusServiceUnavailable
+		}
+		if w.Code != want {
+			t.Fatalf("GET %s = %d, want %d", path, w.Code, want)
+		}
+	}
+	if f.discoveryCalls.Load() != 1 {
+		t.Fatal("anonymous or session routes contacted OIDC provider")
+	}
+
+	f.discoveryUnavailable.Store(false)
+	f.start(t)
+	f.start(t)
+	if f.discoveryCalls.Load() != 2 {
+		t.Fatal("discovery did not recover or was not cached")
+	}
+}
+
+func TestCallbackDiscoversProviderAfterRestart(t *testing.T) {
+	f := newFixture(t)
+	cookie, state := f.start(t)
+	h, err := NewHandlers(f.handlers.issuer, "manager", "https://manager.test", f.database)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.handlers = h
+
+	if w := f.finish(t, cookie, state); w.Code != http.StatusSeeOther {
+		t.Fatalf("callback after restart: %d %s", w.Code, w.Body)
 	}
 }

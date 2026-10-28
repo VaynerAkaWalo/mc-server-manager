@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/VaynerAkaWalo/go-toolkit/xhttp"
@@ -36,14 +37,16 @@ type Store interface {
 }
 
 type Handlers struct {
-	store    Store
-	oauth    oauth2.Config
-	verifier *oidc.IDTokenVerifier
-	origin   string
-	secure   bool
+	store      Store
+	oauth      oauth2.Config
+	issuer     string
+	origin     string
+	secure     bool
+	providerMu sync.Mutex
+	verifier   *oidc.IDTokenVerifier
 }
 
-func NewHandlers(ctx context.Context, issuer, clientID, appURL string, sessions Store) (*Handlers, error) {
+func NewHandlers(issuer, clientID, appURL string, sessions Store) (*Handlers, error) {
 	origin, err := url.Parse(appURL)
 	if err != nil {
 		return nil, fmt.Errorf("parse APP_URL: %w", err)
@@ -55,21 +58,33 @@ func NewHandlers(ctx context.Context, issuer, clientID, appURL string, sessions 
 		return nil, fmt.Errorf("OIDC_ISSUER and OIDC_CLIENT_ID are required")
 	}
 
-	provider, err := oidc.NewProvider(ctx, issuer)
-	if err != nil {
-		return nil, fmt.Errorf("discover OIDC provider: %w", err)
-	}
-	endpoint := provider.Endpoint()
-	endpoint.AuthStyle = oauth2.AuthStyleInParams
 	appOrigin := origin.Scheme + "://" + origin.Host
 
 	return &Handlers{
-		store:    sessions,
-		oauth:    oauth2.Config{ClientID: clientID, RedirectURL: appOrigin + "/auth/callback", Endpoint: endpoint, Scopes: []string{oidc.ScopeOpenID}},
-		verifier: provider.Verifier(&oidc.Config{ClientID: clientID}),
-		origin:   appOrigin,
-		secure:   origin.Scheme == "https",
+		store:  sessions,
+		oauth:  oauth2.Config{ClientID: clientID, RedirectURL: appOrigin + "/auth/callback", Scopes: []string{oidc.ScopeOpenID}},
+		issuer: issuer,
+		origin: appOrigin,
+		secure: origin.Scheme == "https",
 	}, nil
+}
+
+func (h *Handlers) configuration(ctx context.Context) (oauth2.Config, *oidc.IDTokenVerifier, error) {
+	h.providerMu.Lock()
+	defer h.providerMu.Unlock()
+
+	if h.verifier == nil {
+		provider, err := oidc.NewProvider(ctx, h.issuer)
+		if err != nil {
+			return oauth2.Config{}, nil, err
+		}
+
+		h.oauth.Endpoint = provider.Endpoint()
+		h.oauth.Endpoint.AuthStyle = oauth2.AuthStyleInParams
+		h.verifier = provider.Verifier(&oidc.Config{ClientID: h.oauth.ClientID})
+	}
+
+	return h.oauth, h.verifier, nil
 }
 
 func (h *Handlers) RegisterRoutes(router *xhttp.Router) {
@@ -87,15 +102,22 @@ func (h *Handlers) login(w http.ResponseWriter, r *http.Request) error {
 		return problem.Write(w, http.StatusBadRequest, "Invalid return path")
 	}
 
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+	config, _, err := h.configuration(ctx)
+	if err != nil {
+		return h.unavailable(w, err)
+	}
+
 	state, nonce := rand.Text(), rand.Text()
 	verifier := oauth2.GenerateVerifier()
 	attempt := store.LoginAttempt{StateHash: hashToken(state), Verifier: verifier, Nonce: nonce, ReturnTo: returnTo, ExpiresAt: time.Now().Add(loginLifetime)}
-	if err := h.store.CreateLoginAttempt(r.Context(), attempt); err != nil {
+	if err := h.store.CreateLoginAttempt(ctx, attempt); err != nil {
 		return h.failure(w, "save login attempt", err)
 	}
 
 	h.setCookie(w, loginCookie, state, int(loginLifetime.Seconds()))
-	http.Redirect(w, r, h.oauth.AuthCodeURL(state, oidc.Nonce(nonce), oauth2.S256ChallengeOption(verifier)), http.StatusFound)
+	http.Redirect(w, r, config.AuthCodeURL(state, oidc.Nonce(nonce), oauth2.S256ChallengeOption(verifier)), http.StatusFound)
 	return nil
 }
 
@@ -122,7 +144,12 @@ func (h *Handlers) callback(w http.ResponseWriter, r *http.Request) error {
 
 	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 	defer cancel()
-	tokens, err := h.oauth.Exchange(ctx, r.URL.Query().Get("code"), oauth2.VerifierOption(attempt.Verifier))
+	config, verifier, err := h.configuration(ctx)
+	if err != nil {
+		return h.unavailable(w, err)
+	}
+
+	tokens, err := config.Exchange(ctx, r.URL.Query().Get("code"), oauth2.VerifierOption(attempt.Verifier))
 	if err != nil {
 		return h.failedLogin(w, "exchange authorization code", err)
 	}
@@ -130,7 +157,7 @@ func (h *Handlers) callback(w http.ResponseWriter, r *http.Request) error {
 	if !ok {
 		return h.failedLogin(w, "read ID token", errors.New("missing ID token"))
 	}
-	identity, err := h.verifier.Verify(ctx, rawIDToken)
+	identity, err := verifier.Verify(ctx, rawIDToken)
 	if err != nil {
 		return h.failedLogin(w, "verify ID token", err)
 	}
@@ -205,6 +232,11 @@ func hashToken(token string) string {
 func (h *Handlers) failure(w http.ResponseWriter, operation string, err error) error {
 	slog.Error(operation, "error", err)
 	return problem.Write(w, http.StatusInternalServerError, "Authentication is unavailable")
+}
+
+func (h *Handlers) unavailable(w http.ResponseWriter, err error) error {
+	slog.Warn("discover OIDC provider", "error", err)
+	return problem.Write(w, http.StatusServiceUnavailable, "Login is temporarily unavailable")
 }
 
 func (h *Handlers) failedLogin(w http.ResponseWriter, operation string, err error) error {
