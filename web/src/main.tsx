@@ -2,7 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
-import {createBrowserRouter, RouterProvider} from "react-router-dom";
+import {createBrowserRouter, redirect, RouterProvider} from "react-router-dom";
 import {ServerList} from "./servers/ServerList.tsx";
 import {ServerCreator} from "./creator/ServerCreator.tsx";
 import {TemplateList} from "./templates/TemplateList.tsx";
@@ -10,6 +10,7 @@ import {Home} from "./home/Home.tsx";
 import {Spinner} from "./base/Spinner.tsx";
 import {CatalogResponse, ManagerClient, StatsResponse} from "./clients/ManagerClient.ts";
 import {activeServers} from "./servers/activeServers.ts";
+import {callbackPath, silentCallbackPath, userManager} from "./auth/userManager.ts";
 
 async function loadCatalog(): Promise<CatalogResponse | null> {
   try {
@@ -55,11 +56,22 @@ const router = createBrowserRouter([
         loader: loadCatalog
       }
     ]
+  },
+  {
+    path: callbackPath,
+    loader: async () => {
+      const user = await userManager.signinCallback()
+      return redirect(typeof user?.state === "string" ? user.state : "/")
+    }
   }
 ])
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <RouterProvider router={router}/>
-  </StrictMode>,
-)
+if (window.location.pathname === silentCallbackPath) {
+  userManager.signinSilentCallback()
+} else {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <RouterProvider router={router}/>
+    </StrictMode>,
+  )
+}
