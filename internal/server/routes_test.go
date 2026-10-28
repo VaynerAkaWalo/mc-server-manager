@@ -66,7 +66,7 @@ func TestProvisionServerRejectsMalformedBody(t *testing.T) {
 
 func TestProvisionServerRejectsTrailingData(t *testing.T) {
 	h := NewServerHandlers(Service{})
-	valid := `{"name":"my-server","durationMs":120000,"tier":"wooden"}`
+	valid := `{"name":"my-server","durationMs":120000,"tier":"guest"}`
 
 	for _, suffix := range []string{" garbage", "}", "]", valid} {
 		t.Run(suffix, func(t *testing.T) {

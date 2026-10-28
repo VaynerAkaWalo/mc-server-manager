@@ -139,7 +139,7 @@ func TestProvisionAndListUseSameRepresentation(t *testing.T) {
 	cl := &fakeCluster{}
 	db := &memoryStore{}
 	svc := CreateServerService(cl, db, testVersions)
-	request := server.Request{Name: "my-server", Tier: "wooden", Options: map[string]string{"MOTD": "hello", "VERSION": "1.21.3"}}
+	request := server.Request{Name: "my-server", Tier: "guest", Options: map[string]string{"MOTD": "hello", "VERSION": "1.21.3"}}
 
 	created, err := svc.provisionServer(context.Background(), request)
 	if err != nil {
@@ -186,7 +186,7 @@ func TestListUsesOnlyDatabase(t *testing.T) {
 
 func TestProvisionRejectsActiveName(t *testing.T) {
 	svc := CreateServerService(&fakeCluster{}, &memoryStore{}, testVersions)
-	request := server.Request{Name: "my-server", Tier: "wooden", Options: map[string]string{"VERSION": "1.21.3"}}
+	request := server.Request{Name: "my-server", Tier: "guest", Options: map[string]string{"VERSION": "1.21.3"}}
 
 	if _, err := svc.provisionServer(context.Background(), request); err != nil {
 		t.Fatal(err)
@@ -247,7 +247,7 @@ var testVersions = definition.VersionSet{
 
 func TestProvisionRejectsUnknownVersion(t *testing.T) {
 	svc := CreateServerService(&fakeCluster{}, &memoryStore{}, testVersions)
-	request := server.Request{Name: "my-server", Tier: "wooden", Options: map[string]string{"VERSION": "latest"}}
+	request := server.Request{Name: "my-server", Tier: "guest", Options: map[string]string{"VERSION": "latest"}}
 
 	_, err := svc.provisionServer(context.Background(), request)
 

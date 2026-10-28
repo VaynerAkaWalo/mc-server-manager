@@ -128,13 +128,6 @@ export function ServerCreator() {
       dispatch({type: "UPDATE_OPTS", payload: {DIFFICULTY: selectedDifficulty?.value}})
     }
 
-    const updateMaxPlayers = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = e.target.value
-      if (!isNaN(Number(value))) {
-        dispatch({type: "UPDATE_OPTS", payload: {MAX_PLAYERS: value}})
-      }
-    }
-
     const updateOperators = (e: React.ChangeEvent<HTMLInputElement>) => {
       const value = e.target.value
       dispatch({type: "UPDATE_OPTS", payload: {OPS: value}})
@@ -153,20 +146,11 @@ export function ServerCreator() {
                  value={state.opts.MOTD} onChange={updateMessageOfDay}/>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="flex flex-col">
-            <label className="mc-label" htmlFor={"server-difficulty"}>Server difficulty</label>
-            <Select inputId={"server-difficulty"} classNamePrefix="mc-select" options={difficultOptions}
-                    onChange={updateDifficulty}
-                    value={difficultOptions.find(option => option.value === state.opts.DIFFICULTY)}/>
-          </div>
-
-          <div className="flex flex-col">
-            <label className="mc-label" htmlFor="player-limit">Player limit</label>
-            <input className="mc-input text-right" id="player-limit" type="text" value={state.opts.MAX_PLAYERS ?? ""}
-                   placeholder="Tier default"
-                   onChange={updateMaxPlayers}/>
-          </div>
+        <div className="flex flex-col">
+          <label className="mc-label" htmlFor={"server-difficulty"}>Server difficulty</label>
+          <Select inputId={"server-difficulty"} classNamePrefix="mc-select" options={difficultOptions}
+                  onChange={updateDifficulty}
+                  value={difficultOptions.find(option => option.value === state.opts.DIFFICULTY)}/>
         </div>
 
         <div className="flex flex-col">
@@ -196,6 +180,34 @@ export function ServerCreator() {
       </div>
     </fieldset>
   )
+
+  const summary = () => {
+    const tier = catalog?.tiers.find(candidate => candidate.id === state.tier)
+    if (!tier) return null
+
+    const rows: [string, string][] = [
+      ["Tier", tier.name],
+      ["Player limit", `${tier.maxPlayers}`],
+      ["Render distance", `${tier.viewDistance} chunks`],
+      ["Simulation distance", `${tier.simulationDistance} chunks`],
+      ["World save", tier.persistent ? "Kept when the server stops" : "Deleted when the server shuts down"],
+    ]
+
+    return (
+      <aside className="flex flex-col gap-3 border-t border-edge p-6 sm:w-64 sm:shrink-0 sm:border-t-0 sm:border-l" aria-labelledby="server-summary-heading">
+        <h3 id="server-summary-heading" className="font-pixel text-lg">Summary</h3>
+        <dl className="flex flex-col gap-2 text-sm">
+          {rows.map(([label, value]) => (
+            <div key={label} className="flex flex-col">
+              <dt className="text-content-muted">{label}</dt>
+              <dd>{value}</dd>
+            </div>
+          ))}
+        </dl>
+        <p className="text-sm text-content-muted">The server shuts down after 30 minutes without players.</p>
+      </aside>
+    )
+  }
 
   const createServer = async () => {
     if (state.name === "" || state.name.length < 3 || state.name.length > 25) {
@@ -242,18 +254,21 @@ export function ServerCreator() {
       </div>
 
       {/* Both views share one grid cell so the modal keeps the height of the taller one when switching. */}
-      <div className="grid flex-1 p-6">
-        <div className={`flex flex-col gap-5 [grid-area:1/1] ${showAdvanced ? "opacity-0" : ""}`}
-             inert={showAdvanced} aria-hidden={showAdvanced}>
-          {basicSettings()}
-          {tierSettings()}
-          <p className="text-sm text-content-muted">The server shuts down after 30 minutes without players.</p>
+      <div className="flex flex-1 flex-col sm:flex-row">
+        <div className="grid flex-1 p-6">
+          <div className={`flex flex-col gap-5 [grid-area:1/1] ${showAdvanced ? "opacity-0" : ""}`}
+               inert={showAdvanced} aria-hidden={showAdvanced}>
+            {basicSettings()}
+            {tierSettings()}
+          </div>
+
+          <div className={`flex flex-col gap-4 [grid-area:1/1] ${showAdvanced ? "" : "opacity-0"}`}
+               inert={!showAdvanced} aria-hidden={!showAdvanced}>
+            {advancedSettings()}
+          </div>
         </div>
 
-        <div className={`flex flex-col gap-4 [grid-area:1/1] ${showAdvanced ? "" : "opacity-0"}`}
-             inert={!showAdvanced} aria-hidden={!showAdvanced}>
-          {advancedSettings()}
-        </div>
+        {summary()}
       </div>
 
       <div className="flex items-center gap-2 w-full px-6 pb-6">

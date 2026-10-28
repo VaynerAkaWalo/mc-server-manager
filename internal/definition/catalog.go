@@ -10,10 +10,14 @@ type Catalog struct {
 }
 
 type CatalogTier struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Default     bool   `json:"default"`
+	ID                 string `json:"id"`
+	Name               string `json:"name"`
+	Description        string `json:"description"`
+	Default            bool   `json:"default"`
+	MaxPlayers         int    `json:"maxPlayers"`
+	ViewDistance       int    `json:"viewDistance"`
+	SimulationDistance int    `json:"simulationDistance"`
+	Persistent         bool   `json:"persistent"`
 }
 
 type CatalogPreset struct {
@@ -45,7 +49,16 @@ func catalogTiers() []CatalogTier {
 	tiers := make([]CatalogTier, 0, len(tierOrder))
 	for _, id := range tierOrder {
 		instance := tierMapping[id]
-		tiers = append(tiers, CatalogTier{ID: string(id), Name: instance.name, Description: instance.description, Default: id == defaultTier})
+		tiers = append(tiers, CatalogTier{
+			ID:                 string(id),
+			Name:               instance.name,
+			Description:        instance.description,
+			Default:            id == defaultTier,
+			MaxPlayers:         instance.maxPlayers,
+			ViewDistance:       instance.viewDistance,
+			SimulationDistance: instance.simulationDistance,
+			Persistent:         instance.persistent,
+		})
 	}
 
 	return tiers

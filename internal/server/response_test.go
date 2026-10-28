@@ -16,7 +16,7 @@ func testRecord(expiresAt time.Time) store.ServerRecord {
 		ID:         uuid.New(),
 		Name:       "my-server",
 		Hostname:   "my-server.mc-server.blamedevs.com",
-		Definition: json.RawMessage(`{"tier":"wooden","preset":"lockout","options":{"MOTD":"hi","OPS":"abc","MEMORY":"","MODS":"https://x"}}`),
+		Definition: json.RawMessage(`{"tier":"guest","preset":"lockout","options":{"MOTD":"hi","OPS":"abc","MEMORY":"","MODS":"https://x"}}`),
 		CreatedAt:  expiresAt.Add(-time.Hour),
 		ExpiresAt:  expiresAt,
 	}
@@ -41,7 +41,7 @@ func TestResponseShape(t *testing.T) {
 	}
 
 	body, _ := json.Marshal(response)
-	for _, field := range []string{`"id"`, `"hostname"`, `"createdAt"`, `"expiresAt"`, `"tier":"wooden"`, `"preset":"lockout"`, `"MOTD":"hi"`} {
+	for _, field := range []string{`"id"`, `"hostname"`, `"createdAt"`, `"expiresAt"`, `"tier":"guest"`, `"preset":"lockout"`, `"MOTD":"hi"`} {
 		if !strings.Contains(string(body), field) {
 			t.Fatalf("missing %s in %s", field, body)
 		}

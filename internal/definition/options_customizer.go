@@ -23,13 +23,11 @@ func text(valid func(string) bool) optionSpec {
 }
 
 var userSettableOpts = map[Option]optionSpec{
-	VERSION:       text(identifierList),
-	ONLINE_MODE:   oneOf("true", "false"),
-	MOTD:          text(freeText),
-	OPS:           text(identifierList),
-	MAX_PLAYERS:   text(identifierList),
-	DIFFICULTY:    oneOf("peaceful", "easy", "normal", "hard"),
-	VIEW_DISTANCE: text(identifierList),
+	VERSION:     text(identifierList),
+	ONLINE_MODE: oneOf("true", "false"),
+	MOTD:        text(freeText),
+	OPS:         text(identifierList),
+	DIFFICULTY:  oneOf("peaceful", "easy", "normal", "hard"),
 }
 
 func customizeOptions(versions VersionSource) customizer {
