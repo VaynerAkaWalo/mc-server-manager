@@ -17,6 +17,9 @@
   --color-*: initial;
   --text-*: initial;
   --radius-*: initial;
+  --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
 
   --font-pixel: Minecraft, serif;
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -39,11 +42,21 @@
 
   --container-content: 60rem;
 
+  /* App frame: header, sidebar and footer sizes (h-header, w-sidebar, h-footer). */
+  --spacing-header: 3.5rem;
+  --spacing-sidebar: 14rem;
+  --spacing-footer: 3rem;
+
   --color-white: #fff;
 
+  /* Surface levels, back to front: page < chrome < surface < surface-hover (raised/active) < overlay.
+     The page is the dirt texture dimmed by the scrim. */
+  --color-scrim: rgb(13 15 11 / 0.78);
+  --color-chrome: #171b16;
   --color-surface: #20251f;
   --color-surface-hover: #30382a;
   --color-inset: #191d18;
+  --color-overlay: #262c23;
   --color-edge: #3d4438;
   --color-edge-strong: #495044;
   /* Borders of interactive controls (inputs, selects, choice cards): >= 3:1 against surface and inset. */
@@ -62,10 +75,24 @@
   --color-online: #a6d77b;
   --color-starting: #8bbfe7;
   --color-warning: #efb76d;
+
+  /* Elevation, one step per level. Shadows are dark and neutral, never colored or glowing. */
+  --shadow-chrome: 0 1px 0 rgb(0 0 0 / 0.5), 0 4px 16px rgb(0 0 0 / 0.3);
+  --shadow-panel: 0 2px 0 rgb(0 0 0 / 0.35), 0 12px 32px -8px rgb(0 0 0 / 0.6);
+  --shadow-raised: 0 2px 0 rgb(0 0 0 / 0.45);
+  --shadow-overlay: 0 4px 0 rgb(0 0 0 / 0.4), 0 24px 48px -12px rgb(0 0 0 / 0.8);
 }
 
 @utility mc-panel {
-  @apply bg-surface text-content border border-edge-strong;
+  @apply bg-surface text-content border border-edge-strong shadow-panel;
+}
+
+@utility mc-chrome {
+  @apply bg-chrome border-edge;
+}
+
+@utility mc-overlay {
+  @apply bg-overlay text-content border border-edge-strong shadow-overlay;
 }
 
 @utility focus-ring {
@@ -79,7 +106,7 @@
   }
 
   .mc-notification {
-    @apply mc-panel fixed bottom-4 right-4 w-96 max-w-[calc(100vw-2rem)] px-4 py-3 font-sans text-sm;
+    @apply mc-overlay fixed bottom-4 right-4 w-96 max-w-[calc(100vw-2rem)] px-4 py-3 font-sans text-sm;
   }
 
   .mc-input {
@@ -87,11 +114,11 @@
   }
 
   .mc-button {
-    @apply bg-action hover:bg-action-hover border-b-3 border-action-shade text-white font-pixel py-2 px-4 text-center focus-ring disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-action;
+    @apply bg-action hover:bg-action-hover border-b-3 border-action-shade shadow-raised text-white font-pixel py-2 px-4 text-center focus-ring disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-action;
   }
 
   .mc-button-secondary {
-    @apply bg-surface-hover hover:bg-edge border-b-3 border-inset text-content font-pixel py-2 px-4 text-center focus-ring disabled:cursor-not-allowed disabled:opacity-60;
+    @apply bg-surface-hover hover:bg-edge border-b-3 border-inset shadow-raised text-content font-pixel py-2 px-4 text-center focus-ring disabled:cursor-not-allowed disabled:opacity-60;
   }
 
   .mc-button-ghost {
@@ -131,7 +158,7 @@
   }
 
   .mc-select__menu {
-    @apply bg-surface! border border-edge-strong rounded-none! shadow-lg!;
+    @apply bg-overlay! border border-edge-strong rounded-none! shadow-overlay!;
   }
 
   .mc-select__option {
@@ -147,10 +174,14 @@
   }
 
   .mc-sidebar-link {
-    @apply flex items-center gap-3 p-3 font-pixel text-sm text-content-muted hover:bg-surface-hover hover:text-content focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus;
+    @apply flex h-11 items-center gap-3 border-l-3 border-transparent pr-3 pl-3 font-pixel text-sm text-content-muted hover:bg-surface hover:text-content focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus;
   }
 
   .mc-sidebar-link.active {
-    @apply bg-surface-hover text-action-content;
+    @apply border-action-content bg-surface-hover text-content shadow-raised;
+  }
+
+  .mc-sidebar-link.active svg {
+    @apply text-action-content;
   }
 }
