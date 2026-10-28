@@ -105,12 +105,11 @@
     @apply text-action-content!;
   }
 
-  .mc-nav-link {
-    @apply inline-block font-pixel text-content-muted hover:text-content;
-    padding: 12px clamp(8px, 2vw, 32px);
+  .mc-sidebar-link {
+    @apply flex items-center gap-3 px-3 py-3 font-pixel text-sm text-content-muted hover:bg-surface-hover hover:text-content focus-visible:outline-2 focus-visible:outline-action-content;
   }
 
-  .mc-nav-link.active {
-    @apply text-content;
+  .mc-sidebar-link.active {
+    @apply bg-surface-hover text-action-content;
   }
 }
