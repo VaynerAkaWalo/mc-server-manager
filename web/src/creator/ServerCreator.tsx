@@ -214,7 +214,10 @@ export function ServerCreator() {
 
     return (
       <aside className="flex flex-col gap-3 border-t border-edge bg-inset p-6 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:w-60 sm:border-t-0 sm:border-l" aria-labelledby="server-summary-heading">
-        <h3 id="server-summary-heading" className="font-pixel">{tier.name} tier</h3>
+        <div className="flex flex-col">
+          <h3 id="server-summary-heading" className="font-pixel">{tier.name} tier</h3>
+          <p className="text-xs text-content-muted">{tier.description}</p>
+        </div>
         <dl className="flex flex-col text-sm">
           {groups.map(rows => (
             <div key={rows[0][0]} className="flex flex-col gap-1.5 border-t border-edge py-3 first:border-t-0 first:pt-0">
