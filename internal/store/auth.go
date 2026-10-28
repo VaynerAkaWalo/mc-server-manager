@@ -20,6 +20,7 @@ type LoginAttempt struct {
 type Session struct {
 	ID        uuid.UUID `json:"id"`
 	Subject   string    `json:"subject"`
+	Email     string    `json:"email,omitempty"`
 	ExpiresAt time.Time `json:"expiresAt"`
 }
 
@@ -40,14 +41,14 @@ func (s *Store) ConsumeLoginAttempt(ctx context.Context, hash string) (LoginAtte
 }
 
 func (s *Store) CreateSession(ctx context.Context, hash string, session Session) error {
-	_, err := s.pool.Exec(ctx, `INSERT INTO auth_sessions (token_hash, subject, expires_at) VALUES ($1, $2, $3)`, hash, session.Subject, session.ExpiresAt)
+	_, err := s.pool.Exec(ctx, `INSERT INTO auth_sessions (token_hash, subject, email, expires_at) VALUES ($1, $2, $3, $4)`, hash, session.Subject, session.Email, session.ExpiresAt)
 	return err
 }
 
 func (s *Store) GetSession(ctx context.Context, hash string) (Session, error) {
 	var session Session
-	err := s.pool.QueryRow(ctx, `SELECT id, subject, expires_at FROM auth_sessions WHERE token_hash = $1 AND expires_at > now()`, hash).
-		Scan(&session.ID, &session.Subject, &session.ExpiresAt)
+	err := s.pool.QueryRow(ctx, `SELECT id, subject, email, expires_at FROM auth_sessions WHERE token_hash = $1 AND expires_at > now()`, hash).
+		Scan(&session.ID, &session.Subject, &session.Email, &session.ExpiresAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Session{}, ErrNotFound
 	}

@@ -27,13 +27,13 @@ func TestAuthPersistenceAndExpiry(t *testing.T) {
 		t.Fatalf("replayed attempt: %v", err)
 	}
 
-	session := Session{Subject: "player", ExpiresAt: future}
+	session := Session{Subject: "player", Email: "player@example.com", ExpiresAt: future}
 	if err := s.CreateSession(ctx, hash, session); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = s.DeleteSession(ctx, hash) })
 	stored, err := s.GetSession(ctx, hash)
-	if err != nil || stored.ID == uuid.Nil || stored.Subject != session.Subject || !stored.ExpiresAt.Equal(future) {
+	if err != nil || stored.ID == uuid.Nil || stored.Subject != session.Subject || stored.Email != session.Email || !stored.ExpiresAt.Equal(future) {
 		t.Fatalf("session = %+v, %v", stored, err)
 	}
 	if err := s.DeleteSession(ctx, hash); err != nil {
@@ -63,5 +63,22 @@ func TestAuthPersistenceAndExpiry(t *testing.T) {
 	var count int
 	if err := s.pool.QueryRow(ctx, `SELECT (SELECT count(*) FROM login_attempts WHERE state_hash = $1) + (SELECT count(*) FROM auth_sessions WHERE token_hash = $1)`, hash).Scan(&count); err != nil || count != 0 {
 		t.Fatalf("expired rows = %d, %v", count, err)
+	}
+}
+
+func TestSessionCreatedWithoutEmailRemainsReadable(t *testing.T) {
+	s := connectTestStore(t)
+	ctx := context.Background()
+	hash := uuid.NewString()
+
+	_, err := s.pool.Exec(ctx, `INSERT INTO auth_sessions (token_hash, subject, expires_at) VALUES ($1, $2, $3)`, hash, "legacy-player", time.Now().Add(time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.DeleteSession(ctx, hash) })
+
+	session, err := s.GetSession(ctx, hash)
+	if err != nil || session.Subject != "legacy-player" || session.Email != "" {
+		t.Fatalf("legacy session = %+v, %v", session, err)
 	}
 }

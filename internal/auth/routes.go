@@ -43,7 +43,7 @@ type Handlers struct {
 	origin     string
 	secure     bool
 	providerMu sync.Mutex
-	verifier   *oidc.IDTokenVerifier
+	provider   *oidc.Provider
 }
 
 func NewHandlers(issuer, clientID, appURL string, sessions Store) (*Handlers, error) {
@@ -62,18 +62,18 @@ func NewHandlers(issuer, clientID, appURL string, sessions Store) (*Handlers, er
 
 	return &Handlers{
 		store:  sessions,
-		oauth:  oauth2.Config{ClientID: clientID, RedirectURL: appOrigin + "/auth/callback", Scopes: []string{oidc.ScopeOpenID}},
+		oauth:  oauth2.Config{ClientID: clientID, RedirectURL: appOrigin + "/auth/callback", Scopes: []string{oidc.ScopeOpenID, "email"}},
 		issuer: issuer,
 		origin: appOrigin,
 		secure: origin.Scheme == "https",
 	}, nil
 }
 
-func (h *Handlers) configuration(ctx context.Context) (oauth2.Config, *oidc.IDTokenVerifier, error) {
+func (h *Handlers) configuration(ctx context.Context) (oauth2.Config, *oidc.Provider, error) {
 	h.providerMu.Lock()
 	defer h.providerMu.Unlock()
 
-	if h.verifier == nil {
+	if h.provider == nil {
 		provider, err := oidc.NewProvider(ctx, h.issuer)
 		if err != nil {
 			return oauth2.Config{}, nil, err
@@ -81,10 +81,10 @@ func (h *Handlers) configuration(ctx context.Context) (oauth2.Config, *oidc.IDTo
 
 		h.oauth.Endpoint = provider.Endpoint()
 		h.oauth.Endpoint.AuthStyle = oauth2.AuthStyleInParams
-		h.verifier = provider.Verifier(&oidc.Config{ClientID: h.oauth.ClientID})
+		h.provider = provider
 	}
 
-	return h.oauth, h.verifier, nil
+	return h.oauth, h.provider, nil
 }
 
 func (h *Handlers) RegisterRoutes(router *xhttp.Router) {
@@ -144,7 +144,7 @@ func (h *Handlers) callback(w http.ResponseWriter, r *http.Request) error {
 
 	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 	defer cancel()
-	config, verifier, err := h.configuration(ctx)
+	config, provider, err := h.configuration(ctx)
 	if err != nil {
 		return h.unavailable(w, err)
 	}
@@ -157,7 +157,7 @@ func (h *Handlers) callback(w http.ResponseWriter, r *http.Request) error {
 	if !ok {
 		return h.failedLogin(w, "read ID token", errors.New("missing ID token"))
 	}
-	identity, err := verifier.Verify(ctx, rawIDToken)
+	identity, err := provider.Verifier(&oidc.Config{ClientID: config.ClientID}).Verify(ctx, rawIDToken)
 	if err != nil {
 		return h.failedLogin(w, "verify ID token", err)
 	}
@@ -165,7 +165,25 @@ func (h *Handlers) callback(w http.ResponseWriter, r *http.Request) error {
 		return h.failedLogin(w, "verify identity", errors.New("invalid nonce or subject"))
 	}
 
-	session := store.Session{Subject: identity.Subject, ExpiresAt: time.Now().UTC().Add(sessionLifetime)}
+	userInfo, err := provider.UserInfo(ctx, oauth2.StaticTokenSource(tokens))
+	if err != nil {
+		return h.failedLogin(w, "fetch user info", err)
+	}
+	if userInfo.Subject != identity.Subject {
+		return h.failedLogin(w, "verify user info subject", errors.New("subject does not match ID token"))
+	}
+
+	var profile struct {
+		Email string `json:"email"`
+	}
+	if err := userInfo.Claims(&profile); err != nil {
+		return h.failedLogin(w, "read user email", err)
+	}
+	if profile.Email == "" {
+		return h.failedLogin(w, "read user email", errors.New("missing email"))
+	}
+
+	session := store.Session{Subject: identity.Subject, Email: profile.Email, ExpiresAt: time.Now().UTC().Add(sessionLifetime)}
 	token := rand.Text()
 	if err := h.store.CreateSession(ctx, hashToken(token), session); err != nil {
 		return h.failure(w, "save session", err)

@@ -2,6 +2,7 @@ import {useEffect, useRef, useState} from "react";
 
 type Session = {
   subject: string
+  email?: string
   expiresAt: string
 }
 

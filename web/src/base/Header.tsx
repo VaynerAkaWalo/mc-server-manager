@@ -15,10 +15,13 @@ export function Header() {
       <li><NavLink className="mc-nav-link" to={"/my-servers"}>Servers</NavLink></li>
       <li><NavLink className="mc-nav-link" to={"/server-creator"}>Creator</NavLink></li>
       <li><NavLink className="mc-nav-link" to={"/server-templates"}>Templates</NavLink></li>
-      <li>
-        {user
-          ? <button className="mc-nav-link cursor-pointer" disabled={loading} onClick={logOut}>Log out</button>
-          : <button className="mc-nav-link cursor-pointer" disabled={loading} onClick={logIn}>Log in</button>}
+      <li className="max-w-full px-3">
+        <div className="flex flex-wrap items-center justify-center gap-x-3">
+          {user?.email && <span className="break-all text-sm text-content-muted">{user.email}</span>}
+          {user
+            ? <button className="mc-nav-link cursor-pointer" disabled={loading} onClick={logOut}>Log out</button>
+            : <button className="mc-nav-link cursor-pointer" disabled={loading} onClick={logIn}>Log in</button>}
+        </div>
         {error && <span role="status" className="text-sm text-content-muted"> Login status unavailable. Try again.</span>}
       </li>
     </ul>

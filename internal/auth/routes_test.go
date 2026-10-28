@@ -61,6 +61,8 @@ type oidcFixture struct {
 	handlers             *Handlers
 	database             *memoryStore
 	claims               map[string]any
+	userInfo             map[string]any
+	userInfoStatus       int
 	challenge            string
 	tokenCalls           int
 }
@@ -87,9 +89,19 @@ func newFixture(t *testing.T) *oidcFixture {
 				http.Error(w, "unavailable", http.StatusServiceUnavailable)
 				return
 			}
-			_ = json.NewEncoder(w).Encode(map[string]any{"issuer": issuer, "authorization_endpoint": issuer + "/authorize", "token_endpoint": issuer + "/token", "jwks_uri": issuer + "/keys", "id_token_signing_alg_values_supported": []string{"RS256"}})
+			_ = json.NewEncoder(w).Encode(map[string]any{"issuer": issuer, "authorization_endpoint": issuer + "/authorize", "token_endpoint": issuer + "/token", "jwks_uri": issuer + "/keys", "userinfo_endpoint": issuer + "/userinfo", "id_token_signing_alg_values_supported": []string{"RS256"}})
 		case "/keys":
 			_ = json.NewEncoder(w).Encode(jose.JSONWebKeySet{Keys: []jose.JSONWebKey{{Key: &key.PublicKey, KeyID: "test-key", Algorithm: "RS256", Use: "sig"}}})
+		case "/userinfo":
+			if r.Header.Get("Authorization") != "Bearer backend-only" {
+				t.Error("userinfo requested without access token")
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+			if f.userInfoStatus != 0 {
+				w.WriteHeader(f.userInfoStatus)
+			}
+			_ = json.NewEncoder(w).Encode(f.userInfo)
 		case "/token":
 			f.tokenCalls++
 			_ = r.ParseForm()
@@ -112,6 +124,7 @@ func newFixture(t *testing.T) *oidcFixture {
 	}))
 	t.Cleanup(provider.Close)
 	issuer = provider.URL
+	f.userInfo = map[string]any{"sub": "player", "email": "player@example.com", "email_verified": true}
 	f.claims = map[string]any{"iss": issuer, "aud": "manager", "sub": "player", "exp": time.Now().Add(time.Minute).Unix(), "iat": time.Now().Unix()}
 
 	f.handlers, err = NewHandlers(issuer, "manager", "https://manager.test", f.database)
@@ -132,7 +145,7 @@ func (f *oidcFixture) start(t *testing.T) (*http.Cookie, string) {
 	}
 	target, _ := url.Parse(w.Header().Get("Location"))
 	q := target.Query()
-	if q.Get("code_challenge_method") != "S256" || q.Get("scope") != "openid" {
+	if q.Get("code_challenge_method") != "S256" || q.Get("scope") != "openid email" {
 		t.Fatalf("invalid authorization request: %s", target)
 	}
 	f.challenge = q.Get("code_challenge")
@@ -174,7 +187,7 @@ func TestLoginSessionAndLogout(t *testing.T) {
 	r.AddCookie(sessionCookie)
 	current := httptest.NewRecorder()
 	_ = f.handlers.current(current, r)
-	if current.Code != 200 || !strings.Contains(current.Body.String(), `"subject":"player"`) || strings.Contains(current.Body.String(), "token") || current.Header().Get("Cache-Control") != "no-store" {
+	if current.Code != 200 || !strings.Contains(current.Body.String(), `"subject":"player"`) || !strings.Contains(current.Body.String(), `"email":"player@example.com"`) || strings.Contains(current.Body.String(), "token") || current.Header().Get("Cache-Control") != "no-store" {
 		t.Fatalf("current: %d %s", current.Code, current.Body)
 	}
 
@@ -311,5 +324,30 @@ func TestCallbackDiscoversProviderAfterRestart(t *testing.T) {
 
 	if w := f.finish(t, cookie, state); w.Code != http.StatusSeeOther {
 		t.Fatalf("callback after restart: %d %s", w.Code, w.Body)
+	}
+}
+
+func TestRejectInvalidUserInfo(t *testing.T) {
+	for _, scenario := range []string{"wrong subject", "missing email", "invalid email type", "userinfo unavailable"} {
+		t.Run(scenario, func(t *testing.T) {
+			f := newFixture(t)
+			cookie, state := f.start(t)
+
+			switch scenario {
+			case "wrong subject":
+				f.userInfo["sub"] = "another-player"
+			case "missing email":
+				delete(f.userInfo, "email")
+			case "invalid email type":
+				f.userInfo["email"] = 42
+			case "userinfo unavailable":
+				f.userInfoStatus = http.StatusServiceUnavailable
+			}
+
+			w := f.finish(t, cookie, state)
+			if w.Code != http.StatusUnauthorized || len(f.database.sessions) != 0 {
+				t.Fatalf("invalid userinfo accepted: %d", w.Code)
+			}
+		})
 	}
 }
