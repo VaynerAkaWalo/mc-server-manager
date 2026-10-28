@@ -5,7 +5,7 @@ export function Footer() {
         <img src="/grass-block.svg" alt="" className="size-4"/>
         Minecraft server hosting
       </span>
-      <span>blamedevs 2025</span>
+      <span>blamedevs 2026</span>
     </footer>
   )
 }
