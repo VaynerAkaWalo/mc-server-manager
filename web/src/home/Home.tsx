@@ -1,3 +1,4 @@
+import {useEffect, useState} from "react";
 import {Link, useLoaderData} from "react-router-dom";
 import {LinkButton} from "../ui/Button.tsx";
 import {Heading} from "../ui/Heading.tsx";
@@ -91,17 +92,45 @@ export function Home() {
   )
 }
 
+const COPIED_MS = 1500
+
 function ServerRow({server}: { server: ServerResponse }) {
+  const [copied, setCopied] = useState(false)
   const players = server.status === "running" && server.players
   const label = statusLabels[server.status] ?? server.status
+
+  useEffect(() => {
+    if (!copied) return
+    const timer = setTimeout(() => setCopied(false), COPIED_MS)
+    return () => clearTimeout(timer)
+  }, [copied])
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(server.hostname)
+      setCopied(true)
+    } catch {
+      setCopied(false)
+    }
+  }
+
   return (
-    <li className="flex items-center gap-3 border border-edge bg-inset px-3 py-2">
-      <span className={`size-2 shrink-0 ${statusDots[server.status] ?? "bg-content-muted"}`} role="img" aria-label={label}/>
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-pixel text-sm">{server.name}</p>
-        <p className="truncate text-xs text-content-muted">{server.options.VERSION ?? "Unknown version"}</p>
-      </div>
-      <span className="shrink-0 text-xs text-content-muted">{players ? `${players.online}/${players.max}` : label}</span>
+    <li>
+      <button type="button" aria-label={`Copy ${server.hostname}`} onClick={copy}
+              className="group flex w-full cursor-pointer items-center gap-3 border border-edge bg-inset px-3 py-2 text-left hover:border-edge-control hover:bg-surface-hover focus-ring">
+        <span className={`size-2 shrink-0 ${statusDots[server.status] ?? "bg-content-muted"}`} aria-hidden="true"/>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-pixel text-sm">{server.name}</span>
+          <span className="block truncate text-xs text-content-muted">{server.options.VERSION ?? "Unknown version"}</span>
+        </span>
+        <span className="shrink-0 text-xs text-content-muted">{players ? `${players.online}/${players.max}` : label}</span>
+        <span aria-hidden="true" className={`grid size-4 shrink-0 place-items-center ${copied ? "text-action-content" : "text-content-muted opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100"}`}>
+          {copied
+            ? <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="size-4"><path d="m3 8 3.5 3.5L13 5"/></svg>
+            : <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="size-4"><rect x="5.5" y="5.5" width="8" height="8"/><path d="M10.5 3.5v-1h-8v8h1"/></svg>}
+        </span>
+      </button>
+      <span role="status" className="sr-only">{copied ? "Copied" : ""}</span>
     </li>
   )
 }
