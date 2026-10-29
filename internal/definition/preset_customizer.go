@@ -14,7 +14,7 @@ type preset struct {
 var presets = map[string]preset{
 	"lockout": {
 		name:        "Lockout",
-		description: "Compete in bingo challenges to claim victory! This gameplay focuses on team-based objective completion.",
+		description: "Claim objectives as a team and win the bingo race.",
 		options: map[Option]string{
 			VERSION:           "1.21.3",
 			TYPE:              "FABRIC",

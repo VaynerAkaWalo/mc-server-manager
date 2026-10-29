@@ -1,38 +1,41 @@
-import wordUrl from '../assets/world.png'
+import {ReactNode} from "react";
 import {useNavigate} from "react-router-dom";
 import {Opts} from "../clients/ManagerClient.ts";
 import {Button} from "../ui/Button.tsx";
 import {Heading} from "../ui/Heading.tsx";
-import {Panel} from "../ui/Panel.tsx";
 
 export interface template {
   name: string
-  description: string
-  preset: string
-  opts: Opts
+  description?: string
+  preset?: string
+  opts?: Opts
+  version?: string
+  art: ReactNode
+  secondary?: boolean
 }
 
-export function Template({name, description, preset, opts}: template) {
+export function Chip({children}: { children: ReactNode }) {
+  return <span className="border border-edge-strong bg-surface px-2 py-0.5 text-xs text-content-muted">{children}</span>
+}
+
+export function Template({name, description, preset, opts, version, art, secondary}: template) {
   const navigate = useNavigate()
 
-  const handleCreateServerFromTemplate = () => {
-    navigate("/server-creator", { state: { templateName: name, templatePreset: preset, templateOps: opts } } )
+  const use = () => {
+    navigate("/server-creator", preset && opts ? {state: {templateName: name, templatePreset: preset, templateOps: opts}} : undefined)
   }
 
   return (
-    <Panel as="li" className="flex flex-col sm:flex-row items-center gap-4 w-full p-4 sm:p-6">
-      <div className="flex size-20 shrink-0 items-center justify-center">
-        <img className="max-h-full" src={wordUrl} alt=""/>
+    <li className="group flex flex-col border border-edge-strong bg-inset hover:border-edge-control">
+      <div className="h-44 overflow-hidden border-b border-edge-strong">{art}</div>
+      <div className="flex flex-1 flex-col gap-3 p-4">
+        <div className="flex items-center justify-between gap-2">
+          <Heading level={2}>{name}</Heading>
+          {version && <Chip>{version}</Chip>}
+        </div>
+        {description && <p className="line-clamp-3 text-sm text-content-muted">{description}</p>}
+        <Button variant={secondary ? "secondary" : "primary"} className="mt-auto w-full" aria-label={`Use ${name}`} onClick={use}>Use</Button>
       </div>
-
-      <div className="flex flex-col flex-1 min-w-0 gap-1 text-center sm:text-left">
-        <Heading level={2}>{name}</Heading>
-        <p className="text-sm text-content-muted">{description}</p>
-      </div>
-
-      <div className="flex shrink-0 justify-center">
-        <Button onClick={handleCreateServerFromTemplate}>Select</Button>
-      </div>
-    </Panel>
+    </li>
   )
 }
