@@ -1,6 +1,7 @@
 import {useEffect, useState} from "react";
 import {useLoaderData} from "react-router-dom";
-import {ServerResponse, ServerStatus} from "../clients/ManagerClient.ts";
+import {ServerResponse} from "../clients/ManagerClient.ts";
+import {statusDots, statusLabels} from "./status.ts";
 import {UpdateNotification} from "../App.tsx";
 import {activeServers} from "./activeServers.ts";
 import {LinkButton} from "../ui/Button.tsx";
@@ -11,22 +12,6 @@ import {TextInput} from "../ui/Field.tsx";
 function shutdownHint(idleShutdownAt: string) {
   const minutes = Math.round((new Date(idleShutdownAt).getTime() - Date.now()) / 60_000)
   return minutes < 1 ? "Shuts down any moment" : `Shuts down in ${minutes}m`
-}
-
-const statusDots: Partial<Record<ServerStatus, string>> = {
-  new: "bg-starting motion-safe:animate-pulse",
-  running: "bg-online",
-  degraded: "bg-warning",
-  expiring: "bg-warning"
-}
-
-const statusLabels: Record<ServerStatus, string> = {
-  new: "Starting",
-  running: "Online",
-  degraded: "Not responding",
-  expiring: "Shutting down soon",
-  stopped: "Stopped",
-  expired: "Expired"
 }
 
 export function ServerList() {

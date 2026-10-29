@@ -6,7 +6,7 @@ import {createBrowserRouter, RouterProvider} from "react-router-dom";
 import {ServerList} from "./servers/ServerList.tsx";
 import {ServerCreator} from "./creator/ServerCreator.tsx";
 import {TemplateList} from "./templates/TemplateList.tsx";
-import {Home} from "./home/Home.tsx";
+import {Home, HomeData} from "./home/Home.tsx";
 import {Spinner} from "./base/Spinner.tsx";
 import {CatalogResponse, ManagerClient, StatsResponse} from "./clients/ManagerClient.ts";
 import {activeServers} from "./servers/activeServers.ts";
@@ -20,6 +20,15 @@ async function loadCatalog(): Promise<CatalogResponse | null> {
   }
 }
 
+async function loadStats(): Promise<StatsResponse> {
+  try {
+    const {data} = await ManagerClient.getStats()
+    return data
+  } catch {
+    return {online: 0, created: 0}
+  }
+}
+
 const router = createBrowserRouter([
   {
     path: "/",
@@ -30,13 +39,12 @@ const router = createBrowserRouter([
       {
         path: "/",
         element: <Home/>,
-        loader: async (): Promise<StatsResponse> => {
-          try {
-            const {data} = await ManagerClient.getStats()
-            return data
-          } catch {
-            return {online: 0, created: 0}
-          }
+        loader: async (): Promise<HomeData> => {
+          const [stats, servers] = await Promise.all([
+            loadStats(),
+            activeServers().catch(() => null),
+          ])
+          return {stats, servers}
         }
       },
       {
