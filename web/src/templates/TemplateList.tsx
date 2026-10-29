@@ -1,4 +1,5 @@
-import worldUrl from '../assets/world.png'
+import lockoutArt from '../assets/template-lockout.webp'
+import vanillaArt from '../assets/template-vanilla.webp'
 import {useLoaderData} from "react-router-dom";
 import {Template} from "./Template.tsx";
 import {CatalogResponse} from "../clients/ManagerClient.ts";
@@ -6,6 +7,8 @@ import {Heading} from "../ui/Heading.tsx";
 import {Panel} from "../ui/Panel.tsx";
 
 const SERVER_TYPE = "FABRIC"
+
+const presetArt: Record<string, string> = {lockout: lockoutArt}
 
 export function TemplateList() {
   const catalog = useLoaderData<CatalogResponse | null>()
@@ -19,12 +22,10 @@ export function TemplateList() {
         {presets.map(preset => (
           <Template key={preset.id} name={preset.name} description={preset.description} preset={preset.id}
                     opts={preset.options} version={preset.options.VERSION}
-                    art={<img className="size-full object-cover [image-rendering:pixelated]" src={worldUrl} alt=""/>}/>
+                    art={<img className="size-full object-cover" src={presetArt[preset.id] ?? vanillaArt} alt=""/>}/>
         ))}
         <Template name="Vanilla" version={latest} secondary
-                  art={<div className="grid size-full place-items-center bg-chrome">
-                    <img className="size-16 [image-rendering:pixelated]" src="/grass-block.svg" alt=""/>
-                  </div>}/>
+                  art={<img className="size-full object-cover" src={vanillaArt} alt=""/>}/>
       </ul>
     </Panel>
   )
