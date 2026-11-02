@@ -5,8 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
+	"io/fs"
+	"net/url"
 	"os"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 )
@@ -431,17 +434,61 @@ func TestMarkActiveRevivesExpiringServers(t *testing.T) {
 	}
 }
 
-func TestReplicasMigratingTogetherApplyMigrationsOnce(t *testing.T) {
-	s := connectTestStore(t)
+func TestReplicasMigratingTogetherApplyEachMigrationOnce(t *testing.T) {
+	adminURL := os.Getenv("TEST_DB_URL")
+	if adminURL == "" {
+		t.Skip("TEST_DB_URL is not set")
+	}
+	ctx := context.Background()
 
-	errs := make(chan error, 4)
-	for range cap(errs) {
-		go func() { errs <- s.Migrate(context.Background()) }()
+	admin, err := Connect(ctx, adminURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(admin.Close)
+
+	database := "migrate_race_" + strings.ReplaceAll(uuid.NewString(), "-", "")
+	if _, err := admin.pool.Exec(ctx, "CREATE DATABASE "+database); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = admin.pool.Exec(ctx, "DROP DATABASE "+database+" WITH (FORCE)") })
+
+	parsed, err := url.Parse(adminURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed.Path = "/" + database
+
+	replicas := make([]*Store, 4)
+	for i := range replicas {
+		replicas[i], err = Connect(ctx, parsed.String())
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(replicas[i].Close)
 	}
 
-	for range cap(errs) {
+	errs := make(chan error, len(replicas))
+	for _, replica := range replicas {
+		go func() { errs <- replica.Migrate(ctx) }()
+	}
+	for range replicas {
 		if err := <-errs; err != nil {
 			t.Fatal(err)
 		}
+	}
+
+	files, err := fs.Glob(migrationsFS(), "*.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var applied int
+	row := replicas[0].pool.QueryRow(ctx, "SELECT count(*) FROM goose_db_version WHERE version_id > 0 AND is_applied")
+	if err := row.Scan(&applied); err != nil {
+		t.Fatal(err)
+	}
+	if applied != len(files) {
+		t.Errorf("applied migrations = %d, want %d", applied, len(files))
 	}
 }
