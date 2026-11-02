@@ -430,3 +430,18 @@ func TestMarkActiveRevivesExpiringServers(t *testing.T) {
 		t.Fatalf("server = %+v", revived)
 	}
 }
+
+func TestReplicasMigratingTogetherApplyMigrationsOnce(t *testing.T) {
+	s := connectTestStore(t)
+
+	errs := make(chan error, 4)
+	for range cap(errs) {
+		go func() { errs <- s.Migrate(context.Background()) }()
+	}
+
+	for range cap(errs) {
+		if err := <-errs; err != nil {
+			t.Fatal(err)
+		}
+	}
+}
