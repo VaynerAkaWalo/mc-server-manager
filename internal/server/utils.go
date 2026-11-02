@@ -14,7 +14,6 @@ func clusterAddress(serverName string) string {
 	return net.JoinHostPort(serverName+".minecraft-server.svc", "25565")
 }
 
-// Timeouts and connection failures may still have created the resource, so only an explicit client error proves it was not.
 func rejectedByCluster(err error) bool {
 	var status apierrors.APIStatus
 	if !errors.As(err, &status) {

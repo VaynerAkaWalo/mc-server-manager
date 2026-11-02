@@ -34,13 +34,8 @@ export function ServerList() {
   }
 
   useEffect(() => {
-    const loadServers = async () => {
-      try {
-        setServers(await activeServers())
-      } catch {
-        // keep the last known list, the next poll retries
-      }
-    }
+    const keepLastKnownServers = () => undefined
+    const loadServers = () => activeServers().then(setServers, keepLastKnownServers)
 
     const loader = setInterval(loadServers, 10000)
     return () => clearInterval(loader)

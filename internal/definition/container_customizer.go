@@ -23,7 +23,6 @@ type serverInstance struct {
 	available          bool
 }
 
-// Game nodes have about 6.5Gi allocatable, so two small servers share a node.
 const (
 	MemorySmall string = "3000Mi"
 	Shared      string = "shared"
