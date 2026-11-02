@@ -99,7 +99,6 @@ func (s *Service) provisionServer(ctx context.Context, provisionRequest server.R
 		Duration: definition.MaxServerLifetime,
 	}
 
-	// Translation mutates options, so preserve the requested definition.
 	translated := serverDefinition
 	translated.Options = maps.Clone(serverDefinition.Options)
 	serverSpec, err := definition.TranslateDefinition(ctx, translated, s.versions)
@@ -211,7 +210,6 @@ func (s *Service) ShutdownExpired() ([]string, error) {
 		return nil, err
 	}
 
-	// Provisioning inserts the record before deploying, so listing the cluster first means every listed resource already has its record.
 	activeServerResources, err := s.clusterService.GetActiveServers()
 	if err != nil {
 		return nil, err

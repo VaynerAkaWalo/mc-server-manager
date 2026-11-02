@@ -4,8 +4,6 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 
-// Tailwind arbitrary values (w-[...], p-[...], text-[13px]) bypass the tokens in App.css.
-// Grid templates and grid-area are the allowed exception.
 const arbitraryValue = /(^|\s)(?![\w:-]*grid-cols-\[)[\w:-]+-\[/
 const designSystemRules = [
   {
@@ -41,7 +39,6 @@ export default tseslint.config(
         'warn',
         { allowConstantExport: true },
       ],
-      // Design system guardrails, see docs/DESIGN.md.
       'no-restricted-syntax': ['error', ...designSystemRules],
       'no-restricted-imports': ['error', {
         patterns: [{ group: ['@mui/*'], message: 'Use the components in src/ui instead of importing MUI directly.' }],
@@ -49,7 +46,6 @@ export default tseslint.config(
     },
   },
   {
-    // The single place allowed to wrap MUI.
     files: ['src/ui/mui.ts'],
     rules: { 'no-restricted-imports': 'off' },
   },

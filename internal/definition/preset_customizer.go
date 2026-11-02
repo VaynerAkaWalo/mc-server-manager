@@ -4,7 +4,6 @@ import (
 	"context"
 )
 
-// Mods are arbitrary code, so they only come from presets reviewed here and never from user options.
 type preset struct {
 	name        string
 	description string

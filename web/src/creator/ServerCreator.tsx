@@ -73,8 +73,6 @@ function Distance({label, value, base}: { label: string, value: number, base: nu
 
 const HOST_SUFFIX = ".mc-server.blamedevs.com"
 
-/* Mirrors the backend: internal/definition/name_customizer.go (lowercase, spaces to dashes)
-   and internal/server/utils.go serverAddress (name + ".mc-server.blamedevs.com"). */
 function hostLabel(name: string) {
   return name.toLowerCase().replace(/ /g, "-")
 }
@@ -257,7 +255,6 @@ export function ServerCreator() {
     return (
       <aside className="flex flex-col gap-4 border-t border-edge bg-inset p-6 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:w-60 sm:border-t-0 sm:border-l" aria-labelledby="server-summary-heading">
         <Heading level={3} id="server-summary-heading">{tier.name}</Heading>
-        {/* Three groups without headings: who plays, how the world runs, tier rules. */}
         <div className="flex flex-col text-sm">
           <dl className="flex flex-col gap-3 pb-4">
             <Row label="Players"><Limit value={tier.maxPlayers} base={baseline.maxPlayers}/></Row>
@@ -328,7 +325,6 @@ export function ServerCreator() {
           </Button>
         </div>
 
-        {/* Both panes share one grid cell, so the modal keeps the height of the taller one when switching. */}
         <div className="grid flex-1">
           <div id="basic-settings" className={`flex flex-col gap-4 [grid-area:1/1] ${showAdvanced ? "invisible" : ""}`}
                inert={showAdvanced}>

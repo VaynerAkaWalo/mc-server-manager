@@ -6,7 +6,6 @@ import (
 	"strings"
 )
 
-// Game servers share the minecraft-server namespace and are named after the server, so these would take over the stack's own resources.
 var reservedNames = map[string]bool{
 	"mc-proxy":           true,
 	"mc-server-manager":  true,

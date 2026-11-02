@@ -8,11 +8,6 @@
   src: url("/fonts/Minecraft.otf") format("opentype");
 }
 
-/*
- * Design tokens: the single source of truth for colors, type and radii.
- * Tailwind's default palette, type scale and radii are switched off, so only
- * the values below exist as utilities. See docs/DESIGN.md before adding one.
- */
 @theme {
   --color-*: initial;
   --text-*: initial;
@@ -25,8 +20,6 @@
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
 
-  /* Type scale: xs meta, sm labels and secondary text, base body and fields,
-     xl h3/section, 2xl h2, 3xl h1 and big numbers. */
   --text-xs: 0.75rem;
   --text-xs--line-height: calc(1 / 0.75);
   --text-sm: 0.875rem;
@@ -42,15 +35,12 @@
 
   --container-content: 60rem;
 
-  /* App frame: header, sidebar and footer sizes (h-header, w-sidebar, h-footer). */
   --spacing-header: 3.5rem;
   --spacing-sidebar: 14rem;
   --spacing-footer: 3rem;
 
   --color-white: #fff;
 
-  /* Surface levels, back to front: page < chrome < surface < surface-hover (raised/active) < overlay.
-     The page is the dirt texture dimmed by the scrim. */
   --color-scrim: rgb(13 15 11 / 0.78);
   --color-chrome: #171b16;
   --color-surface: #20251f;
@@ -59,7 +49,6 @@
   --color-overlay: #262c23;
   --color-edge: #3d4438;
   --color-edge-strong: #495044;
-  /* Borders of interactive controls (inputs, selects, choice cards): >= 3:1 against surface and inset. */
   --color-edge-control: #6b7465;
   --color-content: #edf0e9;
   --color-content-muted: #a5ada3;
@@ -68,15 +57,12 @@
   --color-action-hover: #4a6830;
   --color-action-shade: #2f4220;
   --color-action-content: #c5d9ae;
-  /* The one focus ring color. */
   --color-focus: var(--color-action-content);
 
-  /* Server status only (online, starting, warning). Do not reuse for other meanings. */
   --color-online: #a6d77b;
   --color-starting: #8bbfe7;
   --color-warning: #efb76d;
 
-  /* Elevation, one step per level. Shadows are dark and neutral, never colored or glowing. */
   --shadow-chrome: 0 1px 0 rgb(0 0 0 / 0.5), 0 4px 16px rgb(0 0 0 / 0.3);
   --shadow-panel: 0 2px 0 rgb(0 0 0 / 0.35), 0 12px 32px -8px rgb(0 0 0 / 0.6);
   --shadow-raised: 0 2px 0 rgb(0 0 0 / 0.45);
