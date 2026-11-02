@@ -76,7 +76,6 @@ func (s *Service) DeployServerSpec(serverRequest serversv1alpha1.McServerSpec) e
 	return nil
 }
 
-// The UID precondition keeps a late delete from removing a newer server that reused the name.
 func (s *Service) DeleteServer(serverName string, uid types.UID) error {
 	err := s.dynamicClient.Resource(serverGVR()).Namespace("minecraft-server").Delete(context.TODO(), serverName, metav1.DeleteOptions{
 		Preconditions: &metav1.Preconditions{UID: &uid},

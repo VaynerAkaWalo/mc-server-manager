@@ -1,5 +1,3 @@
-// The only place that may import MUI. MUI is kept for the mobile drawer and the
-// account menu; its theme is built from the CSS tokens in App.css.
 import {createTheme} from "@mui/material";
 
 export {Drawer, ListSubheader, Menu, MenuItem, ThemeProvider} from "@mui/material";

@@ -139,7 +139,6 @@ func (s *Service) checkServer(ctx context.Context, record store.ServerRecord) {
 		slog.Info("Server " + record.Name + " is responding")
 		s.record(s.store.MarkRunning(ctx, record.ID))
 	}
-	// Mods can hide player counts, so a server that hides them never counts as idle.
 	if players == nil || players.Online > 0 {
 		s.record(s.store.MarkActive(ctx, record.ID))
 	}

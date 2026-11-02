@@ -15,11 +15,10 @@ import (
 )
 
 const (
-	maxPacketSize   = 1 << 20
-	defaultDeadline = 5 * time.Second
-	statusState     = 1
-	// -1 asks the server for its status without negotiating a protocol version.
-	anyProtocol = -1
+	maxPacketSize        = 1 << 20
+	defaultDeadline      = 5 * time.Second
+	statusState          = 1
+	protocolUnnegotiated = -1
 )
 
 type Players struct {
@@ -27,7 +26,6 @@ type Players struct {
 	Max    int
 }
 
-// Ping returns nil players when the server answers but hides its player counts.
 func Ping(ctx context.Context, address string) (*Players, error) {
 	host, portText, err := net.SplitHostPort(address)
 	if err != nil {
@@ -66,7 +64,7 @@ func Ping(ctx context.Context, address string) (*Players, error) {
 func handshake(host string, port uint16) []byte {
 	var packet bytes.Buffer
 	packet.WriteByte(0x00)
-	packet.Write(appendVarInt(nil, anyProtocol))
+	packet.Write(appendVarInt(nil, protocolUnnegotiated))
 	packet.Write(appendVarInt(nil, int32(len(host))))
 	packet.WriteString(host)
 	packet.Write(binary.BigEndian.AppendUint16(nil, port))

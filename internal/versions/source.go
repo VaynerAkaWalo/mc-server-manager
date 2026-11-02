@@ -77,7 +77,6 @@ func (s *Source) Versions(ctx context.Context) definition.VersionSet {
 	return s.cached
 }
 
-// The refresh outlives the request that triggered it, so a disconnecting client cannot fail it for everyone.
 func (s *Source) refresh(previous definition.VersionSet, done chan struct{}) {
 	ctx := context.Background()
 	fetched, healthy, err := s.fetch(ctx, previous)
