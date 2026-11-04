@@ -1,7 +1,8 @@
-import {useLoaderData, useLocation, useNavigate} from "react-router-dom";
+import {useLoaderData, useLocation, useNavigate, Link} from "react-router-dom";
 import Select, {SingleValue} from "react-select";
 import * as React from "react";
 import {useEffect, useReducer, useState} from "react";
+import {useWorlds} from "../worlds/useWorlds.ts";
 import {Button} from "../ui/Button.tsx";
 import {Checkbox, Field, TextInput} from "../ui/Field.tsx";
 import {Heading} from "../ui/Heading.tsx";
@@ -18,7 +19,7 @@ interface Server {
 
 const SERVER_TYPE = "FABRIC"
 
-const tierOffered = (tier: { available: boolean, persistent: boolean }) => tier.available && !tier.persistent
+const tierOffered = (tier: { available: boolean, persistent: boolean }) => tier.available
 
 const initialServer: Server = {
   name: "",
@@ -98,11 +99,16 @@ function DiceIcon() {
 
 export function ServerCreator() {
   const catalog = useLoaderData<CatalogResponse | null>()
-  const {templateName, templatePreset, templateOps} = useLocation().state || {}
+  const {templateName, templatePreset, templateOps, worldId} = useLocation().state || {}
+  const {session: {user, loading: sessionLoading, error: sessionError}} = UpdateNotification()
+  const {worlds, loading: worldsLoading, error: worldsError, reload: reloadWorlds} = useWorlds(user?.subject)
+  const [selectedWorld, setSelectedWorld] = useState<string>(worldId ?? "")
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState("")
   const [state, dispatch] = useReducer(serverReducer, undefined, (): Server => ({
     ...initialServer,
     name: randomServerName(),
-    tier: (catalog?.tiers.find(tier => tier.default) ?? catalog?.tiers[0])?.id ?? "",
+    tier: (catalog?.tiers.find(tier => worldId ? tier.persistent : tier.default) ?? catalog?.tiers[0])?.id ?? "",
     opts: {
       ...initialServer.opts,
       ...(templateName && templateOps ? templateOps : {VERSION: catalog?.versions?.[SERVER_TYPE]?.latestRelease}),
@@ -246,6 +252,35 @@ export function ServerCreator() {
   )
 
   const selectedTier = catalog?.tiers.find(candidate => candidate.id === state.tier)
+  const needsAccount = Boolean(selectedTier?.accountRequired)
+  const needsWorld = Boolean(selectedTier?.persistent)
+  const worldReady = !worldsLoading && !worldsError && worlds.some(world => world.id === selectedWorld)
+  const accountReady = !sessionLoading && !sessionError && Boolean(user)
+
+  const worldSettings = () => {
+    if (!needsAccount && !needsWorld) return <p className="text-sm text-content-muted">Guest worlds are deleted when the server stops.</p>
+    if (sessionLoading) return <p role="status">Checking your account...</p>
+    if (sessionError) return <p role="alert">Login status unavailable. Try refreshing the page.</p>
+    if (!user) return <p className="text-sm text-content-muted">
+      <Link to="/auth/login?returnTo=%2Fserver-creator" reloadDocument className="text-action-content hover:underline focus-ring">Log in</Link> to keep your world on a Free server.
+    </p>
+    if (worldsLoading) return <p role="status">Loading worlds...</p>
+    if (worldsError) return <div className="flex flex-col items-start gap-2">
+      <p role="alert">Could not load worlds. {worldsError}</p>
+      <Button size="sm" variant="secondary" onClick={reloadWorlds}>Try again</Button>
+    </div>
+
+    return <div className="flex flex-col gap-2">
+      {worlds.length > 0 ? <Field label="World" htmlFor="server-world">
+        <Select inputId="server-world" classNamePrefix="mc-select" placeholder="Choose a world"
+                options={worlds.map(world => ({value: world.id, label: world.name}))}
+                value={worlds.filter(world => world.id === selectedWorld).map(world => ({value: world.id, label: world.name}))[0] ?? null}
+                onChange={option => setSelectedWorld(option?.value ?? "")}/>
+      </Field> : <p className="text-sm text-content-muted">Create a world before starting a Free server.</p>}
+      <Link to="/my-worlds" className="text-sm text-action-content hover:underline focus-ring">Manage worlds</Link>
+      <p className="text-xs text-content-muted">Worlds are deleted after 90 days without playing. A world can run on one server at a time.</p>
+    </div>
+  }
 
   const summary = () => {
     const tier = selectedTier
@@ -298,13 +333,19 @@ export function ServerCreator() {
       options: sanitizedOpts,
       tier: state.tier,
       preset: templatePreset,
+      saveId: needsWorld ? selectedWorld : undefined,
     }
+
+    setCreating(true)
+    setCreateError("")
 
     try {
       await ManagerClient.createServer(request)
     } catch (err) {
-      setNotificationMessage("Failed to create server: " + problemMessage(err))
+      setCreateError("Failed to create server: " + problemMessage(err))
       return
+    } finally {
+      setCreating(false)
     }
 
     setNotificationMessage("Your server will be started shortly")
@@ -332,6 +373,7 @@ export function ServerCreator() {
                inert={showAdvanced}>
             {basicSettings()}
             {tierSettings()}
+            {worldSettings()}
           </div>
           <div id="advanced-settings" className={`flex flex-col gap-4 [grid-area:1/1] ${showAdvanced ? "" : "invisible"}`}
                inert={!showAdvanced}>
@@ -343,10 +385,11 @@ export function ServerCreator() {
 
       {summary()}
 
+      {createError && <p role="alert" className="px-6 pb-4 text-sm sm:col-span-2">{createError}</p>}
       <div className="flex items-center gap-2 w-full p-6 pt-0">
         <Button variant="secondary" className="flex-1 whitespace-nowrap" onClick={() => navigate("/my-servers")}>Cancel</Button>
-        <Button className="flex-1 whitespace-nowrap" disabled={!selectedTier || !tierOffered(selectedTier)} onClick={createServer}>
-          {selectedTier && !tierOffered(selectedTier) ? "Soon" : "Create"}
+        <Button className="flex-1 whitespace-nowrap" disabled={creating || !selectedTier || !tierOffered(selectedTier) || (needsAccount && !accountReady) || (needsWorld && !worldReady)} onClick={createServer}>
+          {creating ? "Starting..." : selectedTier && !tierOffered(selectedTier) ? "Soon" : "Create"}
         </Button>
       </div>
     </div>

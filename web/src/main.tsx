@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import {createBrowserRouter, RouterProvider} from "react-router-dom";
+import {WorldList} from "./worlds/WorldList.tsx";
 import {ServerList} from "./servers/ServerList.tsx";
 import {ServerCreator} from "./creator/ServerCreator.tsx";
 import {TemplateList} from "./templates/TemplateList.tsx";
@@ -36,6 +37,7 @@ const router = createBrowserRouter([
     loader: () => document.fonts.load("1em Minecraft").catch(() => []),
     hydrateFallbackElement: <div className="h-screen flex items-center justify-center"><Spinner/></div>,
     children: [
+      {path: "/my-worlds", element: <WorldList/>},
       {
         path: "/",
         element: <Home/>,

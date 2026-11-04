@@ -6,8 +6,8 @@ import {Wordmark} from "./Wordmark.tsx";
 import {useUser} from "../auth/useUser.ts";
 import {Navigation} from "./Navigation.tsx";
 
-export function Header() {
-  const {user, loading, error, logOut} = useUser()
+export function Header({session}: {session: ReturnType<typeof useUser>}) {
+  const {user, loading, error, logOut} = session
   const location = useLocation()
   const [navigationOpen, setNavigationOpen] = useState(false)
   const [accountAnchor, setAccountAnchor] = useState<HTMLElement | null>(null)

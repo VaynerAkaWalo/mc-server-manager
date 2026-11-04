@@ -1,4 +1,5 @@
 import './App.css'
+import {useUser} from "./auth/useUser.ts";
 import {Footer} from "./base/Footer.tsx";
 import {Outlet, useNavigation, useOutletContext} from "react-router-dom";
 import {Notification} from "./base/Notification.tsx";
@@ -8,9 +9,10 @@ import {Navigation} from "./base/Navigation.tsx";
 import {Spinner} from "./base/Spinner.tsx";
 import {createAppTheme, ThemeProvider} from "./ui/mui.ts";
 
-type NotificationContext =  { setNotificationMessage: React.Dispatch<React.SetStateAction<string>> }
+type NotificationContext =  { setNotificationMessage: React.Dispatch<React.SetStateAction<string>>, session: ReturnType<typeof useUser> }
 
 function App() {
+  const session = useUser()
   const [notificationMessage, setNotificationMessage] = useState<string>("")
   const [showNotification, setShowNotification] = useState<boolean>(false)
   const isNavigating = useNavigation().state === "loading"
@@ -35,7 +37,7 @@ function App() {
     <>
       <ThemeProvider theme={theme}>
         <div className="h-dvh flex flex-col">
-          <Header/>
+          <Header session={session}/>
           <div className="flex flex-1 min-h-0">
             <aside className="mc-chrome hidden w-sidebar shrink-0 overflow-y-auto border-r md:block">
               <Navigation/>
@@ -44,7 +46,7 @@ function App() {
               <div className="flex flex-1 justify-center items-center-safe">
                 {isNavigating
                   ? <Spinner/>
-                  : <Outlet context={{ setNotificationMessage } satisfies NotificationContext } />}
+                  : <Outlet context={{ setNotificationMessage, session } satisfies NotificationContext } />}
               </div>
               <Footer/>
             </main>

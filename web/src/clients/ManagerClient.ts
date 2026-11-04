@@ -53,6 +53,17 @@ export interface ServerCollection {
   nextCursor: string
 }
 
+export interface WorldResponse {
+  id: string,
+  name: string,
+  createdAt: string
+}
+
+export interface WorldCollection {
+  items: WorldResponse[],
+  nextCursor: string
+}
+
 export interface StatsResponse {
   online: number,
   created: number
@@ -72,6 +83,14 @@ export const problemMessage = (err: unknown): string => {
 }
 
 class ServerManager {
+  public listWorlds = (): Promise<AxiosResponse<WorldCollection>> => HTTPClient.get("/api/v1/saves")
+
+  public createWorld = (name: string): Promise<AxiosResponse<WorldResponse>> => HTTPClient.post("/api/v1/saves", {name})
+
+  public renameWorld = (id: string, name: string): Promise<AxiosResponse<WorldResponse>> => HTTPClient.patch(`/api/v1/saves/${id}`, {name})
+
+  public deleteWorld = (id: string) => HTTPClient.delete(`/api/v1/saves/${id}`)
+
   public createServer = (request: CreateServerRequest): Promise<AxiosPromise<ServerResponse>> => {
     return HTTPClient.post("/api/v1/servers", request)
   }
