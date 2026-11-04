@@ -62,7 +62,7 @@ func TestDeployedServerCarriesTheSaveOnlyWhenThereIsOne(t *testing.T) {
 	})
 
 	spec := serversv1alpha1.McServerSpec{Name: "alpha", Save: &serversv1alpha1.SaveSpec{ID: "4f9d0a3e-7c1b-4d6f-9a52-0e1c8b7d2a10"}}
-	if err := service.DeployServerSpec(spec); err != nil {
+	if err := service.DeployServerSpec(spec, "server-id"); err != nil {
 		t.Fatal(err)
 	}
 	if got := created["spec"].(map[string]any)["save"]; got == nil || got.(map[string]any)["id"] != spec.Save.ID {
@@ -70,7 +70,7 @@ func TestDeployedServerCarriesTheSaveOnlyWhenThereIsOne(t *testing.T) {
 	}
 
 	spec.Save = nil
-	if err := service.DeployServerSpec(spec); err != nil {
+	if err := service.DeployServerSpec(spec, "server-id"); err != nil {
 		t.Fatal(err)
 	}
 	if _, present := created["spec"].(map[string]any)["save"]; present {

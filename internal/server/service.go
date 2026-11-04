@@ -49,7 +49,7 @@ type serverStore interface {
 
 type clusterService interface {
 	GetActiveServers() (*unstructured.UnstructuredList, error)
-	DeployServerSpec(serverRequest serversv1alpha1.McServerSpec) error
+	DeployServerSpec(serverRequest serversv1alpha1.McServerSpec, serverID string) error
 	DeleteServer(serverName string, uid types.UID) error
 }
 
@@ -157,7 +157,7 @@ func (s *Service) provisionServer(ctx context.Context, owner string, provisionRe
 		return server.Response{}, err
 	}
 
-	err = s.clusterService.DeployServerSpec(*serverSpec)
+	err = s.clusterService.DeployServerSpec(*serverSpec, record.ID.String())
 	if err != nil {
 		alreadyExists := apierrors.IsAlreadyExists(err)
 		invalid := apierrors.IsInvalid(err)

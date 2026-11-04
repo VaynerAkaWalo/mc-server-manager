@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/auth"
+	"github.com/VaynerAkaWalo/mc-server-manager/internal/cluster"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/definition"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/store"
 	"github.com/VaynerAkaWalo/mc-server-manager/pkg/server"
@@ -221,7 +222,25 @@ func TestSaveLockIsKeptWhileTheClusterResourceStillExists(t *testing.T) {
 	}
 }
 
-func TestSaveLockIsReleasedWhenAnotherServerReusesTheName(t *testing.T) {
+func TestSaveLockStaysWhileAnUnlabeledResourceStillHasTheName(t *testing.T) {
+	db, saveID := savedGame("alice")
+	cl := &fakeCluster{}
+	svc := CreateServerService(cl, db, twoVersions)
+	created, err := svc.provisionServer(context.Background(), "alice", freeRequest(saveID, "1.21.10"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.setStatus(created.ID, []string{"new"}, "expired")
+	db.records = append(db.records, store.ServerRecord{ID: uuid.New(), Name: "my-server", Status: "new"})
+	cl.items = []unstructured.Unstructured{serverResource("my-server")}
+
+	svc.releaseSaveLocks(context.Background())
+	if _, held := db.locks[saveID]; !held {
+		t.Fatal("a new database row released the save while the old cluster resource was still there")
+	}
+}
+
+func TestSaveLockIsReleasedWhenTheNamedResourceBelongsToAnotherServer(t *testing.T) {
 	db, saveID := savedGame("alice")
 	cl := &fakeCluster{}
 	svc := CreateServerService(cl, db, twoVersions)
@@ -231,13 +250,14 @@ func TestSaveLockIsReleasedWhenAnotherServerReusesTheName(t *testing.T) {
 	}
 	db.setStatus(created.ID, []string{"new"}, "expired")
 
-	replacement := store.ServerRecord{ID: uuid.New(), Name: "my-server", Status: "running"}
-	db.records = append(db.records, replacement)
-	cl.items = []unstructured.Unstructured{serverResource("my-server")}
+	replacement := uuid.New()
+	resource := serverResource("my-server")
+	resource.SetLabels(map[string]string{cluster.ServerIDLabel: replacement.String()})
+	cl.items = []unstructured.Unstructured{resource}
 
 	svc.releaseSaveLocks(context.Background())
 	if _, held := db.locks[saveID]; held {
-		t.Fatal("the stopped server kept its save locked for a name another server is running")
+		t.Fatal("the stopped server kept its save locked after its cluster resource was replaced")
 	}
 }
 

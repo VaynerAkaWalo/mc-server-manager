@@ -26,7 +26,7 @@ func (f *fakeCluster) GetActiveServers() (*unstructured.UnstructuredList, error)
 	return &unstructured.UnstructuredList{Items: f.items}, nil
 }
 
-func (f *fakeCluster) DeployServerSpec(spec serversv1alpha1.McServerSpec) error {
+func (f *fakeCluster) DeployServerSpec(spec serversv1alpha1.McServerSpec, _ string) error {
 	f.deployed = append(f.deployed, spec)
 	return nil
 }

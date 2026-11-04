@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/VaynerAkaWalo/mc-server-manager/internal/cluster"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/mcping"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/store"
 	"github.com/VaynerAkaWalo/mc-server-manager/pkg/server"
@@ -132,27 +133,21 @@ func (s *Service) releaseSaveLocks(ctx context.Context) {
 		slog.Error("Failed to list servers to release save locks: " + err.Error())
 		return
 	}
-	present := make(map[string]bool, len(resources.Items))
+	labeled := make(map[string]bool, len(resources.Items))
+	unlabeledNames := make(map[string]bool)
 	for _, resource := range resources.Items {
-		present[resource.GetName()] = true
-	}
-
-	active, err := s.store.ListMonitoredServers(ctx)
-	if err != nil {
-		slog.Error("Failed to list active servers to release save locks: " + err.Error())
-		return
-	}
-	activeByName := make(map[string]uuid.UUID, len(active))
-	for _, record := range active {
-		activeByName[record.Name] = record.ID
+		if id := resource.GetLabels()[cluster.ServerIDLabel]; id != "" {
+			labeled[id] = true
+			continue
+		}
+		unlabeledNames[resource.GetName()] = true
 	}
 
 	for _, record := range locked {
-		owner := activeByName[record.Name]
-		heldByReplacement := present[record.Name] && owner != uuid.Nil && owner != record.ID
-		if !present[record.Name] || heldByReplacement {
-			s.record(s.store.ReleaseSaveLock(ctx, record.ID))
+		if labeled[record.ID.String()] || unlabeledNames[record.Name] {
+			continue
 		}
+		s.record(s.store.ReleaseSaveLock(ctx, record.ID))
 	}
 }
 

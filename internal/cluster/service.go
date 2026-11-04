@@ -37,7 +37,9 @@ func (s *Service) GetActiveServers() (*unstructured.UnstructuredList, error) {
 	return s.dynamicClient.Resource(serverGVR()).List(context.TODO(), metav1.ListOptions{})
 }
 
-func (s *Service) DeployServerSpec(serverRequest serversv1alpha1.McServerSpec) error {
+const ServerIDLabel = "blamedevs.com/server-id"
+
+func (s *Service) DeployServerSpec(serverRequest serversv1alpha1.McServerSpec, serverID string) error {
 	spec := map[string]interface{}{
 		"name":         serverRequest.Name,
 		"image":        serverRequest.Image,
@@ -59,6 +61,7 @@ func (s *Service) DeployServerSpec(serverRequest serversv1alpha1.McServerSpec) e
 				"labels": map[string]interface{}{
 					"app.kubernetes.io/name":       serverRequest.Name,
 					"app.kubernetes.io/managed-by": "kustomize",
+					ServerIDLabel:                  serverID,
 				},
 				"name":      serverRequest.Name,
 				"namespace": "minecraft-server",
