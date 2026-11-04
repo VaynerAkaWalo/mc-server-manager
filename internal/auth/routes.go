@@ -201,13 +201,8 @@ func (h *Handlers) callback(w http.ResponseWriter, r *http.Request) error {
 
 func (h *Handlers) current(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Cache-Control", "no-store")
-	cookie, err := r.Cookie(h.cookieName(sessionCookie))
-	if err != nil {
-		return problem.Write(w, http.StatusUnauthorized, "No active session")
-	}
-	session, err := h.store.GetSession(r.Context(), hashToken(cookie.Value))
-	if errors.Is(err, store.ErrNotFound) {
-		h.setCookie(w, sessionCookie, "", -1)
+	session, err := h.Identify(w, r)
+	if errors.Is(err, ErrNoSession) {
 		return problem.Write(w, http.StatusUnauthorized, "No active session")
 	}
 	if err != nil {
@@ -216,9 +211,50 @@ func (h *Handlers) current(w http.ResponseWriter, r *http.Request) error {
 	return xhttp.WriteResponse(w, http.StatusOK, session)
 }
 
+var ErrNoSession = errors.New("no active session")
+
+func (h *Handlers) Identify(w http.ResponseWriter, r *http.Request) (store.Session, error) {
+	cookie, err := r.Cookie(h.cookieName(sessionCookie))
+	if err != nil {
+		return store.Session{}, ErrNoSession
+	}
+	session, err := h.store.GetSession(r.Context(), hashToken(cookie.Value))
+	if errors.Is(err, store.ErrNotFound) {
+		h.setCookie(w, sessionCookie, "", -1)
+		return store.Session{}, ErrNoSession
+	}
+	return session, err
+}
+
+func (h *Handlers) SameOrigin(r *http.Request) bool {
+	return r.Header.Get("Origin") == h.origin
+}
+
+type SessionHandler func(w http.ResponseWriter, r *http.Request, session store.Session) error
+
+func (h *Handlers) Authenticated(next SessionHandler) func(w http.ResponseWriter, r *http.Request) error {
+	return func(w http.ResponseWriter, r *http.Request) error {
+		w.Header().Set("Cache-Control", "no-store")
+		safe := r.Method == http.MethodGet || r.Method == http.MethodHead
+		if !safe && !h.SameOrigin(r) {
+			return problem.Write(w, http.StatusForbidden, "Invalid request origin")
+		}
+
+		session, err := h.Identify(w, r)
+		if errors.Is(err, ErrNoSession) {
+			return problem.Write(w, http.StatusUnauthorized, "Log in to continue")
+		}
+		if err != nil {
+			return h.failure(w, "read session", err)
+		}
+
+		return next(w, r, session)
+	}
+}
+
 func (h *Handlers) logout(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Cache-Control", "no-store")
-	if r.Header.Get("Origin") != h.origin {
+	if !h.SameOrigin(r) {
 		return problem.Write(w, http.StatusForbidden, "Invalid request origin")
 	}
 	if cookie, err := r.Cookie(h.cookieName(sessionCookie)); err == nil {

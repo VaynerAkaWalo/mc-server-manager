@@ -28,6 +28,7 @@ func newResponse(record store.ServerRecord, status server.Status) (server.Respon
 		Status:         status,
 		Tier:           string(stored.Tier),
 		Preset:         stored.Preset,
+		SaveID:         stored.SaveId,
 		Options:        definition.UserOptions(stored.Options),
 		CreatedAt:      record.CreatedAt,
 		ExpiresAt:      record.ExpiresAt,

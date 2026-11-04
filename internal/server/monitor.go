@@ -114,6 +114,34 @@ func (s *Service) checkServers(ctx context.Context) {
 
 	s.players.retain(monitored)
 	s.record(s.store.MarkIdle(ctx, idleTimeouts))
+	s.releaseSaveLocks(ctx)
+}
+
+func (s *Service) releaseSaveLocks(ctx context.Context) {
+	locked, err := s.store.ListReleasableSaveLocks(ctx)
+	if err != nil {
+		slog.Error("Failed to list save locks: " + err.Error())
+		return
+	}
+	if len(locked) == 0 {
+		return
+	}
+
+	resources, err := s.clusterService.GetActiveServers()
+	if err != nil {
+		slog.Error("Failed to list servers to release save locks: " + err.Error())
+		return
+	}
+	present := make(map[string]bool, len(resources.Items))
+	for _, resource := range resources.Items {
+		present[resource.GetName()] = true
+	}
+
+	for _, record := range locked {
+		if !present[record.Name] {
+			s.record(s.store.ReleaseSaveLock(ctx, record.ID))
+		}
+	}
 }
 
 func (s *Service) checkServer(ctx context.Context, record store.ServerRecord) {

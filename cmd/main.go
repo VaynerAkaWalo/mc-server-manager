@@ -5,10 +5,12 @@ import (
 	"github.com/VaynerAkaWalo/go-toolkit/xhttp"
 	"github.com/VaynerAkaWalo/go-toolkit/xlog"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/auth"
+	"github.com/VaynerAkaWalo/mc-server-manager/internal/bucket"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/catalog"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/cluster"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/frontend"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/internalapi"
+	"github.com/VaynerAkaWalo/mc-server-manager/internal/save"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/server"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/store"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/versions"
@@ -56,20 +58,33 @@ func main() {
 	}
 	go authHandlers.RunCleanup(context.Background())
 
+	saveBucket, err := bucket.New(bucket.Config{
+		Endpoint:  os.Getenv("SAVES_ENDPOINT"),
+		Bucket:    os.Getenv("SAVES_BUCKET"),
+		Region:    os.Getenv("SAVES_REGION"),
+		AccessKey: os.Getenv("AWS_ACCESS_KEY_ID"),
+		SecretKey: os.Getenv("AWS_SECRET_ACCESS_KEY"),
+	})
+	if err != nil {
+		slog.Error("Failed to configure the saves bucket", "error", err)
+		os.Exit(1)
+	}
+	saveService := save.NewService(serverStore, saveBucket)
+
 	gameVersions := versions.NewSource()
 
 	serverService := server.CreateServerService(cluster.CreateClusterService(*clusterClient, *dynamicClient), serverStore, gameVersions)
-	serverHandlers := server.NewServerHandlers(serverService)
+	serverHandlers := server.NewServerHandlers(serverService, authHandlers)
 
 	go serverService.RunMonitor(context.Background())
 
 	frontendHandlers := frontend.NewFrontendHandlers(os.DirFS("static"))
 
-	internalHandlers := internalapi.NewHandlers(serverStore.Ping, &serverService)
+	internalHandlers := internalapi.NewHandlers(serverStore.Ping, &serverService, saveService)
 
 	publicServer := xhttp.Server{
 		Addr:     ":8080",
-		Handlers: []xhttp.RouteHandler{authHandlers, serverHandlers, catalog.NewCatalogHandlers(gameVersions), frontendHandlers},
+		Handlers: []xhttp.RouteHandler{authHandlers, serverHandlers, save.NewHandlers(saveService, authHandlers), catalog.NewCatalogHandlers(gameVersions), frontendHandlers},
 	}
 	internalServer := xhttp.Server{
 		Addr:     ":8081",

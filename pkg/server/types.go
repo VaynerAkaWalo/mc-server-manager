@@ -29,6 +29,7 @@ type Response struct {
 	Players        *Players          `json:"players"`
 	Tier           string            `json:"tier"`
 	Preset         string            `json:"preset,omitempty"`
+	SaveID         string            `json:"saveId,omitempty"`
 	Options        map[string]string `json:"options"`
 	CreatedAt      time.Time         `json:"createdAt"`
 	ExpiresAt      time.Time         `json:"expiresAt"`
@@ -39,6 +40,7 @@ type Request struct {
 	Name    string            `json:"name"`
 	Tier    string            `json:"tier"`
 	Preset  string            `json:"preset,omitempty"`
+	SaveID  string            `json:"saveId,omitempty"`
 	Options map[string]string `json:"options"`
 }
 

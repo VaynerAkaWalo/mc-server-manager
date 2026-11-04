@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/VaynerAkaWalo/go-toolkit/xhttp"
+	"github.com/VaynerAkaWalo/mc-server-manager/internal/auth"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/definition"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/problem"
+	"github.com/VaynerAkaWalo/mc-server-manager/internal/store"
 	"github.com/VaynerAkaWalo/mc-server-manager/pkg/server"
 	"github.com/google/uuid"
 	"io"
@@ -13,13 +15,20 @@ import (
 	"net/http"
 )
 
-type Handlers struct {
-	serverService Service
+type Identifier interface {
+	Identify(w http.ResponseWriter, r *http.Request) (store.Session, error)
+	SameOrigin(r *http.Request) bool
 }
 
-func NewServerHandlers(serverService Service) *Handlers {
+type Handlers struct {
+	serverService Service
+	identifier    Identifier
+}
+
+func NewServerHandlers(serverService Service, identifier Identifier) *Handlers {
 	return &Handlers{
 		serverService: serverService,
+		identifier:    identifier,
 	}
 }
 
@@ -96,12 +105,34 @@ func (h *Handlers) provisionServer(w http.ResponseWriter, r *http.Request) error
 		return problem.Write(w, http.StatusBadRequest, "The request body is not valid JSON for a server")
 	}
 
-	res, err := h.serverService.provisionServer(r.Context(), req)
+	owner, err := h.owner(w, r, req)
+	if err != nil {
+		return provisionFailure(w, r, err)
+	}
+
+	res, err := h.serverService.provisionServer(r.Context(), owner, req)
 	if err != nil {
 		return provisionFailure(w, r, err)
 	}
 
 	return xhttp.WriteResponse(w, http.StatusCreated, res)
+}
+
+func (h *Handlers) owner(w http.ResponseWriter, r *http.Request, req server.Request) (string, error) {
+	session, err := h.identifier.Identify(w, r)
+	if errors.Is(err, auth.ErrNoSession) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+
+	usesAccount := req.SaveID != "" || definition.TierRequiresAccount(definition.Tier(req.Tier))
+	if usesAccount && !h.identifier.SameOrigin(r) {
+		return "", ErrForeignOrigin
+	}
+
+	return session.Subject, nil
 }
 
 func (h *Handlers) preFlightHandler(w http.ResponseWriter, r *http.Request) error {
@@ -115,6 +146,14 @@ func provisionFailure(w http.ResponseWriter, r *http.Request, err error) error {
 		return problem.Write(w, http.StatusUnprocessableEntity, invalid.Error())
 	case errors.Is(err, ErrNameInUse):
 		return problem.Write(w, http.StatusConflict, ErrNameInUse.Error())
+	case errors.Is(err, ErrSaveInUse):
+		return problem.Write(w, http.StatusConflict, ErrSaveInUse.Error())
+	case errors.Is(err, ErrLoginRequired):
+		return problem.Write(w, http.StatusUnauthorized, ErrLoginRequired.Error())
+	case errors.Is(err, ErrForeignOrigin):
+		return problem.Write(w, http.StatusForbidden, ErrForeignOrigin.Error())
+	case errors.Is(err, ErrSaveNotFound):
+		return problem.Write(w, http.StatusUnprocessableEntity, ErrSaveNotFound.Error())
 	case errors.Is(err, definition.ErrVersionsUnavailable):
 		slog.ErrorContext(r.Context(), "Cannot validate game version: "+err.Error())
 		return problem.Write(w, http.StatusServiceUnavailable, "Game versions are not available right now, try again later")

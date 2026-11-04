@@ -19,6 +19,10 @@ import (
 type memoryStore struct {
 	records    []store.ServerRecord
 	expireRuns int
+	saves      map[uuid.UUID]string
+	played     map[uuid.UUID]json.RawMessage
+	locks      map[uuid.UUID]uuid.UUID
+	lockNames  map[uuid.UUID]string
 }
 
 func (s *memoryStore) CreateServer(_ context.Context, input store.NewServer) (store.ServerRecord, error) {
@@ -33,8 +37,24 @@ func (s *memoryStore) CreateServer(_ context.Context, input store.NewServer) (st
 		}
 	}
 
+	if input.Save != nil {
+		if _, locked := s.locks[input.Save.ID]; locked {
+			return store.ServerRecord{}, store.ErrSaveInUse
+		}
+		if owner, found := s.saves[input.Save.ID]; !found || owner != input.Save.Owner {
+			return store.ServerRecord{}, store.ErrSaveNotFound
+		}
+	}
+
 	record := store.ServerRecord{ID: uuid.New(), Name: input.Name, Hostname: input.Hostname, Definition: definition, CreatedAt: time.Now(), ExpiresAt: input.ExpiresAt, Status: "new"}
 	s.records = append([]store.ServerRecord{record}, s.records...)
+	if input.Save != nil {
+		if s.locks == nil {
+			s.locks, s.lockNames = map[uuid.UUID]uuid.UUID{}, map[uuid.UUID]string{}
+		}
+		s.locks[input.Save.ID] = record.ID
+		s.lockNames[record.ID] = input.Name
+	}
 	return record, nil
 }
 
@@ -141,7 +161,7 @@ func TestProvisionAndListUseSameRepresentation(t *testing.T) {
 	svc := CreateServerService(cl, db, testVersions)
 	request := server.Request{Name: "my-server", Tier: "guest", Options: map[string]string{"MOTD": "hello", "VERSION": "1.21.3"}}
 
-	created, err := svc.provisionServer(context.Background(), request)
+	created, err := svc.provisionServer(context.Background(), "", request)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,10 +208,10 @@ func TestProvisionRejectsActiveName(t *testing.T) {
 	svc := CreateServerService(&fakeCluster{}, &memoryStore{}, testVersions)
 	request := server.Request{Name: "my-server", Tier: "guest", Options: map[string]string{"VERSION": "1.21.3"}}
 
-	if _, err := svc.provisionServer(context.Background(), request); err != nil {
+	if _, err := svc.provisionServer(context.Background(), "", request); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := svc.provisionServer(context.Background(), request); !errors.Is(err, ErrNameInUse) {
+	if _, err := svc.provisionServer(context.Background(), "", request); !errors.Is(err, ErrNameInUse) {
 		t.Fatalf("err = %v", err)
 	}
 }
@@ -249,7 +269,7 @@ func TestProvisionRejectsUnknownVersion(t *testing.T) {
 	svc := CreateServerService(&fakeCluster{}, &memoryStore{}, testVersions)
 	request := server.Request{Name: "my-server", Tier: "guest", Options: map[string]string{"VERSION": "latest"}}
 
-	_, err := svc.provisionServer(context.Background(), request)
+	_, err := svc.provisionServer(context.Background(), "", request)
 
 	var invalid definition.InvalidDefinitionError
 	if !errors.As(err, &invalid) {

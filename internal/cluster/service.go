@@ -38,6 +38,19 @@ func (s *Service) GetActiveServers() (*unstructured.UnstructuredList, error) {
 }
 
 func (s *Service) DeployServerSpec(serverRequest serversv1alpha1.McServerSpec) error {
+	spec := map[string]interface{}{
+		"name":         serverRequest.Name,
+		"image":        serverRequest.Image,
+		"env":          serverRequest.Env,
+		"expireAfter":  serverRequest.ExpireAfter,
+		"memory":       serverRequest.Memory,
+		"instanceType": "shared",
+		"volume":       serverRequest.Volume,
+	}
+	if serverRequest.Save != nil {
+		spec["save"] = map[string]interface{}{"id": serverRequest.Save.ID}
+	}
+
 	server := &unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": "servers.blamedevs.com/v1alpha1",
@@ -50,15 +63,7 @@ func (s *Service) DeployServerSpec(serverRequest serversv1alpha1.McServerSpec) e
 				"name":      serverRequest.Name,
 				"namespace": "minecraft-server",
 			},
-			"spec": map[string]interface{}{
-				"name":         serverRequest.Name,
-				"image":        serverRequest.Image,
-				"env":          serverRequest.Env,
-				"expireAfter":  serverRequest.ExpireAfter,
-				"memory":       serverRequest.Memory,
-				"instanceType": "shared",
-				"volume":       serverRequest.Volume,
-			},
+			"spec": spec,
 			"status": map[string]interface{}{
 				"status":      "new",
 				"startedTime": "",

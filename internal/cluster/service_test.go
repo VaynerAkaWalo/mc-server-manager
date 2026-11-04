@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"encoding/json"
+	serversv1alpha1 "github.com/VaynerAkaWalo/mc-server-operator/api/v1alpha1"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -46,5 +47,33 @@ func TestLateDeleteDoesNotRemoveNewerServerThatReusedTheName(t *testing.T) {
 	}
 	if precondition.Preconditions.UID != "old-uid" {
 		t.Errorf("delete must carry the UID of the server it meant to remove, got %q", precondition.Preconditions.UID)
+	}
+}
+
+func TestDeployedServerCarriesTheSaveOnlyWhenThereIsOne(t *testing.T) {
+	var created map[string]any
+	service := serviceAgainst(t, func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(body, &created)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write(body)
+	})
+
+	spec := serversv1alpha1.McServerSpec{Name: "alpha", Save: &serversv1alpha1.SaveSpec{ID: "4f9d0a3e-7c1b-4d6f-9a52-0e1c8b7d2a10"}}
+	if err := service.DeployServerSpec(spec); err != nil {
+		t.Fatal(err)
+	}
+	if got := created["spec"].(map[string]any)["save"]; got == nil || got.(map[string]any)["id"] != spec.Save.ID {
+		t.Fatalf("save = %v", got)
+	}
+
+	spec.Save = nil
+	if err := service.DeployServerSpec(spec); err != nil {
+		t.Fatal(err)
+	}
+	if _, present := created["spec"].(map[string]any)["save"]; present {
+		t.Fatalf("spec = %v", created["spec"])
 	}
 }
