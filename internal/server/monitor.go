@@ -137,8 +137,20 @@ func (s *Service) releaseSaveLocks(ctx context.Context) {
 		present[resource.GetName()] = true
 	}
 
+	active, err := s.store.ListMonitoredServers(ctx)
+	if err != nil {
+		slog.Error("Failed to list active servers to release save locks: " + err.Error())
+		return
+	}
+	activeByName := make(map[string]uuid.UUID, len(active))
+	for _, record := range active {
+		activeByName[record.Name] = record.ID
+	}
+
 	for _, record := range locked {
-		if !present[record.Name] {
+		owner := activeByName[record.Name]
+		heldByReplacement := present[record.Name] && owner != uuid.Nil && owner != record.ID
+		if !present[record.Name] || heldByReplacement {
 			s.record(s.store.ReleaseSaveLock(ctx, record.ID))
 		}
 	}

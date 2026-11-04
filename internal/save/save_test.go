@@ -19,6 +19,7 @@ type memorySaves struct {
 	records  []store.SaveRecord
 	idle     []uuid.UUID
 	inUse    map[uuid.UUID]bool
+	revived  map[uuid.UUID]bool
 	purgeErr error
 	purged   []string
 	idleFor  time.Duration
@@ -57,6 +58,13 @@ func (m *memorySaves) RenameSave(_ context.Context, id uuid.UUID, owner, name st
 		}
 	}
 	return store.SaveRecord{}, store.ErrSaveNotFound
+}
+
+func (m *memorySaves) DeleteIdleSave(ctx context.Context, id uuid.UUID, idle time.Duration, purge func(context.Context) error) error {
+	if m.revived[id] {
+		return store.ErrSaveInUse
+	}
+	return m.DeleteSave(ctx, id, "", purge)
 }
 
 func (m *memorySaves) DeleteSave(ctx context.Context, id uuid.UUID, owner string, purge func(context.Context) error) error {
@@ -121,6 +129,9 @@ func TestCreateListRenameAndDeleteASave(t *testing.T) {
 	}
 	if other := call(t, saves, "bob", "GET", "/api/v1/saves", ""); strings.Contains(other.Body.String(), save.ID.String()) {
 		t.Fatalf("another user sees the save: %s", other.Body)
+	}
+	if page := call(t, saves, "alice", "GET", "/api/v1/saves?limit=1&sort=-createdAt", ""); page.Code != http.StatusOK || !strings.Contains(page.Body.String(), `"nextCursor":""`) || strings.Count(page.Body.String(), `"id"`) != 1 {
+		t.Fatalf("page: %d %s", page.Code, page.Body)
 	}
 
 	renamed := call(t, saves, "alice", "PATCH", "/api/v1/saves/"+save.ID.String(), `{"name":"Creative"}`)
@@ -206,6 +217,19 @@ func TestExpireIdleDeletesIdleSavesAndSkipsOnesInUse(t *testing.T) {
 	}
 	if len(saves.records) != 1 || saves.records[0].ID != held.ID {
 		t.Fatalf("records = %+v", saves.records)
+	}
+}
+
+func TestExpireIdleLeavesASaveThatWasUsedAfterItWasListed(t *testing.T) {
+	saves := &memorySaves{}
+	played, _ := saves.CreateSave(context.Background(), "alice", "played", MaxSavesPerUser)
+	saves.idle = []uuid.UUID{played.ID}
+	saves.revived = map[uuid.UUID]bool{played.ID: true}
+
+	expired, err := NewService(saves, saves).ExpireIdle(context.Background())
+
+	if err != nil || len(expired) != 0 || len(saves.records) != 1 {
+		t.Fatalf("expired = %v, err = %v, records = %+v", expired, err, saves.records)
 	}
 }
 

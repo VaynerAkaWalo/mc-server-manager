@@ -18,6 +18,8 @@ interface Server {
 
 const SERVER_TYPE = "FABRIC"
 
+const tierOffered = (tier: { available: boolean, persistent: boolean }) => tier.available && !tier.persistent
+
 const initialServer: Server = {
   name: "",
   opts: {
@@ -234,8 +236,8 @@ export function ServerCreator() {
                    className={`flex h-12 cursor-pointer items-center gap-3 border px-4 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-focus ${selected ? "border-action-content bg-surface-hover shadow-raised" : "border-edge-control bg-inset hover:border-content-muted"}`}>
               <input className="sr-only" type="radio" name="tier" value={tier.id} checked={selected}
                      onChange={() => dispatch({type: "UPDATE_TIER", payload: tier.id})}/>
-              <span className={`font-pixel text-sm ${tier.available ? "" : "text-content-muted"}`}>{tier.name}</span>
-              {!tier.available && <span className="ml-auto border border-edge-strong px-1 text-xs text-content-muted">Soon</span>}
+              <span className={`font-pixel text-sm ${tierOffered(tier) ? "" : "text-content-muted"}`}>{tier.name}</span>
+              {!tierOffered(tier) && <span className="ml-auto border border-edge-strong px-1 text-xs text-content-muted">Soon</span>}
             </label>
           )
         })}
@@ -343,8 +345,8 @@ export function ServerCreator() {
 
       <div className="flex items-center gap-2 w-full p-6 pt-0">
         <Button variant="secondary" className="flex-1 whitespace-nowrap" onClick={() => navigate("/my-servers")}>Cancel</Button>
-        <Button className="flex-1 whitespace-nowrap" disabled={!selectedTier?.available} onClick={createServer}>
-          {selectedTier?.available === false ? "Soon" : "Create"}
+        <Button className="flex-1 whitespace-nowrap" disabled={!selectedTier || !tierOffered(selectedTier)} onClick={createServer}>
+          {selectedTier && !tierOffered(selectedTier) ? "Soon" : "Create"}
         </Button>
       </div>
     </div>

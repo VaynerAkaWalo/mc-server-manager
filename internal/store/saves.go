@@ -140,6 +140,48 @@ func (s *Store) DeleteSave(ctx context.Context, id uuid.UUID, owner string, purg
 	return tx.Commit(ctx)
 }
 
+func (s *Store) DeleteIdleSave(ctx context.Context, id uuid.UUID, idle time.Duration, purge func(context.Context) error) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin idle save delete: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if err := lockSave(ctx, tx, id); err != nil {
+		return err
+	}
+
+	var idleEnough bool
+	err = tx.QueryRow(ctx, `SELECT EXISTS (
+		SELECT 1 FROM saves s
+		WHERE s.id = $1
+		  AND COALESCE((SELECT max(m.last_active_at) FROM mc_servers m WHERE m.save_id = s.id), s.created_at) < now() - make_interval(secs => $2)
+		  AND NOT EXISTS (SELECT 1 FROM mc_servers m WHERE m.save_id = s.id AND m.save_locked)
+	)`, id, idle.Seconds()).Scan(&idleEnough)
+	if err != nil {
+		return fmt.Errorf("recheck idle save: %w", err)
+	}
+	if !idleEnough {
+		var exists bool
+		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM saves WHERE id = $1)`, id).Scan(&exists); err != nil {
+			return fmt.Errorf("find idle save: %w", err)
+		}
+		if !exists {
+			return ErrSaveNotFound
+		}
+		return ErrSaveInUse
+	}
+
+	if err := purge(ctx); err != nil {
+		return fmt.Errorf("purge save data: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM saves WHERE id = $1`, id); err != nil {
+		return fmt.Errorf("delete save: %w", err)
+	}
+
+	return tx.Commit(ctx)
+}
+
 func (s *Store) ListSavesIdleSince(ctx context.Context, idle time.Duration) ([]uuid.UUID, error) {
 	rows, err := s.pool.Query(ctx,
 		`SELECT s.id FROM saves s

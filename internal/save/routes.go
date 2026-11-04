@@ -6,6 +6,9 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"slices"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/VaynerAkaWalo/go-toolkit/xhttp"
@@ -60,12 +63,76 @@ func (h *Handlers) list(w http.ResponseWriter, r *http.Request, session store.Se
 		return failure(w, r, "Failed to list saves", err)
 	}
 
-	collection := Collection{Items: make([]Response, 0, len(records))}
-	for _, record := range records {
+	page, next, err := pageSaves(records, r.URL.Query().Get("sort"), r.URL.Query().Get("limit"), r.URL.Query().Get("cursor"))
+	if err != nil {
+		return problem.Write(w, http.StatusBadRequest, err.Error())
+	}
+
+	collection := Collection{Items: make([]Response, 0, len(page)), NextCursor: next}
+	for _, record := range page {
 		collection.Items = append(collection.Items, newResponse(record))
 	}
 
 	return xhttp.WriteResponse(w, http.StatusOK, collection)
+}
+
+func pageSaves(records []store.SaveRecord, sort, limitValue, cursor string) ([]store.SaveRecord, string, error) {
+	if sort == "" {
+		sort = "createdAt"
+	}
+	if sort != "createdAt" && sort != "-createdAt" {
+		return nil, "", errors.New("sort must be createdAt or -createdAt")
+	}
+
+	limit := 20
+	if limitValue != "" {
+		parsed, err := strconv.Atoi(limitValue)
+		if err != nil || parsed < 1 || parsed > 100 {
+			return nil, "", errors.New("limit must be between 1 and 100")
+		}
+		limit = parsed
+	}
+
+	slices.SortFunc(records, func(a, b store.SaveRecord) int {
+		if a.CreatedAt.Equal(b.CreatedAt) {
+			return compareID(a.ID, b.ID, sort == "-createdAt")
+		}
+		if sort == "-createdAt" {
+			return b.CreatedAt.Compare(a.CreatedAt)
+		}
+		return a.CreatedAt.Compare(b.CreatedAt)
+	})
+
+	start := 0
+	if cursor != "" {
+		start = -1
+		for i, record := range records {
+			if record.ID.String() == cursor {
+				start = i + 1
+			}
+		}
+		if start < 0 {
+			return nil, "", errors.New("cursor does not match a save")
+		}
+	}
+
+	end := start + limit
+	if end > len(records) {
+		end = len(records)
+	}
+	next := ""
+	if end < len(records) {
+		next = records[end-1].ID.String()
+	}
+
+	return records[start:end], next, nil
+}
+
+func compareID(a, b uuid.UUID, descending bool) int {
+	if descending {
+		return strings.Compare(b.String(), a.String())
+	}
+	return strings.Compare(a.String(), b.String())
 }
 
 func (h *Handlers) create(w http.ResponseWriter, r *http.Request, session store.Session) error {

@@ -38,6 +38,7 @@ type saveStore interface {
 	ListSaves(ctx context.Context, owner string) ([]store.SaveRecord, error)
 	RenameSave(ctx context.Context, id uuid.UUID, owner, name string) (store.SaveRecord, error)
 	DeleteSave(ctx context.Context, id uuid.UUID, owner string, purge func(context.Context) error) error
+	DeleteIdleSave(ctx context.Context, id uuid.UUID, idle time.Duration, purge func(context.Context) error) error
 	ListSavesIdleSince(ctx context.Context, idle time.Duration) ([]uuid.UUID, error)
 }
 
@@ -123,7 +124,13 @@ func (s *Service) ExpireIdle(ctx context.Context) ([]string, error) {
 	expired := make([]string, 0, len(ids))
 	var failures []error
 	for _, id := range ids {
-		err := s.Delete(ctx, id, "")
+		err := s.store.DeleteIdleSave(ctx, id, Retention, func(ctx context.Context) error { return s.purger.Purge(ctx, Prefix(id)) })
+		if errors.Is(err, store.ErrSaveNotFound) {
+			err = ErrNotFound
+		}
+		if errors.Is(err, store.ErrSaveInUse) {
+			err = ErrInUse
+		}
 		if errors.Is(err, ErrInUse) || errors.Is(err, ErrNotFound) {
 			continue
 		}

@@ -161,6 +161,33 @@ func TestProvisionRefusesToDowngradeASave(t *testing.T) {
 	}
 }
 
+func TestProvisionRefusesAPresetThatDowngradesTheSave(t *testing.T) {
+	db, saveID := savedGame("alice")
+	db.played = map[uuid.UUID]json.RawMessage{saveID: json.RawMessage(`{"options":{"VERSION":"1.21.10"}}`)}
+	svc := CreateServerService(&fakeCluster{}, db, twoVersions)
+
+	request := freeRequest(saveID, "1.21.10")
+	request.Preset = "lockout"
+	var invalid definition.InvalidDefinitionError
+	if _, err := svc.provisionServer(context.Background(), "alice", request); !errors.As(err, &invalid) {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestProvisionStoresTheVersionThePresetDeploys(t *testing.T) {
+	db, saveID := savedGame("alice")
+	svc := CreateServerService(&fakeCluster{}, db, twoVersions)
+
+	request := freeRequest(saveID, "1.21.10")
+	request.Preset = "lockout"
+	if _, err := svc.provisionServer(context.Background(), "alice", request); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(db.records[0].Definition), `"VERSION":"1.21.3"`) {
+		t.Fatalf("definition = %s", db.records[0].Definition)
+	}
+}
+
 func TestProvisionAllowsUpgradingASave(t *testing.T) {
 	db, saveID := savedGame("alice")
 	db.played = map[uuid.UUID]json.RawMessage{saveID: json.RawMessage(`{"options":{"VERSION":"1.21.3"}}`)}
@@ -191,6 +218,26 @@ func TestSaveLockIsKeptWhileTheClusterResourceStillExists(t *testing.T) {
 	svc.releaseSaveLocks(context.Background())
 	if _, held := db.locks[saveID]; held {
 		t.Fatal("the lock was not released after the server was gone")
+	}
+}
+
+func TestSaveLockIsReleasedWhenAnotherServerReusesTheName(t *testing.T) {
+	db, saveID := savedGame("alice")
+	cl := &fakeCluster{}
+	svc := CreateServerService(cl, db, twoVersions)
+	created, err := svc.provisionServer(context.Background(), "alice", freeRequest(saveID, "1.21.10"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	db.setStatus(created.ID, []string{"new"}, "expired")
+
+	replacement := store.ServerRecord{ID: uuid.New(), Name: "my-server", Status: "running"}
+	db.records = append(db.records, replacement)
+	cl.items = []unstructured.Unstructured{serverResource("my-server")}
+
+	svc.releaseSaveLocks(context.Background())
+	if _, held := db.locks[saveID]; held {
+		t.Fatal("the stopped server kept its save locked for a name another server is running")
 	}
 }
 
@@ -227,8 +274,8 @@ func TestProvisionMapsAccountFailures(t *testing.T) {
 	if rec := provision(t, fakeIdentity{session: store.Session{Subject: "alice"}}, free); rec.Code != http.StatusForbidden {
 		t.Fatalf("foreign origin: %d %s", rec.Code, rec.Body)
 	}
-	if rec := provision(t, fakeIdentity{session: store.Session{Subject: "alice"}, origin: true}, free); rec.Code != http.StatusCreated {
-		t.Fatalf("free tier: %d %s", rec.Code, rec.Body)
+	if rec := provision(t, fakeIdentity{session: store.Session{Subject: "alice"}, origin: true}, free); rec.Code != http.StatusUnprocessableEntity || !strings.Contains(rec.Body.String(), "needs a save") {
+		t.Fatalf("free tier without a save: %d %s", rec.Code, rec.Body)
 	}
 
 	guest := `{"name":"my-server","tier":"guest","options":{"VERSION":"1.21.10"}}`

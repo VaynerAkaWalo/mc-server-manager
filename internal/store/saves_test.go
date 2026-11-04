@@ -192,6 +192,45 @@ func TestRenameAndGetSaveAreScopedToTheOwner(t *testing.T) {
 	}
 }
 
+func TestDeleteIdleSaveRechecksActivityBeforePurge(t *testing.T) {
+	s := connectTestStore(t)
+	ctx := context.Background()
+	save := newSave(t, s, "idle-owner")
+
+	purged := false
+	purge := func(context.Context) error { purged = true; return nil }
+	if err := s.DeleteIdleSave(ctx, save.ID, 90*24*time.Hour, purge); !errors.Is(err, ErrSaveInUse) || purged {
+		t.Fatalf("fresh save: %v, purged = %v", err, purged)
+	}
+
+	if _, err := s.pool.Exec(ctx, `UPDATE saves SET created_at = now() - interval '91 days' WHERE id = $1`, save.ID); err != nil {
+		t.Fatal(err)
+	}
+	running, err := serverOnSave(t, s, "idle-running", save)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.MarkActive(ctx, running.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.MarkStopped(ctx, running.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ReleaseSaveLock(ctx, running.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.DeleteIdleSave(ctx, save.ID, 90*24*time.Hour, purge); !errors.Is(err, ErrSaveInUse) || purged {
+		t.Fatalf("recently active save: %v, purged = %v", err, purged)
+	}
+
+	if _, err := s.pool.Exec(ctx, `UPDATE mc_servers SET last_active_at = now() - interval '91 days' WHERE id = $1`, running.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.DeleteIdleSave(ctx, save.ID, 90*24*time.Hour, purge); err != nil || !purged {
+		t.Fatalf("idle save: %v, purged = %v", err, purged)
+	}
+}
+
 func TestDeleteSavePurgesBeforeRemovingTheRow(t *testing.T) {
 	s := connectTestStore(t)
 	ctx := context.Background()
