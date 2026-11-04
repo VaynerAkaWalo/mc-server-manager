@@ -5,7 +5,8 @@ export interface CreateServerRequest {
   name: string,
   options: Opts,
   tier: Tier,
-  preset?: string
+  preset?: string,
+  saveId?: string
 }
 
 export interface Opts {
@@ -24,7 +25,7 @@ export interface GameVersion {
 }
 
 export interface CatalogResponse {
-  tiers: { id: Tier, name: string, description: string, default: boolean, maxPlayers: number, viewDistance: number, simulationDistance: number, persistent: boolean, nameReserved: boolean, available: boolean }[],
+  tiers: { id: Tier, name: string, description: string, default: boolean, maxPlayers: number, viewDistance: number, simulationDistance: number, persistent: boolean, nameReserved: boolean, accountRequired: boolean, available: boolean }[],
   presets: { id: string, name: string, description: string, options: Opts }[],
   options: { id: string, values?: string[] }[],
   versions: Record<string, { latestRelease: string, items: GameVersion[] }>
@@ -40,6 +41,7 @@ export interface ServerResponse {
   players: { online: number, max: number } | null,
   tier: Tier,
   preset?: string,
+  saveId?: string,
   options: Opts,
   createdAt: string,
   expiresAt: string,

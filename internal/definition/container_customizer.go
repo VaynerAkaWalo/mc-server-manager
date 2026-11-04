@@ -20,6 +20,7 @@ type serverInstance struct {
 	simulationDistance int
 	persistent         bool
 	nameReserved       bool
+	accountRequired    bool
 	available          bool
 }
 
@@ -39,6 +40,7 @@ var tierMapping = map[Tier]serverInstance{
 		simulationDistance: 4,
 		persistent:         false,
 		nameReserved:       false,
+		accountRequired:    false,
 		available:          true,
 	},
 	Free: {
@@ -49,9 +51,10 @@ var tierMapping = map[Tier]serverInstance{
 		maxPlayers:         5,
 		viewDistance:       8,
 		simulationDistance: 6,
-		persistent:         false,
+		persistent:         true,
 		nameReserved:       true,
-		available:          false,
+		accountRequired:    true,
+		available:          true,
 	},
 }
 
@@ -65,6 +68,14 @@ func customizeContainer(ctx context.Context, definition ServerDefinition) (Serve
 	}
 
 	return definition, nil
+}
+
+func TierRequiresAccount(tier Tier) bool {
+	return tierMapping[tier].accountRequired
+}
+
+func TierPersistent(tier Tier) bool {
+	return tierMapping[tier].persistent
 }
 
 func translateTier(ctx context.Context, tier Tier) (serverInstance, error) {

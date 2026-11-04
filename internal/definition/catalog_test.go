@@ -50,3 +50,12 @@ func TestCatalogVersionsAreAnObjectWithoutUpstream(t *testing.T) {
 		t.Fatalf("body = %s", body)
 	}
 }
+
+func TestCatalogMarksTiersThatNeedAnAccount(t *testing.T) {
+	for _, tier := range BuildCatalog(testVersions).Tiers {
+		wantAccount := tier.ID == string(Free)
+		if tier.AccountRequired != wantAccount || tier.Persistent != wantAccount {
+			t.Errorf("tier %s: accountRequired = %v, persistent = %v", tier.ID, tier.AccountRequired, tier.Persistent)
+		}
+	}
+}

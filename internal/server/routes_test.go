@@ -47,7 +47,7 @@ func TestProvisionFailure(t *testing.T) {
 }
 
 func TestProvisionServerRejectsMalformedBody(t *testing.T) {
-	h := NewServerHandlers(Service{})
+	h := NewServerHandlers(Service{}, nil)
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/servers", strings.NewReader("{nope"))
 
@@ -65,7 +65,7 @@ func TestProvisionServerRejectsMalformedBody(t *testing.T) {
 }
 
 func TestProvisionServerRejectsTrailingData(t *testing.T) {
-	h := NewServerHandlers(Service{})
+	h := NewServerHandlers(Service{}, nil)
 	valid := `{"name":"my-server","durationMs":120000,"tier":"guest"}`
 
 	for _, suffix := range []string{" garbage", "}", "]", valid} {

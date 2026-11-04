@@ -15,7 +15,7 @@ import (
 func TestCollectionQueryValidation(t *testing.T) {
 	for _, raw := range []string{"status=unknown", "sort=name", "limit=0", "limit=-1", "limit=101", "limit=no", "cursor=no", "cursor=e30"} {
 		t.Run(raw, func(t *testing.T) {
-			h := NewServerHandlers(Service{})
+			h := NewServerHandlers(Service{}, nil)
 			rec := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/servers?"+raw, nil)
 			if err := h.listServersHandler(rec, req); err != nil {
@@ -86,7 +86,7 @@ func TestCollectionResponse(t *testing.T) {
 }
 
 func TestStatsRejectsInvalidStatus(t *testing.T) {
-	h := NewServerHandlers(Service{})
+	h := NewServerHandlers(Service{}, nil)
 	rec := httptest.NewRecorder()
 	if err := h.statsHandler(rec, httptest.NewRequest(http.MethodGet, "/api/v1/servers/stats?status=no", nil)); err != nil {
 		t.Fatal(err)

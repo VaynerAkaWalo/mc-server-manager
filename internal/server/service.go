@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/definition"
 	"github.com/VaynerAkaWalo/mc-server-manager/internal/mcping"
@@ -20,6 +21,11 @@ import (
 var (
 	ErrNameInUse = errors.New("a server with this name already exists")
 	ErrNotFound  = errors.New("server not found")
+
+	ErrLoginRequired = errors.New("log in to use this tier")
+	ErrSaveNotFound  = errors.New("save not found")
+	ErrForeignOrigin = errors.New("invalid request origin")
+	ErrSaveInUse     = errors.New("a server is still using this save, try again in a few minutes")
 )
 
 type serverStore interface {
@@ -35,11 +41,15 @@ type serverStore interface {
 	MarkDegraded(ctx context.Context, id uuid.UUID) error
 	MarkStopped(ctx context.Context, id uuid.UUID) error
 	MarkExpired(ctx context.Context) error
+	GetSave(ctx context.Context, id uuid.UUID, owner string) (store.SaveRecord, error)
+	LatestSaveDefinition(ctx context.Context, id uuid.UUID) (json.RawMessage, bool, error)
+	ListReleasableSaveLocks(ctx context.Context) ([]store.ServerRecord, error)
+	ReleaseSaveLock(ctx context.Context, id uuid.UUID) error
 }
 
 type clusterService interface {
 	GetActiveServers() (*unstructured.UnstructuredList, error)
-	DeployServerSpec(serverRequest serversv1alpha1.McServerSpec) error
+	DeployServerSpec(serverRequest serversv1alpha1.McServerSpec, serverID string) error
 	DeleteServer(serverName string, uid types.UID) error
 }
 
@@ -90,13 +100,14 @@ func (s *Service) getStats(ctx context.Context, filter store.ServerFilter) (stat
 	return stats{Online: counts.Online, Created: counts.Created}, nil
 }
 
-func (s *Service) provisionServer(ctx context.Context, provisionRequest server.Request) (server.Response, error) {
+func (s *Service) provisionServer(ctx context.Context, owner string, provisionRequest server.Request) (server.Response, error) {
 	serverDefinition := definition.ServerDefinition{
 		Name:     provisionRequest.Name,
 		Options:  toOptions(provisionRequest.Options),
 		Tier:     definition.Tier(provisionRequest.Tier),
 		Preset:   provisionRequest.Preset,
 		Duration: definition.MaxServerLifetime,
+		SaveId:   provisionRequest.SaveID,
 	}
 
 	translated := serverDefinition
@@ -106,20 +117,40 @@ func (s *Service) provisionServer(ctx context.Context, provisionRequest server.R
 		return server.Response{}, err
 	}
 
+	serverDefinition.Options = maps.Clone(serverDefinition.Options)
+	if serverDefinition.Options == nil {
+		serverDefinition.Options = map[definition.Option]string{}
+	}
+	if version := serverSpec.Env["VERSION"]; version != "" {
+		serverDefinition.Options[definition.VERSION] = version
+	}
+
+	save, err := s.checkSave(ctx, owner, serverDefinition)
+	if err != nil {
+		return server.Response{}, err
+	}
+
 	record, err := s.store.CreateServer(context.TODO(), store.NewServer{
 		Name:       serverSpec.Name,
 		Hostname:   serverAddress(serverSpec.Name),
 		Definition: serverDefinition,
 		ExpiresAt:  time.Now().Add(serverDefinition.Duration),
+		Save:       save,
 	})
 	if errors.Is(err, store.ErrActiveNameTaken) {
 		return server.Response{}, ErrNameInUse
+	}
+	if errors.Is(err, store.ErrSaveInUse) {
+		return server.Response{}, ErrSaveInUse
+	}
+	if errors.Is(err, store.ErrSaveNotFound) {
+		return server.Response{}, ErrSaveNotFound
 	}
 	if err != nil {
 		return server.Response{}, err
 	}
 
-	err = s.clusterService.DeployServerSpec(*serverSpec)
+	err = s.clusterService.DeployServerSpec(*serverSpec, record.ID.String())
 	if err != nil {
 		alreadyExists := apierrors.IsAlreadyExists(err)
 		invalid := apierrors.IsInvalid(err)
@@ -138,6 +169,57 @@ func (s *Service) provisionServer(ctx context.Context, provisionRequest server.R
 	}
 
 	return newResponse(record, server.StatusNew)
+}
+
+func (s *Service) checkSave(ctx context.Context, owner string, serverDefinition definition.ServerDefinition) (*store.SaveUse, error) {
+	if owner == "" && definition.TierRequiresAccount(serverDefinition.Tier) {
+		return nil, ErrLoginRequired
+	}
+	persistent := definition.TierPersistent(serverDefinition.Tier)
+	if serverDefinition.SaveId == "" {
+		if persistent {
+			return nil, definition.InvalidDefinitionError{Message: "this tier needs a save"}
+		}
+		return nil, nil
+	}
+	if owner == "" {
+		return nil, ErrLoginRequired
+	}
+	if !definition.TierPersistent(serverDefinition.Tier) {
+		return nil, definition.InvalidDefinitionError{Message: "this tier cannot keep a save"}
+	}
+
+	id, err := uuid.Parse(serverDefinition.SaveId)
+	if err != nil {
+		return nil, definition.InvalidDefinitionError{Message: "the save id is not valid"}
+	}
+	_, err = s.store.GetSave(ctx, id, owner)
+	if errors.Is(err, store.ErrSaveNotFound) {
+		return nil, ErrSaveNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.checkNotDowngrade(ctx, id, serverDefinition); err != nil {
+		return nil, err
+	}
+
+	return &store.SaveUse{ID: id, Owner: owner}, nil
+}
+
+func (s *Service) checkNotDowngrade(ctx context.Context, id uuid.UUID, requested definition.ServerDefinition) error {
+	latest, found, err := s.store.LatestSaveDefinition(ctx, id)
+	if err != nil || !found {
+		return err
+	}
+
+	var played definition.ServerDefinition
+	if err := json.Unmarshal(latest, &played); err != nil {
+		return err
+	}
+
+	return definition.ValidateNotDowngrade(ctx, s.versions, played.Options[definition.VERSION], requested.Options[definition.VERSION])
 }
 
 func (s *Service) getServer(ctx context.Context, id uuid.UUID) (server.Response, error) {

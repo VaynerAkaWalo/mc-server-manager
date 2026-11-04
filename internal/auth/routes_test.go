@@ -351,3 +351,48 @@ func TestRejectInvalidUserInfo(t *testing.T) {
 		})
 	}
 }
+
+func TestAuthenticatedHandlersRequireASessionAndTheAppOrigin(t *testing.T) {
+	f := newFixture(t)
+	cookie, state := f.start(t)
+	sessionCookie := f.finish(t, cookie, state).Result().Cookies()[1]
+
+	var subject string
+	handler := f.handlers.Authenticated(func(w http.ResponseWriter, r *http.Request, session store.Session) error {
+		subject = session.Subject
+		w.WriteHeader(http.StatusNoContent)
+		return nil
+	})
+	call := func(method, origin string, session *http.Cookie) int {
+		r := httptest.NewRequest(method, "/api/v1/saves", nil)
+		if origin != "" {
+			r.Header.Set("Origin", origin)
+		}
+		if session != nil {
+			r.AddCookie(session)
+		}
+		w := httptest.NewRecorder()
+		if err := handler(w, r); err != nil {
+			t.Fatal(err)
+		}
+		return w.Code
+	}
+
+	if code := call("GET", "", nil); code != http.StatusUnauthorized {
+		t.Fatalf("anonymous read: %d", code)
+	}
+	if code := call("GET", "", sessionCookie); code != http.StatusNoContent || subject != "player" {
+		t.Fatalf("read with session: %d %q", code, subject)
+	}
+	for _, origin := range []string{"", "https://evil.test"} {
+		if code := call("DELETE", origin, sessionCookie); code != http.StatusForbidden {
+			t.Fatalf("delete from origin %q: %d", origin, code)
+		}
+	}
+	if code := call("DELETE", "https://manager.test", sessionCookie); code != http.StatusNoContent {
+		t.Fatalf("delete from the app: %d", code)
+	}
+	if code := call("DELETE", "https://manager.test", nil); code != http.StatusUnauthorized {
+		t.Fatalf("anonymous delete: %d", code)
+	}
+}

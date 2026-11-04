@@ -33,15 +33,19 @@ func TranslateDefinition(ctx context.Context, definition ServerDefinition, versi
 		return nil, err
 	}
 
-	return &v1alpha1.McServerSpec{
+	spec := &v1alpha1.McServerSpec{
 		Name:         definition.Name,
 		Image:        defaultImage,
 		Env:          stringifyEnvironment(ctx, definition.Options),
 		Memory:       instance.memory,
 		InstanceType: instance.instanceType,
 		ExpireAfter:  definition.Duration.Milliseconds(),
-		Volume:       definition.SaveId,
-	}, nil
+	}
+	if definition.SaveId != "" {
+		spec.Save = &v1alpha1.SaveSpec{ID: definition.SaveId}
+	}
+
+	return spec, nil
 }
 
 func stringifyEnvironment(ctx context.Context, environment map[Option]string) map[string]string {

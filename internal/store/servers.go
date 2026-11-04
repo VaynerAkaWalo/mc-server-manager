@@ -13,9 +13,13 @@ import (
 
 const uniqueViolation = "23505"
 
+const saveLockIndex = "mc_servers_save_lock_idx"
+
 var (
 	ErrNotFound        = errors.New("server not found")
 	ErrActiveNameTaken = errors.New("an active server already uses this name")
+	ErrSaveInUse       = errors.New("a server is still using this save")
+	ErrSaveNotFound    = errors.New("save not found")
 )
 
 type ServerRecord struct {
@@ -34,6 +38,12 @@ type NewServer struct {
 	Hostname   string
 	Definition any
 	ExpiresAt  time.Time
+	Save       *SaveUse
+}
+
+type SaveUse struct {
+	ID    uuid.UUID
+	Owner string
 }
 
 func (s *Store) CreateServer(ctx context.Context, server NewServer) (ServerRecord, error) {
@@ -48,18 +58,8 @@ func (s *Store) CreateServer(ctx context.Context, server NewServer) (ServerRecor
 		Definition: definition,
 		ExpiresAt:  server.ExpiresAt,
 	}
-	err = s.pool.QueryRow(ctx,
-		`INSERT INTO mc_servers (name, hostname, definition, expires_at)
-		 VALUES ($1, $2, $3, $4)
-		 RETURNING id, created_at, status`,
-		record.Name, record.Hostname, record.Definition, record.ExpiresAt,
-	).Scan(&record.ID, &record.CreatedAt, &record.Status)
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.Code == uniqueViolation {
-		return ServerRecord{}, ErrActiveNameTaken
-	}
-	if err != nil {
-		return ServerRecord{}, fmt.Errorf("insert server: %w", err)
+	if err := s.insertServer(ctx, &record, server.Save); err != nil {
+		return ServerRecord{}, err
 	}
 
 	return record, nil
@@ -191,4 +191,46 @@ func (s *Store) MarkExpired(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (s *Store) insertServer(ctx context.Context, record *ServerRecord, save *SaveUse) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin server insert: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var saveID *uuid.UUID
+	if save != nil {
+		if err := lockSave(ctx, tx, save.ID); err != nil {
+			return err
+		}
+		var owned bool
+		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM saves WHERE id = $1 AND owner_subject = $2)`, save.ID, save.Owner).Scan(&owned); err != nil {
+			return fmt.Errorf("check save owner: %w", err)
+		}
+		if !owned {
+			return ErrSaveNotFound
+		}
+		saveID = &save.ID
+	}
+
+	err = tx.QueryRow(ctx,
+		`INSERT INTO mc_servers (name, hostname, definition, expires_at, save_id, save_locked)
+		 VALUES ($1, $2, $3, $4, $5::uuid, $5::uuid IS NOT NULL)
+		 RETURNING id, created_at, status`,
+		record.Name, record.Hostname, record.Definition, record.ExpiresAt, saveID,
+	).Scan(&record.ID, &record.CreatedAt, &record.Status)
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == uniqueViolation {
+		if pgErr.ConstraintName == saveLockIndex {
+			return ErrSaveInUse
+		}
+		return ErrActiveNameTaken
+	}
+	if err != nil {
+		return fmt.Errorf("insert server: %w", err)
+	}
+
+	return tx.Commit(ctx)
 }

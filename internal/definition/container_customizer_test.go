@@ -12,7 +12,7 @@ func TestTranslateTier(t *testing.T) {
 		wantErr    bool
 	}{
 		{Guest, MemorySmall, false},
-		{Free, "", true},
+		{Free, MemorySmall, false},
 		{"iron", "", true},
 		{"", "", true},
 	}

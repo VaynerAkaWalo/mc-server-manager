@@ -7,3 +7,7 @@ type statusResponse struct {
 type expireServersResponse struct {
 	Expired []string `json:"expired"`
 }
+
+type expireSavesResponse struct {
+	Expired []string `json:"expired"`
+}

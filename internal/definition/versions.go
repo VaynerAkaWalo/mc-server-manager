@@ -69,3 +69,21 @@ func customizeVersionRequired(ctx context.Context, definition ServerDefinition) 
 
 	return definition, nil
 }
+
+func ValidateNotDowngrade(ctx context.Context, source VersionSource, played, requested string) error {
+	if played == "" || played == requested {
+		return nil
+	}
+
+	items := source.Versions(ctx)[ServerType].Items
+	playedIndex := slices.IndexFunc(items, func(version Version) bool { return version.ID == played })
+	requestedIndex := slices.IndexFunc(items, func(version Version) bool { return version.ID == requested })
+	if playedIndex < 0 || requestedIndex < 0 {
+		return nil
+	}
+	if requestedIndex > playedIndex {
+		return invalidf("this save was last played on %s and cannot go back to %s", played, requested)
+	}
+
+	return nil
+}

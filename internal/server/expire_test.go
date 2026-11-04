@@ -16,6 +16,7 @@ type fakeCluster struct {
 	deleteErr error
 	deleted   map[string]types.UID
 	onList    func()
+	deployed  []serversv1alpha1.McServerSpec
 }
 
 func (f *fakeCluster) GetActiveServers() (*unstructured.UnstructuredList, error) {
@@ -25,7 +26,10 @@ func (f *fakeCluster) GetActiveServers() (*unstructured.UnstructuredList, error)
 	return &unstructured.UnstructuredList{Items: f.items}, nil
 }
 
-func (f *fakeCluster) DeployServerSpec(serversv1alpha1.McServerSpec) error { return nil }
+func (f *fakeCluster) DeployServerSpec(spec serversv1alpha1.McServerSpec, _ string) error {
+	f.deployed = append(f.deployed, spec)
+	return nil
+}
 
 func (f *fakeCluster) DeleteServer(name string, uid types.UID) error {
 	if f.deleteErr != nil {
