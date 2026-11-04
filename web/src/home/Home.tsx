@@ -3,8 +3,10 @@ import {Link, useLoaderData} from "react-router-dom";
 import {LinkButton} from "../ui/Button.tsx";
 import {Heading} from "../ui/Heading.tsx";
 import {Panel} from "../ui/Panel.tsx";
-import {ServerResponse, StatsResponse} from "../clients/ManagerClient.ts";
+import {ManagerClient, ServerResponse, StatsResponse} from "../clients/ManagerClient.ts";
 import {statusDots, statusLabels} from "../servers/status.ts";
+import {activeServers} from "../servers/activeServers.ts";
+import {usePolling} from "../utils/usePolling.ts";
 
 export type HomeData = { stats: StatsResponse, servers: ServerResponse[] | null }
 
@@ -20,6 +22,16 @@ const news = [
 ]
 
 const SERVER_PREVIEW_LIMIT = 4
+const HOME_REFRESH_MS = 10_000
+
+async function refreshHomeData(current: HomeData): Promise<HomeData> {
+  const [stats, servers] = await Promise.allSettled([ManagerClient.getStats(), activeServers()])
+
+  return {
+    stats: stats.status === "fulfilled" ? stats.value.data : current.stats,
+    servers: servers.status === "fulfilled" ? servers.value : current.servers,
+  }
+}
 
 function Stat({label, value}: { label: string, value: number }) {
   return (
@@ -35,7 +47,7 @@ function formatDate(date: string) {
 }
 
 export function Home() {
-  const {stats, servers} = useLoaderData<HomeData>()
+  const {stats, servers} = usePolling(useLoaderData<HomeData>(), refreshHomeData, HOME_REFRESH_MS)
   const preview = (servers ?? []).slice(0, SERVER_PREVIEW_LIMIT)
 
   return (
