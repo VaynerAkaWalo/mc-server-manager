@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react";
+import {useState} from "react";
 import {useLoaderData} from "react-router-dom";
 import {ServerResponse} from "../clients/ManagerClient.ts";
 import {statusDots, statusLabels} from "./status.ts";
@@ -8,6 +8,9 @@ import {LinkButton} from "../ui/Button.tsx";
 import {Heading} from "../ui/Heading.tsx";
 import {Panel} from "../ui/Panel.tsx";
 import {TextInput} from "../ui/Field.tsx";
+import {usePolling} from "../utils/usePolling.ts";
+
+const SERVERS_REFRESH_MS = 10_000
 
 function shutdownHint(idleShutdownAt: string) {
   const minutes = Math.round((new Date(idleShutdownAt).getTime() - Date.now()) / 60_000)
@@ -16,7 +19,7 @@ function shutdownHint(idleShutdownAt: string) {
 
 export function ServerList() {
   const {setNotificationMessage} = UpdateNotification()
-  const [servers, setServers] = useState(useLoaderData<ServerResponse[] | null>())
+  const servers = usePolling(useLoaderData<ServerResponse[] | null>(), activeServers, SERVERS_REFRESH_MS)
   const [search, setSearch] = useState("")
 
   const query = search.trim().toLowerCase()
@@ -32,14 +35,6 @@ export function ServerList() {
       setNotificationMessage("Could not copy hostname")
     }
   }
-
-  useEffect(() => {
-    const keepLastKnownServers = () => undefined
-    const loadServers = () => activeServers().then(setServers, keepLastKnownServers)
-
-    const loader = setInterval(loadServers, 10000)
-    return () => clearInterval(loader)
-  }, [])
 
   return (
     <Panel as="section" className="mx-4 my-6 flex-1 max-w-content p-4 sm:p-8 font-sans text-sm">
