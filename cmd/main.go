@@ -65,36 +65,26 @@ func main() {
 		AccessKey: os.Getenv("AWS_ACCESS_KEY_ID"),
 		SecretKey: os.Getenv("AWS_SECRET_ACCESS_KEY"),
 	})
+	if err != nil {
+		slog.Error("Failed to configure the saves bucket", "error", err)
+		os.Exit(1)
+	}
+	saveService := save.NewService(serverStore, saveBucket)
 
 	gameVersions := versions.NewSource()
 
 	serverService := server.CreateServerService(cluster.CreateClusterService(*clusterClient, *dynamicClient), serverStore, gameVersions)
-	var saveService *save.Service
-	if err != nil {
-		slog.Warn("Saves are disabled until the bucket is configured: " + err.Error())
-		serverService = serverService.WithoutSaves()
-	} else {
-		saveService = save.NewService(serverStore, saveBucket)
-	}
 	serverHandlers := server.NewServerHandlers(serverService, authHandlers)
 
 	go serverService.RunMonitor(context.Background())
 
 	frontendHandlers := frontend.NewFrontendHandlers(os.DirFS("static"))
 
-	saveJobs := interface {
-		ExpireIdle(context.Context) ([]string, error)
-	}(disabledSaves{})
-	publicHandlers := []xhttp.RouteHandler{authHandlers, serverHandlers, catalog.NewCatalogHandlers(gameVersions), frontendHandlers}
-	if saveService != nil {
-		saveJobs = saveService
-		publicHandlers = append(publicHandlers, save.NewHandlers(saveService, authHandlers))
-	}
-	internalHandlers := internalapi.NewHandlers(serverStore.Ping, &serverService, saveJobs)
+	internalHandlers := internalapi.NewHandlers(serverStore.Ping, &serverService, saveService)
 
 	publicServer := xhttp.Server{
 		Addr:     ":8080",
-		Handlers: publicHandlers,
+		Handlers: []xhttp.RouteHandler{authHandlers, serverHandlers, save.NewHandlers(saveService, authHandlers), catalog.NewCatalogHandlers(gameVersions), frontendHandlers},
 	}
 	internalServer := xhttp.Server{
 		Addr:     ":8081",
@@ -107,10 +97,4 @@ func main() {
 
 	slog.Error((<-failed).Error())
 	os.Exit(1)
-}
-
-type disabledSaves struct{}
-
-func (disabledSaves) ExpireIdle(context.Context) ([]string, error) {
-	return nil, nil
 }

@@ -59,7 +59,6 @@ type Service struct {
 	players        *playerCache
 	ping           pingFunc
 	versions       definition.VersionSource
-	savesEnabled   bool
 }
 
 func CreateServerService(clusterService clusterService, store serverStore, versions definition.VersionSource) Service {
@@ -69,13 +68,7 @@ func CreateServerService(clusterService clusterService, store serverStore, versi
 		players:        newPlayerCache(),
 		ping:           mcping.Ping,
 		versions:       versions,
-		savesEnabled:   true,
 	}
-}
-
-func (s Service) WithoutSaves() Service {
-	s.savesEnabled = false
-	return s
 }
 
 func (s *Service) listServers(ctx context.Context, query store.ServerQuery) (server.Collection, error) {
@@ -183,9 +176,6 @@ func (s *Service) checkSave(ctx context.Context, owner string, serverDefinition 
 		return nil, ErrLoginRequired
 	}
 	persistent := definition.TierPersistent(serverDefinition.Tier)
-	if !s.savesEnabled && (serverDefinition.SaveId != "" || persistent) {
-		return nil, definition.InvalidDefinitionError{Message: "saves are not available"}
-	}
 	if serverDefinition.SaveId == "" {
 		if persistent {
 			return nil, definition.InvalidDefinitionError{Message: "this tier needs a save"}
