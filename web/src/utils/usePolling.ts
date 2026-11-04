@@ -4,7 +4,7 @@ export function usePolling<T>(initial: T, load: (current: T) => Promise<T>, inte
   const [value, setValue] = useState(initial)
   const valueRef = useRef(value)
   const loadRef = useRef(load)
-  const requestVersion = useRef(0)
+  const inFlight = useRef(false)
   valueRef.current = value
   loadRef.current = load
 
@@ -13,10 +13,16 @@ export function usePolling<T>(initial: T, load: (current: T) => Promise<T>, inte
     let active = true
 
     const refresh = () => {
-      const version = ++requestVersion.current
-      loadRef.current(valueRef.current).then(next => {
-        if (active && version === requestVersion.current) setValue(next)
-      }, () => undefined)
+      if (inFlight.current) return
+      inFlight.current = true
+
+      loadRef.current(valueRef.current)
+        .then(next => {
+          if (active) setValue(next)
+        }, () => undefined)
+        .finally(() => {
+          inFlight.current = false
+        })
     }
     const stop = () => window.clearInterval(timer)
     const start = () => {
