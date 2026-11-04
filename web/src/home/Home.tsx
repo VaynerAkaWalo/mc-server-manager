@@ -24,9 +24,13 @@ const news = [
 const SERVER_PREVIEW_LIMIT = 4
 const HOME_REFRESH_MS = 10_000
 
-async function refreshHomeData(): Promise<HomeData> {
-  const [{data: stats}, servers] = await Promise.all([ManagerClient.getStats(), activeServers()])
-  return {stats, servers}
+async function refreshHomeData(current: HomeData): Promise<HomeData> {
+  const [stats, servers] = await Promise.allSettled([ManagerClient.getStats(), activeServers()])
+
+  return {
+    stats: stats.status === "fulfilled" ? stats.value.data : current.stats,
+    servers: servers.status === "fulfilled" ? servers.value : current.servers,
+  }
 }
 
 function Stat({label, value}: { label: string, value: number }) {
