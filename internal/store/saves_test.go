@@ -434,3 +434,94 @@ func TestPersonalHistoryKeepsItsOwnerAfterTheWorldExpires(t *testing.T) {
 		t.Fatalf("counts = %+v, %v", counts, err)
 	}
 }
+
+func TestStoppedWorldReservesItsNameUntilTheSaveIsDeleted(t *testing.T) {
+	s := connectTestStore(t)
+	ctx := context.Background()
+	save := newSave(t, s, uuid.NewString())
+	name := "reserved-" + uuid.NewString()
+	record, err := serverOnSave(t, s, name, save)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.MarkStopped(ctx, record.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ReleaseSaveLock(ctx, record.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	guest := NewServer{Name: name, Hostname: name, Definition: map[string]any{}, ExpiresAt: time.Now().Add(time.Hour)}
+	if taken, err := s.CreateServer(ctx, guest); !errors.Is(err, ErrActiveNameTaken) {
+		if err == nil {
+			_ = s.DeleteServer(ctx, taken.ID)
+		}
+		t.Fatalf("Guest taking a saved name = %v", err)
+	}
+	other := newSave(t, s, save.Owner)
+	if _, err := serverOnSave(t, s, name, other); !errors.Is(err, ErrActiveNameTaken) {
+		t.Fatalf("another world taking a saved name = %v", err)
+	}
+
+	resumed, err := serverOnSave(t, s, name, save)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.MarkStopped(ctx, resumed.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ReleaseSaveLock(ctx, resumed.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.DeleteSave(ctx, save.ID, save.Owner, func(context.Context) error { return errors.New("bucket unavailable") }); err == nil {
+		t.Fatal("expected purge failure")
+	}
+	if taken, err := s.CreateServer(ctx, guest); !errors.Is(err, ErrActiveNameTaken) {
+		if err == nil {
+			_ = s.DeleteServer(ctx, taken.ID)
+		}
+		t.Fatalf("name after failed purge = %v", err)
+	}
+	if err := s.DeleteSave(ctx, save.ID, save.Owner, func(context.Context) error { return nil }); err != nil {
+		t.Fatal(err)
+	}
+	available, err := s.CreateServer(ctx, guest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.DeleteServer(ctx, available.ID) })
+}
+
+func TestIdleWorldExpiryReleasesItsReservedName(t *testing.T) {
+	s := connectTestStore(t)
+	ctx := context.Background()
+	save := newSave(t, s, uuid.NewString())
+	name := "idle-reserved-" + uuid.NewString()
+	record, err := serverOnSave(t, s, name, save)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.MarkStopped(ctx, record.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ReleaseSaveLock(ctx, record.ID); err != nil {
+		t.Fatal(err)
+	}
+	if taken, err := s.CreateServer(ctx, NewServer{Name: name, Hostname: name, Definition: map[string]any{}, ExpiresAt: time.Now().Add(time.Hour)}); !errors.Is(err, ErrActiveNameTaken) {
+		if err == nil {
+			_ = s.DeleteServer(ctx, taken.ID)
+		}
+		t.Fatalf("name before idle expiry = %v", err)
+	}
+	if _, err := s.pool.Exec(ctx, `UPDATE saves SET created_at = now() - interval '91 days' WHERE id = $1`, save.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.DeleteIdleSave(ctx, save.ID, 90*24*time.Hour, func(context.Context) error { return nil }); err != nil {
+		t.Fatal(err)
+	}
+	available, err := s.CreateServer(ctx, NewServer{Name: name, Hostname: name, Definition: map[string]any{}, ExpiresAt: time.Now().Add(time.Hour)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.DeleteServer(ctx, available.ID) })
+}
