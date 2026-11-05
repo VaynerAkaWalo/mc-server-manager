@@ -257,15 +257,17 @@ test("a refresh during restart cannot replace the newly started session", async 
   await expect.poll(() => refreshing).toBe(true)
   releaseStart()
   await expect(page.getByRole("img", {name: "Starting", exact: true})).toBeVisible()
+  const refreshed = page.waitForEvent("requestfinished", request => request.url().includes("/api/v1/servers?"))
   releaseRefresh()
+  await refreshed
+  await page.clock.runFor(100)
   await expect(page.getByRole("img", {name: "Stopped", exact: true})).toHaveCount(0)
   await expect(page.getByRole("button", {name: "Start", exact: true})).toHaveCount(0)
 })
 
-
 test("unknown server statuses remain readable", async ({page}) => {
- await mockAPI(page, {items: [server("future", "Future session", {status: "hibernating"})]})
- await page.goto("/my-servers?owner=me")
- await expect(page.getByText("hibernating", {exact: true})).toBeVisible()
- await expect(page.getByRole("img", {name: "hibernating"})).toHaveClass(/bg-content-muted/)
+  await mockAPI(page, {items: [server("future", "Future session", {status: "hibernating"})]})
+  await page.goto("/my-servers?owner=me")
+  await expect(page.getByText("hibernating", {exact: true})).toBeVisible()
+  await expect(page.getByRole("img", {name: "hibernating"})).toHaveClass(/bg-content-muted/)
 })
