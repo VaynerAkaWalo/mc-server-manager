@@ -31,8 +31,7 @@ export function Navigation({onNavigate}: {onNavigate?: () => void}) {
 
   return (
     <nav aria-label="Main navigation" className="flex flex-col gap-1 py-4 pr-3">
-      {destinations.map(({to, label, icon}) => to === "/my-servers" ? <SidebarGroup key={to} label={label} icon={icon} onNavigate={onNavigate} views={[
-        {label: "All servers", to, icon, active: servers && !mine},
+      {destinations.map(({to, label, icon}) => to === "/my-servers" ? <SidebarGroup key={to} label={label} to={to} active={servers && !mine} icon={icon} onNavigate={onNavigate} views={[
         {label: "My servers", to: `${to}?owner=me`, icon: <><circle cx="10" cy="6" r="3"/><path d="M4 17v-2a6 6 0 0 1 12 0v2"/></>, active: servers && mine},
       ]}/> : (
         <NavLink key={to} to={to} end={to === "/"} onClick={onNavigate} className="mc-sidebar-link">
