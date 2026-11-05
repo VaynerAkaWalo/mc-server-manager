@@ -255,12 +255,12 @@ export function ServerCreator() {
   const needsAccount = Boolean(selectedTier?.accountRequired)
   const needsWorld = Boolean(selectedTier?.persistent)
   const worldReady = !worldsLoading && !worldsError && worlds.some(world => world.id === selectedWorld)
-  const accountReady = !sessionLoading && !sessionError && Boolean(user)
+  const accountReady = !sessionLoading && Boolean(user)
 
   const worldSettings = () => {
     if (!needsAccount && !needsWorld) return <p className="text-sm text-content-muted">Guest worlds are deleted when the server stops.</p>
     if (sessionLoading) return <p role="status">Checking your account...</p>
-    if (sessionError) return <p role="alert">Login status unavailable. Try refreshing the page.</p>
+    if (sessionError && !user) return <p role="alert">Login status unavailable. Try refreshing the page.</p>
     if (!user) return <p className="text-sm text-content-muted">
       <Link to="/auth/login?returnTo=%2Fserver-creator" reloadDocument className="text-action-content hover:underline focus-ring">Log in</Link> to keep your world on a Free server.
     </p>

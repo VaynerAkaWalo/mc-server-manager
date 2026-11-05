@@ -1,4 +1,4 @@
-import {HTMLAttributes} from "react";
+import {ComponentPropsWithRef} from "react";
 
 type Level = 1 | 2 | 3
 
@@ -8,7 +8,7 @@ const sizes: Record<Level, string> = {
   3: "text-base",
 }
 
-type Props = HTMLAttributes<HTMLHeadingElement> & { level: Level }
+type Props = ComponentPropsWithRef<"h1"> & { level: Level }
 
 export function Heading({level, className, ...props}: Props) {
   const Tag = `h${level}` as const

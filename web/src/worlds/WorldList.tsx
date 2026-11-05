@@ -1,4 +1,4 @@
-import {FormEvent, useState} from "react";
+import {FormEvent, useEffect, useRef, useState} from "react";
 import {UpdateNotification} from "../App.tsx";
 import {ManagerClient, problemMessage, WorldResponse} from "../clients/ManagerClient.ts";
 import {Button, LinkButton} from "../ui/Button.tsx";
@@ -10,6 +10,7 @@ import {useWorlds} from "./useWorlds.ts";
 export function WorldList() {
   const {session: {user, loading: sessionLoading, error: sessionError}} = UpdateNotification()
   const {worlds, setWorlds, loading, error, reload} = useWorlds(user?.subject)
+  const heading = useRef<HTMLHeadingElement>(null)
   const [name, setName] = useState("")
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState("")
@@ -33,13 +34,13 @@ export function WorldList() {
   return (
     <Panel as="section" className="mx-4 my-6 flex w-full max-w-content flex-col gap-6 p-4 sm:p-6">
       <header className="flex flex-wrap items-baseline justify-between gap-2">
-        <Heading level={1}>My worlds</Heading>
+        <Heading level={1} ref={heading} tabIndex={-1} className="focus-ring">My worlds</Heading>
         {user && !loading && !error && <span className="text-sm text-content-muted">{worlds.length} of 3 worlds</span>}
       </header>
       <p className="text-sm text-content-muted">Return to your world on a Free server. Worlds are deleted after 90 days without playing.</p>
 
       {sessionLoading ? <p role="status">Checking your account...</p>
-        : sessionError ? <p role="alert">Login status unavailable. Try refreshing the page.</p>
+        : sessionError && !user ? <p role="alert">Login status unavailable. Try refreshing the page.</p>
         : !user ? <div className="flex flex-col items-start gap-4">
           <p>Log in to keep up to three worlds between sessions.</p>
           <Button onClick={() => window.location.assign("/auth/login?returnTo=%2Fmy-worlds")}>Log in</Button>
@@ -64,7 +65,7 @@ export function WorldList() {
           {worlds.length === 0 ? <p className="py-6 text-content-muted">No worlds yet. Create your first world above, then start a server.</p>
             : <ul>{worlds.map(world => <WorldRow key={world.id} world={world}
                 onRename={updated => setWorlds(current => current.map(item => item.id === updated.id ? updated : item))}
-                onDelete={() => setWorlds(current => current.filter(item => item.id !== world.id))}/>)}</ul>}
+                onDelete={() => {setWorlds(current => current.filter(item => item.id !== world.id)); heading.current?.focus()}}/>)}</ul>}
         </>}
     </Panel>
   )
@@ -72,9 +73,20 @@ export function WorldList() {
 
 function WorldRow({world, onRename, onDelete}: {world: WorldResponse, onRename: (world: WorldResponse) => void, onDelete: () => void}) {
   const [mode, setMode] = useState<"view" | "rename" | "delete">("view")
+  const renameButton = useRef<HTMLButtonElement>(null)
+  const deleteButton = useRef<HTMLButtonElement>(null)
+  const returnFocus = useRef<"rename" | "delete" | null>(null)
   const [name, setName] = useState(world.name)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
+
+  useEffect(() => {
+    if (mode !== "view" || !returnFocus.current) return
+
+    const action = returnFocus.current === "rename" ? renameButton : deleteButton
+    action.current?.focus()
+    returnFocus.current = null
+  }, [mode])
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -106,8 +118,8 @@ function WorldRow({world, onRename, onDelete}: {world: WorldResponse, onRename: 
         </div>
         {mode === "view" && <div className="flex flex-wrap gap-2">
           <LinkButton size="sm" to="/server-creator" state={{worldId: world.id}}>Start server</LinkButton>
-          <Button size="sm" variant="secondary" onClick={() => {setName(world.name); setMode("rename"); setError("")}}>Rename</Button>
-          <Button size="sm" variant="ghost" onClick={() => {setMode("delete"); setError("")}}>Delete</Button>
+          <Button ref={renameButton} size="sm" variant="secondary" onClick={() => {returnFocus.current = "rename"; setName(world.name); setMode("rename"); setError("")}}>Rename</Button>
+          <Button ref={deleteButton} size="sm" variant="ghost" onClick={() => {returnFocus.current = "delete"; setMode("delete"); setError("")}}>Delete</Button>
         </div>}
       </div>
       {mode !== "view" && <form onSubmit={submit} className="flex flex-col items-start gap-4 bg-inset p-4">

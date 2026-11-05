@@ -1,4 +1,4 @@
-import {ButtonHTMLAttributes} from "react";
+import {ComponentPropsWithRef} from "react";
 import {Link, LinkProps} from "react-router-dom";
 
 export type ButtonVariant = "primary" | "secondary" | "ghost"
@@ -20,7 +20,7 @@ function buttonClassName(variant: ButtonVariant = "primary", size: ButtonSize = 
   return [variants[variant], sizes[variant][size], className].filter(Boolean).join(" ")
 }
 
-type Props = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant, size?: ButtonSize }
+type Props = ComponentPropsWithRef<"button"> & { variant?: ButtonVariant, size?: ButtonSize }
 
 export function Button({variant = "primary", size = "md", className, type = "button", ...props}: Props) {
   return <button type={type} className={buttonClassName(variant, size, className)} {...props}/>

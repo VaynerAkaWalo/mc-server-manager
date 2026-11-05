@@ -44,7 +44,9 @@ async function mockAPI(page: Page, options: Fixture = {}) {
     }
     if (path.startsWith("/api/v1/saves") && method !== "GET") {
       mutations.push(method)
-      if (options.mutationError) return route.fulfill({status: 409, json: {detail: "a server is still using this save, try again in a few minutes"}})
+      if (options.mutationError) return route.fulfill(method === "DELETE"
+        ? {status: 409, json: {detail: "a server is still using this save, try again in a few minutes"}}
+        : {status: 503, json: {detail: "Storage unavailable"}})
       if (method === "DELETE") {
         worlds = worlds.filter(item => !path.endsWith(item.id))
         return route.fulfill({status: 204})
@@ -64,12 +66,12 @@ async function mockAPI(page: Page, options: Fixture = {}) {
 }
 
 async function screenshot(page: Page, name: string) {
-  await page.screenshot({path: test.info().outputPath(`${name}.png`), fullPage: true})
+  await page.screenshot({path: test.info().outputPath(`${name}.png`), fullPage: true, animations: "disabled"})
   const main = page.locator("main")
   const scrollable = await main.evaluate(element => element.scrollHeight > element.clientHeight)
   if (scrollable) {
     const scrollTop = await main.evaluate(element => {const top = element.scrollTop; element.scrollTop = element.scrollHeight; return top})
-    await page.screenshot({path: test.info().outputPath(`${name}-bottom.png`), fullPage: true})
+    await page.screenshot({path: test.info().outputPath(`${name}-bottom.png`), fullPage: true, animations: "disabled"})
     await main.evaluate((element, top) => { element.scrollTop = top }, scrollTop)
   }
 }
@@ -189,6 +191,7 @@ test("guests see a login prompt and logging out removes saved worlds immediately
   await page.getByRole("menuitem", {name: "Log out"}).click()
   await expect(page.getByRole("heading", {name: world.name})).toHaveCount(0)
   await expect(page.getByText("Log in to keep up to three worlds")).toBeVisible()
+  await expect(page.getByRole("menu")).toHaveCount(0)
   await screenshot(page, "worlds-logged-out")
 })
 
@@ -271,4 +274,43 @@ test("unavailable login status keeps account worlds hidden", async ({page}) => {
   await expect(page.getByRole("alert")).toContainText("Login status unavailable")
   await expect(page.getByRole("button", {name: "Create world", exact: true})).toHaveCount(0)
   await screenshot(page, "worlds-account-error")
+})
+
+test("world actions restore keyboard focus after save, cancel and delete", async ({page}) => {
+  await mockAPI(page, {worlds: [world]})
+  await page.goto("/my-worlds")
+  const rename = page.getByRole("button", {name: "Rename", exact: true})
+  const remove = page.getByRole("button", {name: "Delete", exact: true})
+  await rename.click()
+  await page.getByRole("button", {name: "Cancel"}).click()
+  await expect(rename).toBeFocused()
+  await remove.click()
+  await page.getByRole("button", {name: "Cancel"}).click()
+  await expect(remove).toBeFocused()
+  await rename.click()
+  await page.getByRole("button", {name: "Save name"}).click()
+  await expect(rename).toBeFocused()
+  await remove.click()
+  await page.getByRole("button", {name: "Delete world", exact: true}).click()
+  await expect(page.getByRole("heading", {name: "My worlds", exact: true})).toBeFocused()
+  await screenshot(page, "worlds-deleted-focus")
+})
+
+test("a transient session refresh failure preserves a known account's rename form", async ({page}) => {
+  await mockAPI(page, {worlds: [world]})
+  await page.goto("/my-worlds")
+  await page.getByRole("button", {name: "Rename", exact: true}).click()
+  await page.getByLabel("World name", {exact: true}).fill("Unsaved name")
+  await page.route("**/api/v1/sessions/current", route => route.fulfill({status: 503}))
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")))
+  await expect(page.getByRole("status")).toContainText("Login status unavailable")
+  await expect(page.getByLabel("World name", {exact: true})).toHaveValue("Unsaved name")
+  await screenshot(page, "worlds-session-refresh-error")
+  await page.getByRole("link", {name: "Creator", exact: true}).click()
+  await page.getByRole("radio", {name: "Free", exact: true}).press("Space")
+  await page.getByLabel("World", {exact: true}).focus()
+  await page.keyboard.press("ArrowDown")
+  await page.keyboard.press("Enter")
+  await expect(page.getByRole("button", {name: "Create", exact: true})).toBeEnabled()
+  await screenshot(page, "creator-session-refresh-error")
 })
