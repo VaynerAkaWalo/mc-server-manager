@@ -11,9 +11,6 @@ class Client {
   public post = async <T=never>(url: string, request: T): Promise<never> => {
     return axios.post(url, request)
   }
-  public patch = <T>(url: string, request: T) => axios.patch(url, request)
-
-  public delete = (url: string) => axios.delete(url)
 }
 
 export const HTTPClient = new Client()

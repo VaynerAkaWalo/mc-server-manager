@@ -22,6 +22,8 @@ type Players struct {
 }
 
 type Response struct {
+	SaveAvailable  bool              `json:"saveAvailable"`
+	SaveLocked     bool              `json:"saveLocked"`
 	ID             uuid.UUID         `json:"id"`
 	Name           string            `json:"name"`
 	Hostname       string            `json:"hostname"`

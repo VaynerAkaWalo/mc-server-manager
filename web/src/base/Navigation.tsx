@@ -12,11 +12,6 @@ const destinations = [
     icon: <><rect x="3" y="3" width="14" height="6"/><rect x="3" y="11" width="14" height="6"/><path d="M5 6h2m-2 8h2"/></>,
   },
   {
-    to: "/my-worlds",
-    label: "My worlds",
-    icon: <><rect x="3" y="3" width="14" height="14"/><path d="M3 9h14M9 9v8M6 6h1m3 0h4"/></>,
-  },
-  {
     to: "/server-creator",
     label: "Creator",
     icon: <path d="M10 3v14M3 10h14"/>,

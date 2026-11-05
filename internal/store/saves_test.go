@@ -396,3 +396,41 @@ func TestSavesIdleForTheRetentionPeriodAreListed(t *testing.T) {
 		t.Fatalf("listed = %v (idle %s, recent %s, held %s, fresh %s)", ids, idle.ID, recent.ID, held.ID, fresh.ID)
 	}
 }
+
+func TestPersonalHistoryKeepsItsOwnerAfterTheWorldExpires(t *testing.T) {
+	s := connectTestStore(t)
+	ctx := context.Background()
+	owner := uuid.NewString()
+	save := newSave(t, s, owner)
+	record, err := s.CreateServer(ctx, NewServer{Owner: owner, Name: "personal-" + owner, Hostname: "personal", Definition: map[string]any{"saveId": save.ID}, ExpiresAt: time.Now().Add(time.Hour), Save: &SaveUse{ID: save.ID, Owner: owner}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = s.DeleteServer(ctx, record.ID) })
+	if record.Owner != owner || !record.SaveAvailable || !record.SaveLocked {
+		t.Fatalf("created = %+v", record)
+	}
+	if err := s.MarkStopped(ctx, record.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ReleaseSaveLock(ctx, record.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.DeleteSave(ctx, save.ID, owner, func(context.Context) error { return nil }); err != nil {
+		t.Fatal(err)
+	}
+
+	query := ServerQuery{Filter: ServerFilter{Status: "all", Owner: owner}, Sort: "-createdAt", Limit: 20}
+	items, err := s.ListServers(ctx, query)
+	if err != nil || len(items) != 1 || items[0].ID != record.ID || items[0].SaveAvailable || items[0].SaveLocked {
+		t.Fatalf("history = %+v, %v", items, err)
+	}
+	query.Filter.Owner = owner + "-other"
+	if items, err := s.ListServers(ctx, query); err != nil || len(items) != 0 {
+		t.Fatalf("foreign history = %+v, %v", items, err)
+	}
+	counts, err := s.CountServers(ctx, ServerFilter{Status: "all", Owner: owner})
+	if err != nil || counts.Created != 1 {
+		t.Fatalf("counts = %+v, %v", counts, err)
+	}
+}

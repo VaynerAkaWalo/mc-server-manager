@@ -42,6 +42,8 @@ export interface ServerResponse {
   tier: Tier,
   preset?: string,
   saveId?: string,
+  saveAvailable: boolean,
+  saveLocked: boolean,
   options: Opts,
   createdAt: string,
   expiresAt: string,
@@ -57,11 +59,6 @@ export interface WorldResponse {
   id: string,
   name: string,
   createdAt: string
-}
-
-export interface WorldCollection {
-  items: WorldResponse[],
-  nextCursor: string
 }
 
 export interface StatsResponse {
@@ -83,23 +80,18 @@ export const problemMessage = (err: unknown): string => {
 }
 
 class ServerManager {
-  public listWorlds = (cursor?: string): Promise<AxiosResponse<WorldCollection>> => {
-    const query = cursor ? `?${new URLSearchParams({cursor})}` : ""
-    return HTTPClient.get(`/api/v1/saves${query}`)
-  }
-
   public createWorld = (name: string): Promise<AxiosResponse<WorldResponse>> => HTTPClient.post("/api/v1/saves", {name})
-
-  public renameWorld = (id: string, name: string): Promise<AxiosResponse<WorldResponse>> => HTTPClient.patch(`/api/v1/saves/${id}`, {name})
-
-  public deleteWorld = (id: string) => HTTPClient.delete(`/api/v1/saves/${id}`)
 
   public createServer = (request: CreateServerRequest): Promise<AxiosPromise<ServerResponse>> => {
     return HTTPClient.post("/api/v1/servers", request)
   }
 
-  public listServers = async (cursor?: string): Promise<AxiosPromise<ServerCollection>> => {
+  public listServers = async (cursor?: string, mine = false): Promise<AxiosPromise<ServerCollection>> => {
     const query = new URLSearchParams(cursor ? {cursor} : {})
+    if (mine) {
+      query.set("owner", "me")
+      query.set("status", "all")
+    }
     return HTTPClient.get(`/api/v1/servers?${query}`)
   }
 
