@@ -9,7 +9,6 @@ import {Button, LinkButton} from "../ui/Button.tsx";
 import {Heading} from "../ui/Heading.tsx";
 import {Panel} from "../ui/Panel.tsx";
 import {TextInput} from "../ui/Field.tsx";
-import {ViewTabs} from "../ui/ViewTabs.tsx";
 import {usePolling} from "../utils/usePolling.ts";
 
 const SERVERS_REFRESH_MS = 10_000
@@ -30,13 +29,9 @@ export function ServerList() {
   return (
     <Panel as="section" className="mx-4 my-6 flex-1 max-w-content p-4 sm:p-6 font-sans">
       <header className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <Heading level={1} id="servers-heading" ref={heading} tabIndex={-1} className="focus-ring">Servers</Heading>
+        <Heading level={1} id="servers-heading" ref={heading} tabIndex={-1} className="focus-ring">{mine ? "My servers" : "All servers"}</Heading>
         <LinkButton to="/server-creator">Create server</LinkButton>
       </header>
-      <ViewTabs label="Server views" views={[
-        {label: "All servers", to: "/my-servers", active: !mine},
-        {label: "My servers", to: "/my-servers?owner=me", active: mine},
-      ]}/>
       {!mine ? <PublicServers initial={initial}/>
         : loading ? <p role="status">Checking your account...</p>
         : error && !user ? <p role="alert">Login status unavailable. Try refreshing the page.</p>
