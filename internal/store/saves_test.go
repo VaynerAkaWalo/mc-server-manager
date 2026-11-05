@@ -14,7 +14,7 @@ import (
 func newSave(t *testing.T, s *Store, owner string) SaveRecord {
 	t.Helper()
 
-	record, err := s.CreateSave(context.Background(), owner, "world", 100)
+	record, err := s.CreateSave(context.Background(), owner, "world")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,27 +133,23 @@ func TestServerWithoutSaveHoldsNothing(t *testing.T) {
 	}
 }
 
-func TestSaveLimitAppliesPerOwner(t *testing.T) {
+func TestSaveCreationHasNoCountCapAndListsOnlyTheOwner(t *testing.T) {
 	s := connectTestStore(t)
 	ctx := context.Background()
-	owner := "limit-" + uuid.NewString()
-	t.Cleanup(func() { _, _ = s.pool.Exec(ctx, `DELETE FROM saves WHERE owner_subject = $1`, owner) })
+	owner := "many-saves-" + uuid.NewString()
 
-	for i := 0; i < 2; i++ {
-		if _, err := s.CreateSave(ctx, owner, "world", 2); err != nil {
-			t.Fatal(err)
-		}
+	for i := 0; i < 4; i++ {
+		newSave(t, s, owner)
 	}
-	if _, err := s.CreateSave(ctx, owner, "world", 2); !errors.Is(err, ErrSaveLimit) {
-		t.Fatalf("err = %v", err)
+	newSave(t, s, owner+"-other")
+
+	saves, err := s.ListSaves(ctx, owner)
+	if err != nil || len(saves) != 4 {
+		t.Fatalf("saves = %d, err = %v", len(saves), err)
 	}
-	if _, err := s.CreateSave(ctx, owner+"-other", "world", 2); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _, _ = s.pool.Exec(ctx, `DELETE FROM saves WHERE owner_subject = $1`, owner+"-other") })
 }
 
-func TestConcurrentSaveCreationStaysWithinTheLimit(t *testing.T) {
+func TestConcurrentSaveCreationHasNoCountCap(t *testing.T) {
 	s := connectTestStore(t)
 	ctx := context.Background()
 	owner := "race-" + uuid.NewString()
@@ -164,13 +160,13 @@ func TestConcurrentSaveCreationStaysWithinTheLimit(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, _ = s.CreateSave(ctx, owner, "world", 3)
+			_, _ = s.CreateSave(ctx, owner, "world")
 		}()
 	}
 	wg.Wait()
 
 	saves, err := s.ListSaves(ctx, owner)
-	if err != nil || len(saves) != 3 {
+	if err != nil || len(saves) != 8 {
 		t.Fatalf("saves = %d, err = %v", len(saves), err)
 	}
 }

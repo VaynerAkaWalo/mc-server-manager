@@ -15,9 +15,20 @@ export function useWorlds(subject: string | undefined) {
     setLoading(Boolean(subject))
     if (!subject) return
 
-    ManagerClient.listWorlds().then(({data}) => {
-      if (active) setWorlds(data.items)
-    }).catch(err => {
+    const load = async () => {
+      const items: WorldResponse[] = []
+      let cursor: string | undefined
+
+      do {
+        const {data} = await ManagerClient.listWorlds(cursor)
+        items.push(...data.items)
+        cursor = data.nextCursor || undefined
+      } while (cursor && active)
+
+      if (active) setWorlds(items)
+    }
+
+    load().catch(err => {
       if (active) setError(problemMessage(err))
     }).finally(() => {
       if (active) setLoading(false)

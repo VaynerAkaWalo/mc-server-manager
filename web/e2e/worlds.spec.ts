@@ -51,8 +51,8 @@ async function mockAPI(page: Page, options: Fixture = {}) {
         worlds = worlds.filter(item => !path.endsWith(item.id))
         return route.fulfill({status: 204})
       }
-      const updated = {...world, name: request.postDataJSON().name}
-      worlds = method === "POST" ? [...worlds, updated] : worlds.map(item => item.id === world.id ? updated : item)
+      const updated = {...world, id: method === "POST" ? crypto.randomUUID() : path.split("/").at(-1)!, name: request.postDataJSON().name}
+      worlds = method === "POST" ? [...worlds, updated] : worlds.map(item => item.id === updated.id ? updated : item)
       return route.fulfill({status: method === "POST" ? 201 : 200, json: updated})
     }
     if (path === "/api/v1/servers" && method === "POST") {
@@ -104,12 +104,15 @@ test("create, rename and delete a world only after confirmation", async ({page})
   expect(mutations).toEqual(["POST", "PATCH", "DELETE"])
 })
 
-test("three worlds prevent further creation", async ({page}) => {
+test("an account with three worlds can create another", async ({page}) => {
   await mockAPI(page, {worlds: [world, {...world, id: "second", name: "River camp"}, {...world, id: "third", name: "Mountain base"}]})
   await page.goto("/my-worlds")
-  await expect(page.getByText("3 of 3 worlds")).toBeVisible()
-  await expect(page.getByRole("button", {name: "Create world", exact: true})).toBeDisabled()
-  await screenshot(page, "worlds-limit")
+  await expect(page.getByLabel("New world name")).toBeEnabled()
+  await page.getByLabel("New world name").fill("Fourth world")
+  await expect(page.getByRole("button", {name: "Create world", exact: true})).toBeEnabled()
+  await page.getByRole("button", {name: "Create world", exact: true}).click()
+  await expect(page.getByText("4 worlds", {exact: true})).toBeVisible()
+  await screenshot(page, "worlds-no-cap")
 })
 
 test("a world still in use remains listed after deletion fails", async ({page}) => {
@@ -190,7 +193,7 @@ test("guests see a login prompt and logging out removes saved worlds immediately
   await page.getByRole("button", {name: "Account"}).click()
   await page.getByRole("menuitem", {name: "Log out"}).click()
   await expect(page.getByRole("heading", {name: world.name})).toHaveCount(0)
-  await expect(page.getByText("Log in to keep up to three worlds")).toBeVisible()
+  await expect(page.getByText("Log in to keep your worlds")).toBeVisible()
   await expect(page.getByRole("menu")).toHaveCount(0)
   await screenshot(page, "worlds-logged-out")
 })
@@ -313,4 +316,22 @@ test("a transient session refresh failure preserves a known account's rename for
   await page.keyboard.press("Enter")
   await expect(page.getByRole("button", {name: "Create", exact: true})).toBeEnabled()
   await screenshot(page, "creator-session-refresh-error")
+})
+
+
+test("all pages of worlds remain available after the count cap is removed", async ({page}) => {
+  await mockAPI(page)
+  const worlds = Array.from({length: 21}, (_, i) => ({...world, id: `world-${i}`, name: `World ${i + 1}`}))
+  await page.route("**/api/v1/saves**", route => {
+    const cursor = new URL(route.request().url()).searchParams.get("cursor")
+    return route.fulfill({json: {items: cursor ? worlds.slice(20) : worlds.slice(0, 20), nextCursor: cursor ? "" : "next-page"}})
+  })
+  await page.goto("/my-worlds")
+  await expect(page.getByRole("heading", {name: "World 21", exact: true})).toBeVisible()
+  await page.getByRole("link", {name: "Creator", exact: true}).click()
+  await page.getByRole("radio", {name: "Free", exact: true}).press("Space")
+  await page.getByLabel("World", {exact: true}).fill("World 21")
+  await page.keyboard.press("ArrowDown")
+  await page.keyboard.press("Enter")
+  await expect(page.getByRole("button", {name: "Create", exact: true})).toBeEnabled()
 })

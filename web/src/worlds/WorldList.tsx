@@ -35,14 +35,14 @@ export function WorldList() {
     <Panel as="section" className="mx-4 my-6 flex w-full max-w-content flex-col gap-6 p-4 sm:p-6">
       <header className="flex flex-wrap items-baseline justify-between gap-2">
         <Heading level={1} ref={heading} tabIndex={-1} className="focus-ring">My worlds</Heading>
-        {user && !loading && !error && <span className="text-sm text-content-muted">{worlds.length} of 3 worlds</span>}
+        {user && !loading && !error && <span className="text-sm text-content-muted">{worlds.length} {worlds.length === 1 ? "world" : "worlds"}</span>}
       </header>
       <p className="text-sm text-content-muted">Return to your world on a Free server. Worlds are deleted after 90 days without playing.</p>
 
       {sessionLoading ? <p role="status">Checking your account...</p>
         : sessionError && !user ? <p role="alert">Login status unavailable. Try refreshing the page.</p>
         : !user ? <div className="flex flex-col items-start gap-4">
-          <p>Log in to keep up to three worlds between sessions.</p>
+          <p>Log in to keep your worlds between sessions.</p>
           <Button onClick={() => window.location.assign("/auth/login?returnTo=%2Fmy-worlds")}>Log in</Button>
         </div>
         : loading ? <p role="status">Loading worlds...</p>
@@ -55,13 +55,12 @@ export function WorldList() {
             <div className="flex-1">
               <Field label="New world name" htmlFor="world-name">
                 <TextInput id="world-name" value={name} onChange={event => setName(event.target.value)} maxLength={40} required
-                           disabled={busy || worlds.length >= 3} autoComplete="off"/>
+                           disabled={busy} autoComplete="off"/>
               </Field>
             </div>
-            <Button type="submit" disabled={busy || worlds.length >= 3 || !name.trim()}>{busy ? "Creating..." : "Create world"}</Button>
+            <Button type="submit" disabled={busy || !name.trim()}>{busy ? "Creating..." : "Create world"}</Button>
           </form>
           {failure && <p role="alert">{failure}</p>}
-          {worlds.length >= 3 && <p className="text-sm text-content-muted">You have three worlds. Delete one before creating another.</p>}
           {worlds.length === 0 ? <p className="py-6 text-content-muted">No worlds yet. Create your first world above, then start a server.</p>
             : <ul>{worlds.map(world => <WorldRow key={world.id} world={world}
                 onRename={updated => setWorlds(current => current.map(item => item.id === updated.id ? updated : item))}

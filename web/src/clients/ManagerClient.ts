@@ -83,7 +83,10 @@ export const problemMessage = (err: unknown): string => {
 }
 
 class ServerManager {
-  public listWorlds = (): Promise<AxiosResponse<WorldCollection>> => HTTPClient.get("/api/v1/saves")
+  public listWorlds = (cursor?: string): Promise<AxiosResponse<WorldCollection>> => {
+    const query = cursor ? `?${new URLSearchParams({cursor})}` : ""
+    return HTTPClient.get(`/api/v1/saves${query}`)
+  }
 
   public createWorld = (name: string): Promise<AxiosResponse<WorldResponse>> => HTTPClient.post("/api/v1/saves", {name})
 

@@ -11,7 +11,7 @@ import {usePolling} from "../utils/usePolling.ts";
 export type HomeData = { stats: StatsResponse, servers: ServerResponse[] | null }
 
 const news = [
-  {date: "2026-11-05", title: "Your worlds", text: "Log in to keep up to three worlds and return to them on a Free server. Worlds are kept for 90 days after you last play."},
+  {date: "2026-11-05", title: "Your worlds", text: "Log in to keep your worlds and return to them on a Free server. Worlds are kept for 90 days after you last play."},
   {date: "2026-10-28", title: "Accounts", text: "You can now log in with your blamedevs account. Keep your worlds with an account, or start a Guest server without one."},
   {date: "2026-10-28", title: "Guest servers", text: "Servers now come as Guest servers: up to 3 players and a smaller view distance, and the world is deleted when the server shuts down. Choose Free when logged in to keep your world between sessions."},
   {date: "2026-10-26", title: "Smoother servers", text: "Servers now come with performance mods, so new worlds generate faster. You still join with the regular game. Snapshots are no longer available."},
