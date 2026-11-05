@@ -1,4 +1,5 @@
-import {NavLink} from "react-router-dom";
+import {NavLink, useLocation, useMatch} from "react-router-dom";
+import {SidebarGroup} from "../ui/SidebarGroup.tsx";
 
 const destinations = [
   {
@@ -24,9 +25,15 @@ const destinations = [
 ]
 
 export function Navigation({onNavigate}: {onNavigate?: () => void}) {
+  const location = useLocation()
+  const servers = Boolean(useMatch("/my-servers"))
+  const mine = new URLSearchParams(location.search).get("owner") === "me"
+
   return (
     <nav aria-label="Main navigation" className="flex flex-col gap-1 py-4 pr-3">
-      {destinations.map(({to, label, icon}) => (
+      {destinations.map(({to, label, icon}) => to === "/my-servers" ? <SidebarGroup key={to} label={label} to={to} active={servers && !mine} icon={icon} onNavigate={onNavigate} views={[
+        {label: "My servers", to: `${to}?owner=me`, icon: <><circle cx="10" cy="6" r="3"/><path d="M4 17v-2a6 6 0 0 1 12 0v2"/></>, active: servers && mine},
+      ]}/> : (
         <NavLink key={to} to={to} end={to === "/"} onClick={onNavigate} className="mc-sidebar-link">
           <svg aria-hidden="true" viewBox="0 0 20 20" className="size-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.5">{icon}</svg>
           {label}

@@ -42,6 +42,8 @@ export interface ServerResponse {
   tier: Tier,
   preset?: string,
   saveId?: string,
+  saveAvailable: boolean,
+  saveLocked: boolean,
   options: Opts,
   createdAt: string,
   expiresAt: string,
@@ -51,6 +53,12 @@ export interface ServerResponse {
 export interface ServerCollection {
   items: ServerResponse[],
   nextCursor: string
+}
+
+export interface WorldResponse {
+  id: string,
+  name: string,
+  createdAt: string
 }
 
 export interface StatsResponse {
@@ -72,12 +80,18 @@ export const problemMessage = (err: unknown): string => {
 }
 
 class ServerManager {
+  public createWorld = (name: string): Promise<AxiosResponse<WorldResponse>> => HTTPClient.post("/api/v1/saves", {name})
+
   public createServer = (request: CreateServerRequest): Promise<AxiosPromise<ServerResponse>> => {
     return HTTPClient.post("/api/v1/servers", request)
   }
 
-  public listServers = async (cursor?: string): Promise<AxiosPromise<ServerCollection>> => {
+  public listServers = async (cursor?: string, mine = false): Promise<AxiosPromise<ServerCollection>> => {
     const query = new URLSearchParams(cursor ? {cursor} : {})
+    if (mine) {
+      query.set("owner", "me")
+      query.set("status", "all")
+    }
     return HTTPClient.get(`/api/v1/servers?${query}`)
   }
 

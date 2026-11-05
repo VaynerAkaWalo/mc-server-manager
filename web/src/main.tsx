@@ -50,7 +50,7 @@ const router = createBrowserRouter([
       {
         path: "/my-servers",
         element: <ServerList/>,
-        loader: () => activeServers().catch(() => null)
+        loader: ({request}) => new URL(request.url).searchParams.get("owner") === "me" ? null : activeServers().catch(() => null)
       },
       {
         path: "/server-creator",

@@ -1,7 +1,7 @@
-import {useLoaderData, useLocation, useNavigate} from "react-router-dom";
+import {useLoaderData, useLocation, useNavigate, Link} from "react-router-dom";
 import Select, {SingleValue} from "react-select";
 import * as React from "react";
-import {useEffect, useReducer, useState} from "react";
+import {useEffect, useReducer, useRef, useState} from "react";
 import {Button} from "../ui/Button.tsx";
 import {Checkbox, Field, TextInput} from "../ui/Field.tsx";
 import {Heading} from "../ui/Heading.tsx";
@@ -18,7 +18,7 @@ interface Server {
 
 const SERVER_TYPE = "FABRIC"
 
-const tierOffered = (tier: { available: boolean, persistent: boolean }) => tier.available && !tier.persistent
+const tierOffered = (tier: { available: boolean, persistent: boolean }) => tier.available
 
 const initialServer: Server = {
   name: "",
@@ -99,6 +99,10 @@ function DiceIcon() {
 export function ServerCreator() {
   const catalog = useLoaderData<CatalogResponse | null>()
   const {templateName, templatePreset, templateOps} = useLocation().state || {}
+  const {session: {user, loading: sessionLoading, error: sessionError}} = UpdateNotification()
+  const pendingWorld = useRef<{subject: string, id: string} | null>(null)
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState("")
   const [state, dispatch] = useReducer(serverReducer, undefined, (): Server => ({
     ...initialServer,
     name: randomServerName(),
@@ -246,6 +250,19 @@ export function ServerCreator() {
   )
 
   const selectedTier = catalog?.tiers.find(candidate => candidate.id === state.tier)
+  const needsAccount = Boolean(selectedTier?.accountRequired)
+  const needsWorld = Boolean(selectedTier?.persistent)
+  const accountReady = !sessionLoading && Boolean(user)
+
+  const worldSettings = () => {
+    if (!needsAccount && !needsWorld) return <p className="text-sm text-content-muted">Guest worlds are deleted when the server stops.</p>
+    if (sessionLoading) return <p role="status">Checking your account...</p>
+    if (sessionError && !user) return <p role="alert">Login status unavailable. Try refreshing the page.</p>
+    if (!user) return <p className="text-sm text-content-muted">
+      <Link to="/auth/login?returnTo=%2Fserver-creator" reloadDocument className="text-action-content hover:underline focus-ring">Log in</Link> to keep your world on a Free server.
+    </p>
+    return <p className="text-sm text-content-muted">Your world is saved automatically. Start this server again from My servers. Worlds are deleted after 90 days without playing.</p>
+  }
 
   const summary = () => {
     const tier = selectedTier
@@ -300,15 +317,27 @@ export function ServerCreator() {
       preset: templatePreset,
     }
 
+    setCreating(true)
+    setCreateError("")
+
     try {
+      if (needsWorld && user) {
+        if (pendingWorld.current?.subject !== user.subject) {
+          const {data} = await ManagerClient.createWorld(state.name)
+          pendingWorld.current = {subject: user.subject, id: data.id}
+        }
+        request.saveId = pendingWorld.current.id
+      }
       await ManagerClient.createServer(request)
     } catch (err) {
-      setNotificationMessage("Failed to create server: " + problemMessage(err))
+      setCreateError("Failed to create server: " + problemMessage(err))
       return
+    } finally {
+      setCreating(false)
     }
 
     setNotificationMessage("Your server will be started shortly")
-    navigate("/my-servers")
+    navigate(user ? "/my-servers?owner=me" : "/my-servers")
   }
 
   return (
@@ -332,6 +361,7 @@ export function ServerCreator() {
                inert={showAdvanced}>
             {basicSettings()}
             {tierSettings()}
+            {worldSettings()}
           </div>
           <div id="advanced-settings" className={`flex flex-col gap-4 [grid-area:1/1] ${showAdvanced ? "" : "invisible"}`}
                inert={!showAdvanced}>
@@ -343,10 +373,11 @@ export function ServerCreator() {
 
       {summary()}
 
+      {createError && <p role="alert" className="px-6 pb-4 text-sm sm:col-span-2">{createError}</p>}
       <div className="flex items-center gap-2 w-full p-6 pt-0">
         <Button variant="secondary" className="flex-1 whitespace-nowrap" onClick={() => navigate("/my-servers")}>Cancel</Button>
-        <Button className="flex-1 whitespace-nowrap" disabled={!selectedTier || !tierOffered(selectedTier)} onClick={createServer}>
-          {selectedTier && !tierOffered(selectedTier) ? "Soon" : "Create"}
+        <Button className="flex-1 whitespace-nowrap" disabled={creating || !selectedTier || !tierOffered(selectedTier) || (needsAccount && !accountReady)} onClick={createServer}>
+          {creating ? "Starting..." : selectedTier && !tierOffered(selectedTier) ? "Soon" : "Create"}
         </Button>
       </div>
     </div>

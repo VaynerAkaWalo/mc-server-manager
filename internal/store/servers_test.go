@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose/v3"
 	"io/fs"
 	"net/url"
 	"os"
@@ -490,5 +492,66 @@ func TestReplicasMigratingTogetherApplyEachMigrationOnce(t *testing.T) {
 	}
 	if applied != len(files) {
 		t.Errorf("applied migrations = %d, want %d", applied, len(files))
+	}
+}
+
+func TestExistingSavedServersKeepTheirOwnerWhenHistoryIsMigrated(t *testing.T) {
+	adminURL := os.Getenv("TEST_DB_URL")
+	if adminURL == "" {
+		t.Skip("TEST_DB_URL is not set")
+	}
+	ctx := context.Background()
+	admin, err := Connect(ctx, adminURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(admin.Close)
+	database := "migrate_owners_" + strings.ReplaceAll(uuid.NewString(), "-", "")
+	if _, err := admin.pool.Exec(ctx, "CREATE DATABASE "+database); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = admin.pool.Exec(ctx, "DROP DATABASE "+database+" WITH (FORCE)") })
+	parsed, err := url.Parse(adminURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed.Path = "/" + database
+	s, err := Connect(ctx, parsed.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(s.Close)
+	db := stdlib.OpenDBFromPool(s.pool)
+	t.Cleanup(func() { _ = db.Close() })
+	provider, err := goose.NewProvider(goose.DialectPostgres, db, migrationsFS())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := provider.UpTo(ctx, 8); err != nil {
+		t.Fatal(err)
+	}
+	saveID := uuid.New()
+	if _, err := s.pool.Exec(ctx, "INSERT INTO saves (id, owner_subject, name) VALUES ($1, 'alice', 'world')", saveID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.pool.Exec(ctx, `INSERT INTO mc_servers (name, hostname, definition, expires_at, save_id) VALUES ('saved', 'saved', '{}', now(), $1), ('guest', 'guest', '{}', now(), NULL)`, saveID); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Migrate(ctx); err != nil {
+		t.Fatal(err)
+	}
+	records, err := s.ListServers(ctx, ServerQuery{Filter: ServerFilter{Owner: "alice", Status: "all"}, Sort: "-createdAt", Limit: 20})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(records) != 1 || records[0].Name != "saved" || records[0].Owner != "alice" {
+		t.Fatalf("personal history = %+v", records)
+	}
+	if _, err := s.pool.Exec(ctx, `INSERT INTO mc_servers (name, hostname, definition, expires_at, save_id) VALUES ('during-rollout', 'during-rollout', '{}', now(), $1)`, saveID); err != nil {
+		t.Fatal(err)
+	}
+	records, err = s.ListServers(ctx, ServerQuery{Filter: ServerFilter{Owner: "alice", Status: "all"}, Sort: "-createdAt", Limit: 20})
+	if err != nil || len(records) != 2 {
+		t.Fatalf("history after legacy insert = %+v, %v", records, err)
 	}
 }

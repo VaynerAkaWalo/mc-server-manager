@@ -13,6 +13,7 @@ import (
 )
 
 type collectionCursor struct {
+	Owned    bool                 `json:"owned,omitempty"`
 	Version  int                  `json:"v"`
 	Status   string               `json:"status"`
 	Sort     string               `json:"sort"`
@@ -20,13 +21,18 @@ type collectionCursor struct {
 }
 
 func parseFilter(values url.Values) (store.ServerFilter, error) {
+	owner := values.Get("owner")
+	if owner != "" && owner != "me" {
+		return store.ServerFilter{}, errors.New("owner must be me")
+	}
+
 	status := values.Get("status")
 	if status == "" {
 		status = "active"
 	}
 	switch status {
 	case "active", "all", "new", "running", "degraded", "expiring", "stopped", "expired":
-		return store.ServerFilter{Status: status}, nil
+		return store.ServerFilter{Status: status, Owner: owner}, nil
 	default:
 		return store.ServerFilter{}, errors.New("status must be active, all, new, running, degraded, expiring, stopped or expired")
 	}
@@ -83,7 +89,7 @@ func (c collectionCursor) matchesQuery(query store.ServerQuery) bool {
 	if c.Version != 1 || c.Boundary.Value.IsZero() || c.Boundary.ID == uuid.Nil {
 		return false
 	}
-	return c.Status == query.Filter.Status && c.Sort == query.Sort
+	return c.Status == query.Filter.Status && c.Sort == query.Sort && c.Owned == (query.Filter.Owner != "")
 }
 
 func encodeCursor(query store.ServerQuery, last store.ServerRecord) string {
@@ -91,7 +97,7 @@ func encodeCursor(query store.ServerQuery, last store.ServerRecord) string {
 	if strings.TrimPrefix(query.Sort, "-") == "expiresAt" {
 		value = last.ExpiresAt
 	}
-	cursor := collectionCursor{Version: 1, Status: query.Filter.Status, Sort: query.Sort, Boundary: store.ServerBoundary{Value: value, ID: last.ID}}
+	cursor := collectionCursor{Owned: query.Filter.Owner != "", Version: 1, Status: query.Filter.Status, Sort: query.Sort, Boundary: store.ServerBoundary{Value: value, ID: last.ID}}
 	body, _ := json.Marshal(cursor)
 	return base64.RawURLEncoding.EncodeToString(body)
 }
