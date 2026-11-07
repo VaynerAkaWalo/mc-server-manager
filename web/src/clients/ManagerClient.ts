@@ -47,7 +47,8 @@ export interface ServerResponse {
   options: Opts,
   createdAt: string,
   expiresAt: string,
-  idleShutdownAt: string | null
+  idleShutdownAt: string | null,
+  lastPlayedAt: string | null
 }
 
 export interface ServerCollection {

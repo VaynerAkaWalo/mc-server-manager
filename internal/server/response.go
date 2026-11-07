@@ -22,6 +22,7 @@ func newResponse(record store.ServerRecord, status server.Status) (server.Respon
 	}
 
 	return server.Response{
+		LastPlayedAt:   record.LastPlayedAt,
 		SaveAvailable:  record.SaveAvailable,
 		SaveLocked:     record.SaveLocked,
 		ID:             record.ID,

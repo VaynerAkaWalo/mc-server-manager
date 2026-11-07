@@ -261,7 +261,7 @@ export function ServerCreator() {
     if (!user) return <p className="text-sm text-content-muted">
       <Link to="/auth/login?returnTo=%2Fserver-creator" reloadDocument className="text-action-content hover:underline focus-ring">Log in</Link> to keep your world on a Free server.
     </p>
-    return <p className="text-sm text-content-muted">Your world is saved automatically. Start this server again from My servers. Worlds are deleted after 90 days without playing.</p>
+    return <p className="text-sm text-content-muted">Your world is saved automatically. Start this server again from Manage servers. Worlds are deleted after 90 days without playing.</p>
   }
 
   const summary = () => {
@@ -337,7 +337,7 @@ export function ServerCreator() {
     }
 
     setNotificationMessage("Your server will be started shortly")
-    navigate(user ? "/my-servers?owner=me" : "/my-servers")
+    navigate(user ? "/manage-servers" : "/my-servers")
   }
 
   return (

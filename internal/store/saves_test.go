@@ -53,6 +53,11 @@ func TestOneServerHoldsASaveUntilItsLockIsReleased(t *testing.T) {
 		t.Fatalf("second server on a held save: %v", err)
 	}
 
+	played := time.Now().UTC().Truncate(time.Second)
+	if _, err := s.pool.Exec(ctx, `UPDATE mc_servers SET last_active_at = $2 WHERE id = $1`, first.ID, played); err != nil {
+		t.Fatal(err)
+	}
+
 	if err := s.MarkStopped(ctx, first.ID); err != nil {
 		t.Fatal(err)
 	}
@@ -67,8 +72,17 @@ func TestOneServerHoldsASaveUntilItsLockIsReleased(t *testing.T) {
 	if err := s.ReleaseSaveLock(ctx, first.ID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := serverOnSave(t, s, "lock-fourth", save); err != nil {
+	restarted, err := serverOnSave(t, s, "lock-fourth", save)
+	if err != nil {
 		t.Fatalf("server after release: %v", err)
+	}
+	if restarted.LastPlayedAt == nil || !restarted.LastPlayedAt.Equal(played) {
+		t.Fatalf("restarted world activity = %v", restarted.LastPlayedAt)
+	}
+
+	loaded, err := s.GetServer(ctx, restarted.ID)
+	if err != nil || loaded.LastPlayedAt == nil || !loaded.LastPlayedAt.Equal(played) {
+		t.Fatalf("loaded world activity = %v, %v", loaded.LastPlayedAt, err)
 	}
 }
 
@@ -410,6 +424,14 @@ func TestPersonalHistoryKeepsItsOwnerAfterTheWorldExpires(t *testing.T) {
 	if record.Owner != owner || !record.SaveAvailable || !record.SaveLocked {
 		t.Fatalf("created = %+v", record)
 	}
+	played := time.Now().UTC().Truncate(time.Second)
+	if _, err := s.pool.Exec(ctx, `UPDATE mc_servers SET last_active_at = $2 WHERE id = $1`, record.ID, played); err != nil {
+		t.Fatal(err)
+	}
+	active, err := s.GetServer(ctx, record.ID)
+	if err != nil || active.LastPlayedAt == nil || !active.LastPlayedAt.Equal(played) {
+		t.Fatalf("world activity = %v, %v", active.LastPlayedAt, err)
+	}
 	if err := s.MarkStopped(ctx, record.ID); err != nil {
 		t.Fatal(err)
 	}
@@ -422,7 +444,7 @@ func TestPersonalHistoryKeepsItsOwnerAfterTheWorldExpires(t *testing.T) {
 
 	query := ServerQuery{Filter: ServerFilter{Status: "all", Owner: owner}, Sort: "-createdAt", Limit: 20}
 	items, err := s.ListServers(ctx, query)
-	if err != nil || len(items) != 1 || items[0].ID != record.ID || items[0].SaveAvailable || items[0].SaveLocked {
+	if err != nil || len(items) != 1 || items[0].ID != record.ID || items[0].SaveAvailable || items[0].SaveLocked || items[0].LastPlayedAt == nil || !items[0].LastPlayedAt.Equal(played) {
 		t.Fatalf("history = %+v, %v", items, err)
 	}
 	query.Filter.Owner = owner + "-other"

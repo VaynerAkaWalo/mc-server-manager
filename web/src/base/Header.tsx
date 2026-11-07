@@ -33,7 +33,7 @@ export function Header({session}: {session: ReturnType<typeof useUser>}) {
           <Wordmark/>
         </div>
         {user
-          ? <Button id="account-button" variant="ghost" size="sm"
+          ? <Button id="account-button" variant="ghost" size="sm" className="shrink-0"
                     aria-haspopup="menu" aria-expanded={Boolean(accountAnchor)} aria-controls={accountAnchor ? "account-menu" : undefined}
                     onClick={event => setAccountAnchor(event.currentTarget)}>
             <span aria-hidden="true" className="flex size-6 items-center justify-center bg-surface-hover font-pixel text-xs text-action-content">{user.email?.[0].toUpperCase() ?? "?"}</span>

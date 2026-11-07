@@ -57,7 +57,7 @@ func (s *Store) ListServers(ctx context.Context, query ServerQuery) ([]ServerRec
 	if query.After != nil {
 		afterValue, afterID = query.After.Value, query.After.ID
 	}
-	statement := fmt.Sprintf(`SELECT id, name, hostname, definition, created_at, expires_at, last_active_at, status, COALESCE(owner_subject, ''), save_locked, EXISTS (SELECT 1 FROM saves WHERE saves.id = mc_servers.save_id)
+	statement := fmt.Sprintf(`SELECT id, name, hostname, definition, created_at, expires_at, last_active_at, status, COALESCE(owner_subject, ''), save_locked, EXISTS (SELECT 1 FROM saves WHERE saves.id = mc_servers.save_id), `+serverLastPlayedSQL+`
   FROM mc_servers
   WHERE %s AND ($5 = '' OR owner_subject = $5) AND ($2::timestamptz IS NULL OR (%s, id) %s ($2, $3::uuid))
   ORDER BY %s %s, id %s LIMIT $4`, serverFilterSQL, column, comparison, column, direction, direction)
@@ -71,7 +71,7 @@ func (s *Store) ListServers(ctx context.Context, query ServerQuery) ([]ServerRec
 	records := make([]ServerRecord, 0)
 	for rows.Next() {
 		var record ServerRecord
-		if err := rows.Scan(&record.ID, &record.Name, &record.Hostname, &record.Definition, &record.CreatedAt, &record.ExpiresAt, &record.LastActiveAt, &record.Status, &record.Owner, &record.SaveLocked, &record.SaveAvailable); err != nil {
+		if err := rows.Scan(&record.ID, &record.Name, &record.Hostname, &record.Definition, &record.CreatedAt, &record.ExpiresAt, &record.LastActiveAt, &record.Status, &record.Owner, &record.SaveLocked, &record.SaveAvailable, &record.LastPlayedAt); err != nil {
 			return nil, fmt.Errorf("scan server: %w", err)
 		}
 		records = append(records, record)

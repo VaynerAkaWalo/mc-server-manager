@@ -15,6 +15,9 @@ const uniqueViolation = "23505"
 
 const saveLockIndex = "mc_servers_save_lock_idx"
 
+const serverLastPlayedSQL = `CASE WHEN mc_servers.save_id IS NULL THEN mc_servers.last_active_at
+ ELSE (SELECT max(activity.last_active_at) FROM mc_servers activity WHERE activity.save_id = mc_servers.save_id) END`
+
 var (
 	ErrNotFound        = errors.New("server not found")
 	ErrActiveNameTaken = errors.New("an active server already uses this name")
@@ -23,6 +26,7 @@ var (
 )
 
 type ServerRecord struct {
+	LastPlayedAt  *time.Time
 	Owner         string
 	SaveAvailable bool
 	SaveLocked    bool
@@ -86,8 +90,8 @@ type ServerCounts struct {
 func (s *Store) GetServer(ctx context.Context, id uuid.UUID) (ServerRecord, error) {
 	var record ServerRecord
 	err := s.pool.QueryRow(ctx,
-		`SELECT id, name, hostname, definition, created_at, expires_at, last_active_at, status, COALESCE(owner_subject, ''), save_locked, EXISTS (SELECT 1 FROM saves WHERE saves.id = mc_servers.save_id) FROM mc_servers WHERE id = $1`, id,
-	).Scan(&record.ID, &record.Name, &record.Hostname, &record.Definition, &record.CreatedAt, &record.ExpiresAt, &record.LastActiveAt, &record.Status, &record.Owner, &record.SaveLocked, &record.SaveAvailable)
+		`SELECT id, name, hostname, definition, created_at, expires_at, last_active_at, status, COALESCE(owner_subject, ''), save_locked, EXISTS (SELECT 1 FROM saves WHERE saves.id = mc_servers.save_id), `+serverLastPlayedSQL+` FROM mc_servers WHERE id = $1`, id,
+	).Scan(&record.ID, &record.Name, &record.Hostname, &record.Definition, &record.CreatedAt, &record.ExpiresAt, &record.LastActiveAt, &record.Status, &record.Owner, &record.SaveLocked, &record.SaveAvailable, &record.LastPlayedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ServerRecord{}, ErrNotFound
 	}
@@ -235,6 +239,12 @@ func (s *Store) insertServer(ctx context.Context, record *ServerRecord, save *Sa
 	}
 	if err != nil {
 		return fmt.Errorf("insert server: %w", err)
+	}
+
+	if save != nil {
+		if err := tx.QueryRow(ctx, `SELECT max(last_active_at) FROM mc_servers WHERE save_id = $1`, save.ID).Scan(&record.LastPlayedAt); err != nil {
+			return fmt.Errorf("get saved world activity: %w", err)
+		}
 	}
 
 	record.SaveAvailable = save != nil
