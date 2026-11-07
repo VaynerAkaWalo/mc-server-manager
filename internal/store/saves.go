@@ -11,8 +11,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-var ErrSaveLimit = errors.New("the save limit is reached")
-
 type SaveRecord struct {
 	ID        uuid.UUID
 	Owner     string
@@ -28,32 +26,14 @@ func lockSave(ctx context.Context, tx pgx.Tx, id uuid.UUID) error {
 	return nil
 }
 
-func (s *Store) CreateSave(ctx context.Context, owner, name string, limit int) (SaveRecord, error) {
-	tx, err := s.pool.Begin(ctx)
-	if err != nil {
-		return SaveRecord{}, fmt.Errorf("begin save insert: %w", err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-
-	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "saves:"+owner); err != nil {
-		return SaveRecord{}, fmt.Errorf("lock saves of owner: %w", err)
-	}
-
-	var count int
-	if err := tx.QueryRow(ctx, `SELECT count(*) FROM saves WHERE owner_subject = $1`, owner).Scan(&count); err != nil {
-		return SaveRecord{}, fmt.Errorf("count saves: %w", err)
-	}
-	if count >= limit {
-		return SaveRecord{}, ErrSaveLimit
-	}
-
+func (s *Store) CreateSave(ctx context.Context, owner, name string) (SaveRecord, error) {
 	record := SaveRecord{Owner: owner, Name: name}
-	err = tx.QueryRow(ctx, `INSERT INTO saves (owner_subject, name) VALUES ($1, $2) RETURNING id, created_at`, owner, name).Scan(&record.ID, &record.CreatedAt)
+	err := s.pool.QueryRow(ctx, `INSERT INTO saves (owner_subject, name) VALUES ($1, $2) RETURNING id, created_at`, owner, name).Scan(&record.ID, &record.CreatedAt)
 	if err != nil {
 		return SaveRecord{}, fmt.Errorf("insert save: %w", err)
 	}
 
-	return record, tx.Commit(ctx)
+	return record, nil
 }
 
 func (s *Store) ListSaves(ctx context.Context, owner string) ([]SaveRecord, error) {

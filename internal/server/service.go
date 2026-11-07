@@ -131,6 +131,7 @@ func (s *Service) provisionServer(ctx context.Context, owner string, provisionRe
 	}
 
 	record, err := s.store.CreateServer(context.TODO(), store.NewServer{
+		Owner:      owner,
 		Name:       serverSpec.Name,
 		Hostname:   serverAddress(serverSpec.Name),
 		Definition: serverDefinition,

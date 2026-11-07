@@ -45,12 +45,34 @@ func (h *Handlers) listServersHandler(w http.ResponseWriter, r *http.Request) er
 	if err != nil {
 		return problem.Write(w, http.StatusBadRequest, err.Error())
 	}
+	if err := h.resolveOwner(w, r, &query.Filter); err != nil {
+		return provisionFailure(w, r, err)
+	}
+
 	servers, err := h.serverService.listServers(r.Context(), query)
 	if err != nil {
 		return internalFailure(w, r, "Failed to get all servers", err)
 	}
 
 	return xhttp.WriteResponse(w, http.StatusOK, servers)
+}
+
+func (h *Handlers) resolveOwner(w http.ResponseWriter, r *http.Request, filter *store.ServerFilter) error {
+	if filter.Owner == "" {
+		return nil
+	}
+	w.Header().Set("Cache-Control", "private, no-store")
+
+	session, err := h.identifier.Identify(w, r)
+	if errors.Is(err, auth.ErrNoSession) {
+		return ErrLoginRequired
+	}
+	if err != nil {
+		return err
+	}
+
+	filter.Owner = session.Subject
+	return nil
 }
 
 func (h *Handlers) getServerHandler(w http.ResponseWriter, r *http.Request) error {
@@ -86,6 +108,10 @@ func (h *Handlers) statsHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return problem.Write(w, http.StatusBadRequest, err.Error())
 	}
+	if err := h.resolveOwner(w, r, &filter); err != nil {
+		return provisionFailure(w, r, err)
+	}
+
 	res, err := h.serverService.getStats(r.Context(), filter)
 	if err != nil {
 		return internalFailure(w, r, "Failed to get stats", err)

@@ -201,8 +201,6 @@ func failure(w http.ResponseWriter, r *http.Request, message string, err error) 
 	switch {
 	case errors.As(err, &invalid):
 		return problem.Write(w, http.StatusUnprocessableEntity, invalid.Error())
-	case errors.Is(err, ErrLimit):
-		return problem.Write(w, http.StatusUnprocessableEntity, ErrLimit.Error())
 	case errors.Is(err, ErrNotFound):
 		return problem.Write(w, http.StatusNotFound, ErrNotFound.Error())
 	case errors.Is(err, ErrInUse):

@@ -14,15 +14,13 @@ import (
 )
 
 const (
-	MaxSavesPerUser = 3
-	MaxNameLength   = 40
-	Retention       = 90 * 24 * time.Hour
+	MaxNameLength = 40
+	Retention     = 90 * 24 * time.Hour
 )
 
 var (
 	ErrNotFound = errors.New("save not found")
 	ErrInUse    = errors.New("a server is still using this save, try again in a few minutes")
-	ErrLimit    = errors.New("you can keep at most 3 saves")
 )
 
 type InvalidNameError struct {
@@ -34,7 +32,7 @@ func (e InvalidNameError) Error() string {
 }
 
 type saveStore interface {
-	CreateSave(ctx context.Context, owner, name string, limit int) (store.SaveRecord, error)
+	CreateSave(ctx context.Context, owner, name string) (store.SaveRecord, error)
 	ListSaves(ctx context.Context, owner string) ([]store.SaveRecord, error)
 	RenameSave(ctx context.Context, id uuid.UUID, owner, name string) (store.SaveRecord, error)
 	DeleteSave(ctx context.Context, id uuid.UUID, owner string, purge func(context.Context) error) error
@@ -77,12 +75,7 @@ func (s *Service) Create(ctx context.Context, owner, name string) (store.SaveRec
 		return store.SaveRecord{}, err
 	}
 
-	record, err := s.store.CreateSave(ctx, owner, name, MaxSavesPerUser)
-	if errors.Is(err, store.ErrSaveLimit) {
-		return store.SaveRecord{}, ErrLimit
-	}
-
-	return record, err
+	return s.store.CreateSave(ctx, owner, name)
 }
 
 func (s *Service) List(ctx context.Context, owner string) ([]store.SaveRecord, error) {

@@ -22,6 +22,9 @@ type Players struct {
 }
 
 type Response struct {
+	LastPlayedAt   *time.Time        `json:"lastPlayedAt"`
+	SaveAvailable  bool              `json:"saveAvailable"`
+	SaveLocked     bool              `json:"saveLocked"`
 	ID             uuid.UUID         `json:"id"`
 	Name           string            `json:"name"`
 	Hostname       string            `json:"hostname"`

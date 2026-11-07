@@ -6,8 +6,8 @@ import {Wordmark} from "./Wordmark.tsx";
 import {useUser} from "../auth/useUser.ts";
 import {Navigation} from "./Navigation.tsx";
 
-export function Header() {
-  const {user, loading, error, logOut} = useUser()
+export function Header({session}: {session: ReturnType<typeof useUser>}) {
+  const {user, loading, error, logOut} = session
   const location = useLocation()
   const [navigationOpen, setNavigationOpen] = useState(false)
   const [accountAnchor, setAccountAnchor] = useState<HTMLElement | null>(null)
@@ -33,7 +33,7 @@ export function Header() {
           <Wordmark/>
         </div>
         {user
-          ? <Button id="account-button" variant="ghost" size="sm"
+          ? <Button id="account-button" variant="ghost" size="sm" className="shrink-0"
                     aria-haspopup="menu" aria-expanded={Boolean(accountAnchor)} aria-controls={accountAnchor ? "account-menu" : undefined}
                     onClick={event => setAccountAnchor(event.currentTarget)}>
             <span aria-hidden="true" className="flex size-6 items-center justify-center bg-surface-hover font-pixel text-xs text-action-content">{user.email?.[0].toUpperCase() ?? "?"}</span>

@@ -25,16 +25,7 @@ type memorySaves struct {
 	idleFor  time.Duration
 }
 
-func (m *memorySaves) CreateSave(_ context.Context, owner, name string, limit int) (store.SaveRecord, error) {
-	owned := 0
-	for _, record := range m.records {
-		if record.Owner == owner {
-			owned++
-		}
-	}
-	if owned >= limit {
-		return store.SaveRecord{}, store.ErrSaveLimit
-	}
+func (m *memorySaves) CreateSave(_ context.Context, owner, name string) (store.SaveRecord, error) {
 	record := store.SaveRecord{ID: uuid.New(), Owner: owner, Name: name, CreatedAt: time.Now()}
 	m.records = append(m.records, record)
 	return record, nil
@@ -150,18 +141,26 @@ func TestCreateListRenameAndDeleteASave(t *testing.T) {
 	}
 }
 
+func TestAnAccountCanCreateMoreThanThreeSaves(t *testing.T) {
+	saves := &memorySaves{}
+
+	for i := 0; i < 25; i++ {
+		rec := call(t, saves, "alice", "POST", "/api/v1/saves", `{"name":"world"}`)
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("create save %d: %d %s", i+1, rec.Code, rec.Body)
+		}
+	}
+}
+
 func TestSaveRequestsAreRejected(t *testing.T) {
 	saves := &memorySaves{}
-	for i := 0; i < MaxSavesPerUser; i++ {
-		call(t, saves, "alice", "POST", "/api/v1/saves", `{"name":"world"}`)
-	}
+	call(t, saves, "alice", "POST", "/api/v1/saves", `{"name":"world"}`)
 	id := saves.records[0].ID.String()
 
 	cases := map[string]struct {
 		method, path, body string
 		status             int
 	}{
-		"limit reached":      {"POST", "/api/v1/saves", `{"name":"fourth"}`, http.StatusUnprocessableEntity},
 		"empty name":         {"PATCH", "/api/v1/saves/" + id, `{"name":"   "}`, http.StatusUnprocessableEntity},
 		"name too long":      {"PATCH", "/api/v1/saves/" + id, `{"name":"` + strings.Repeat("a", MaxNameLength+1) + `"}`, http.StatusUnprocessableEntity},
 		"control characters": {"PATCH", "/api/v1/saves/" + id, `{"name":"a\u0000b"}`, http.StatusUnprocessableEntity},
@@ -182,7 +181,7 @@ func TestSaveRequestsAreRejected(t *testing.T) {
 
 func TestDeleteRefusesASaveThatAServerStillHolds(t *testing.T) {
 	saves := &memorySaves{}
-	record, _ := saves.CreateSave(context.Background(), "alice", "world", MaxSavesPerUser)
+	record, _ := saves.CreateSave(context.Background(), "alice", "world")
 	saves.inUse = map[uuid.UUID]bool{record.ID: true}
 
 	rec := call(t, saves, "alice", "DELETE", "/api/v1/saves/"+record.ID.String(), "")
@@ -194,7 +193,7 @@ func TestDeleteRefusesASaveThatAServerStillHolds(t *testing.T) {
 
 func TestDeleteKeepsTheSaveWhenTheBucketFails(t *testing.T) {
 	saves := &memorySaves{purgeErr: errors.New("oracle: connection refused to 10.0.0.9")}
-	record, _ := saves.CreateSave(context.Background(), "alice", "world", MaxSavesPerUser)
+	record, _ := saves.CreateSave(context.Background(), "alice", "world")
 
 	rec := call(t, saves, "alice", "DELETE", "/api/v1/saves/"+record.ID.String(), "")
 
@@ -205,8 +204,8 @@ func TestDeleteKeepsTheSaveWhenTheBucketFails(t *testing.T) {
 
 func TestExpireIdleDeletesIdleSavesAndSkipsOnesInUse(t *testing.T) {
 	saves := &memorySaves{}
-	idle, _ := saves.CreateSave(context.Background(), "alice", "idle", MaxSavesPerUser)
-	held, _ := saves.CreateSave(context.Background(), "alice", "held", MaxSavesPerUser)
+	idle, _ := saves.CreateSave(context.Background(), "alice", "idle")
+	held, _ := saves.CreateSave(context.Background(), "alice", "held")
 	saves.idle = []uuid.UUID{held.ID, idle.ID}
 	saves.inUse = map[uuid.UUID]bool{held.ID: true}
 
@@ -222,7 +221,7 @@ func TestExpireIdleDeletesIdleSavesAndSkipsOnesInUse(t *testing.T) {
 
 func TestExpireIdleLeavesASaveThatWasUsedAfterItWasListed(t *testing.T) {
 	saves := &memorySaves{}
-	played, _ := saves.CreateSave(context.Background(), "alice", "played", MaxSavesPerUser)
+	played, _ := saves.CreateSave(context.Background(), "alice", "played")
 	saves.idle = []uuid.UUID{played.ID}
 	saves.revived = map[uuid.UUID]bool{played.ID: true}
 
@@ -235,7 +234,7 @@ func TestExpireIdleLeavesASaveThatWasUsedAfterItWasListed(t *testing.T) {
 
 func TestExpireIdleReportsBucketFailuresAndContinues(t *testing.T) {
 	saves := &memorySaves{purgeErr: errors.New("bucket down")}
-	first, _ := saves.CreateSave(context.Background(), "alice", "first", MaxSavesPerUser)
+	first, _ := saves.CreateSave(context.Background(), "alice", "first")
 	saves.idle = []uuid.UUID{first.ID}
 
 	expired, err := NewService(saves, saves).ExpireIdle(context.Background())

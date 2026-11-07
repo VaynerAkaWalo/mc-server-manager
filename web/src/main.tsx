@@ -2,8 +2,9 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
-import {createBrowserRouter, RouterProvider} from "react-router-dom";
+import {createBrowserRouter, redirect, RouterProvider} from "react-router-dom";
 import {ServerList} from "./servers/ServerList.tsx";
+import {ServerAdmin} from "./servers/ServerAdmin.tsx";
 import {ServerCreator} from "./creator/ServerCreator.tsx";
 import {TemplateList} from "./templates/TemplateList.tsx";
 import {Home, HomeData} from "./home/Home.tsx";
@@ -50,7 +51,17 @@ const router = createBrowserRouter([
       {
         path: "/my-servers",
         element: <ServerList/>,
-        loader: () => activeServers().catch(() => null)
+        loader: ({request}) => new URL(request.url).searchParams.get("owner") === "me" ? redirect("/manage-servers") : null,
+      },
+      {
+        path: "/manage-servers",
+        element: <ServerList managed/>,
+        loader: loadCatalog
+      },
+      {
+        path: "/manage-servers/:serverId",
+        element: <ServerAdmin/>,
+        loader: loadCatalog
       },
       {
         path: "/server-creator",

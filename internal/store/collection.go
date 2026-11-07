@@ -10,6 +10,7 @@ import (
 )
 
 type ServerFilter struct {
+	Owner  string
 	Status string
 }
 
@@ -33,7 +34,7 @@ func (s *Store) CountServers(ctx context.Context, filter ServerFilter) (ServerCo
 	var counts ServerCounts
 	err := s.pool.QueryRow(ctx,
 		`SELECT count(*) FILTER (WHERE status IN ('new', 'running', 'degraded', 'expiring') AND expires_at > now()), count(*)
-   FROM mc_servers WHERE `+serverFilterSQL, filter.Status,
+   FROM mc_servers WHERE `+serverFilterSQL+` AND ($2 = '' OR owner_subject = $2)`, filter.Status, filter.Owner,
 	).Scan(&counts.Online, &counts.Created)
 	if err != nil {
 		return ServerCounts{}, fmt.Errorf("count servers: %w", err)
@@ -56,12 +57,12 @@ func (s *Store) ListServers(ctx context.Context, query ServerQuery) ([]ServerRec
 	if query.After != nil {
 		afterValue, afterID = query.After.Value, query.After.ID
 	}
-	statement := fmt.Sprintf(`SELECT id, name, hostname, definition, created_at, expires_at, last_active_at, status
+	statement := fmt.Sprintf(`SELECT id, name, hostname, definition, created_at, expires_at, last_active_at, status, COALESCE(owner_subject, ''), save_locked, EXISTS (SELECT 1 FROM saves WHERE saves.id = mc_servers.save_id), `+serverLastPlayedSQL+`
   FROM mc_servers
-  WHERE %s AND ($2::timestamptz IS NULL OR (%s, id) %s ($2, $3::uuid))
+  WHERE %s AND ($5 = '' OR owner_subject = $5) AND ($2::timestamptz IS NULL OR (%s, id) %s ($2, $3::uuid))
   ORDER BY %s %s, id %s LIMIT $4`, serverFilterSQL, column, comparison, column, direction, direction)
 
-	rows, err := s.pool.Query(ctx, statement, query.Filter.Status, afterValue, afterID, query.Limit+1)
+	rows, err := s.pool.Query(ctx, statement, query.Filter.Status, afterValue, afterID, query.Limit+1, query.Filter.Owner)
 	if err != nil {
 		return nil, fmt.Errorf("list servers: %w", err)
 	}
@@ -70,7 +71,7 @@ func (s *Store) ListServers(ctx context.Context, query ServerQuery) ([]ServerRec
 	records := make([]ServerRecord, 0)
 	for rows.Next() {
 		var record ServerRecord
-		if err := rows.Scan(&record.ID, &record.Name, &record.Hostname, &record.Definition, &record.CreatedAt, &record.ExpiresAt, &record.LastActiveAt, &record.Status); err != nil {
+		if err := rows.Scan(&record.ID, &record.Name, &record.Hostname, &record.Definition, &record.CreatedAt, &record.ExpiresAt, &record.LastActiveAt, &record.Status, &record.Owner, &record.SaveLocked, &record.SaveAvailable, &record.LastPlayedAt); err != nil {
 			return nil, fmt.Errorf("scan server: %w", err)
 		}
 		records = append(records, record)

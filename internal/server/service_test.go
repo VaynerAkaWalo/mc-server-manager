@@ -46,7 +46,7 @@ func (s *memoryStore) CreateServer(_ context.Context, input store.NewServer) (st
 		}
 	}
 
-	record := store.ServerRecord{ID: uuid.New(), Name: input.Name, Hostname: input.Hostname, Definition: definition, CreatedAt: time.Now(), ExpiresAt: input.ExpiresAt, Status: "new"}
+	record := store.ServerRecord{Owner: input.Owner, SaveAvailable: input.Save != nil, SaveLocked: input.Save != nil, ID: uuid.New(), Name: input.Name, Hostname: input.Hostname, Definition: definition, CreatedAt: time.Now(), ExpiresAt: input.ExpiresAt, Status: "new"}
 	s.records = append([]store.ServerRecord{record}, s.records...)
 	if input.Save != nil {
 		if s.locks == nil {
@@ -151,8 +151,18 @@ func (s *memoryStore) MarkExpired(context.Context) error {
 func (s *memoryStore) CountServers(context.Context, store.ServerFilter) (store.ServerCounts, error) {
 	return store.ServerCounts{}, nil
 }
-func (s *memoryStore) ListServers(context.Context, store.ServerQuery) ([]store.ServerRecord, error) {
-	return s.records, nil
+func (s *memoryStore) ListServers(_ context.Context, query store.ServerQuery) ([]store.ServerRecord, error) {
+	if query.Filter.Owner == "" {
+		return s.records, nil
+	}
+
+	var records []store.ServerRecord
+	for _, record := range s.records {
+		if record.Owner == query.Filter.Owner {
+			records = append(records, record)
+		}
+	}
+	return records, nil
 }
 
 func TestProvisionAndListUseSameRepresentation(t *testing.T) {

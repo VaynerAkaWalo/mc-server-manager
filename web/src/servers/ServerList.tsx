@@ -1,101 +1,59 @@
 import {useState} from "react";
 import {useLoaderData} from "react-router-dom";
-import {ServerResponse} from "../clients/ManagerClient.ts";
-import {statusDots, statusLabels} from "./status.ts";
-import {UpdateNotification} from "../App.tsx";
-import {activeServers} from "./activeServers.ts";
-import {LinkButton} from "../ui/Button.tsx";
+import {CatalogResponse, ServerResponse} from "../clients/ManagerClient.ts";
+import {Button, LinkButton} from "../ui/Button.tsx";
 import {Heading} from "../ui/Heading.tsx";
 import {Panel} from "../ui/Panel.tsx";
 import {TextInput} from "../ui/Field.tsx";
-import {usePolling} from "../utils/usePolling.ts";
+import {AccountServers} from "./AccountServers.tsx";
+import {ServerRow} from "./ServerRow.tsx";
+import {latestServers} from "./personalServers.ts";
+import {useServers} from "./useServers.ts";
 
-const SERVERS_REFRESH_MS = 10_000
-
-function shutdownHint(idleShutdownAt: string) {
-  const minutes = Math.round((new Date(idleShutdownAt).getTime() - Date.now()) / 60_000)
-  return minutes < 1 ? "Shuts down any moment" : `Shuts down in ${minutes}m`
+export function ServerList({managed = false}: {managed?: boolean}) {
+  return <Panel as="section" className="mx-4 my-6 flex-1 max-w-content p-4 sm:p-6 font-sans">
+    <header className="flex flex-wrap items-center justify-between gap-4 mb-6">
+      <Heading level={1} id="servers-heading">{managed ? "Manage servers" : "Server list"}</Heading>
+      <LinkButton to="/server-creator">Create server</LinkButton>
+    </header>
+    {managed ? <AccountServers><PersonalServers/></AccountServers> : <PublicServers/>}
+  </Panel>
 }
 
-export function ServerList() {
-  const {setNotificationMessage} = UpdateNotification()
-  const servers = usePolling(useLoaderData<ServerResponse[] | null>(), activeServers, SERVERS_REFRESH_MS)
+function PublicServers() {
+  const state = useServers(false)
+  return <ServerCollection {...state} managed={false}/>
+}
+
+function PersonalServers() {
+  const catalog = useLoaderData<CatalogResponse | null>()
+  const state = useServers(true)
+  return <ServerCollection {...state} servers={state.servers ? latestServers(state.servers) : null} managed catalog={catalog}/>
+}
+
+function ServerCollection({servers, error, reload, managed, catalog = null}: {
+  servers: ServerResponse[] | null,
+  error: string,
+  reload: () => void,
+  managed: boolean,
+  catalog?: CatalogResponse | null,
+}) {
   const [search, setSearch] = useState("")
-
   const query = search.trim().toLowerCase()
-  const matchingServers = servers?.filter(server =>
-    [server.name, server.hostname, server.options.VERSION ?? ""].some(value => value.toLowerCase().includes(query))
-  ) ?? []
+  const matching = servers?.filter(server => [server.name, server.hostname, server.options.VERSION ?? ""].some(value => value.toLowerCase().includes(query))) ?? []
 
-  const copyHostname = async (hostname: string) => {
-    try {
-      await navigator.clipboard.writeText(hostname)
-      setNotificationMessage("Hostname copied to clipboard")
-    } catch {
-      setNotificationMessage("Could not copy hostname")
-    }
-  }
-
-  return (
-    <Panel as="section" className="mx-4 my-6 flex-1 max-w-content p-4 sm:p-8 font-sans text-sm">
-      <header className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <Heading level={2} id="servers-heading">Servers</Heading>
-        <LinkButton to="/server-creator">Create server</LinkButton>
-      </header>
-
-      <label className="sr-only" htmlFor="server-search">Search servers</label>
-      <TextInput id="server-search" type="search" className="w-full mb-4"
-             placeholder="Search by name, hostname or version"
-             value={search} onChange={event => setSearch(event.target.value)}/>
-
-      <div className="max-h-136 overflow-y-auto focus-ring"
-           role="region" aria-labelledby="servers-heading" tabIndex={0}>
-        {servers === null ? (
-          <p className="py-8 text-content-muted" role="status">Loading servers...</p>
-        ) : servers.length === 0 ? (
-          <p className="py-8 text-content-muted">No servers running right now. Create one to get started.</p>
-        ) : matchingServers.length === 0 ? (
-          <p className="py-8 text-content-muted" role="status">No servers match your search.</p>
-        ) : (
-          <ul>
-            {matchingServers.map(server => (
-              <li key={server.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-2 py-4 px-1 border-t border-edge">
-                <div className="min-w-0">
-                  <Heading level={3} className="wrap-anywhere">{server.name}</Heading>
-                  <p className="text-content-muted">{server.options.VERSION ?? "Unknown version"}</p>
-                </div>
-
-                <ServerPresence server={server}/>
-
-                <button className="col-span-full flex items-center justify-between gap-4 px-3 py-2 bg-inset hover:bg-surface-hover text-left cursor-pointer focus-ring"
-                        aria-label={`Copy hostname ${server.hostname}`}
-                        onClick={() => copyHostname(server.hostname)}>
-                  <span className="font-mono text-xs text-content-muted wrap-anywhere">{server.hostname}</span>
-                  <span className="shrink-0 text-xs text-action-content">Copy</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </Panel>
-  )
-}
-
-function ServerPresence({server}: { server: ServerResponse }) {
-  const label = statusLabels[server.status] ?? server.status
-  const players = server.status === "running" && server.players
-  const hint = server.status === "expiring" && server.idleShutdownAt ? shutdownHint(server.idleShutdownAt) : label
-
-  return (
-    <div className="group relative flex items-center gap-2 self-start pt-1 text-xs" tabIndex={hint !== label ? 0 : undefined}>
-      <span className={`size-2 shrink-0 ${statusDots[server.status] ?? "bg-content-muted"}`} role="img" aria-label={hint}/>
-      <span>{players ? `${players.online}/${players.max}` : label}</span>
-      {hint !== label && (
-        <span role="tooltip" className="absolute right-0 top-full z-10 hidden pt-1 group-hover:block group-focus:block">
-          <span className="block whitespace-nowrap px-2 py-1 bg-inset border border-edge">{hint}</span>
-        </span>
-      )}
+  return <div>
+    {error && <div className="flex flex-col items-start gap-2 mb-4">
+      <p role="alert">Could not {servers ? "refresh" : "load"} servers. {error}</p>
+      <Button size="sm" variant="secondary" onClick={reload}>Try again</Button>
+    </div>}
+    <label className="sr-only" htmlFor="server-search">Search servers</label>
+    <TextInput id="server-search" type="search" className="w-full mb-4" placeholder="Search by name, hostname or version" value={search} onChange={event => setSearch(event.target.value)}/>
+    <div className="max-h-136 overflow-y-auto focus-ring" role="region" aria-labelledby="servers-heading" tabIndex={0}>
+      {servers === null ? !error && <p className="py-8 text-content-muted" role="status">Loading servers...</p>
+        : servers.length === 0 ? <p className="py-8 text-content-muted">{managed ? "No servers yet. Create a Free server to keep your world between sessions." : "No servers running right now. Create one to get started."}</p>
+        : matching.length === 0 ? <p className="py-8 text-content-muted" role="status">No servers match your search.</p>
+        : <ul>{matching.map(server => <ServerRow key={server.id} server={server} managed={managed} catalog={catalog}/>)}</ul>}
     </div>
-  )
+  </div>
 }
