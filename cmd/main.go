@@ -2,18 +2,7 @@ package main
 
 import (
 	"context"
-	"github.com/VaynerAkaWalo/go-toolkit/xhttp"
 	"github.com/VaynerAkaWalo/go-toolkit/xlog"
-	"github.com/VaynerAkaWalo/mc-server-manager/internal/auth"
-	"github.com/VaynerAkaWalo/mc-server-manager/internal/bucket"
-	"github.com/VaynerAkaWalo/mc-server-manager/internal/catalog"
-	"github.com/VaynerAkaWalo/mc-server-manager/internal/cluster"
-	"github.com/VaynerAkaWalo/mc-server-manager/internal/frontend"
-	"github.com/VaynerAkaWalo/mc-server-manager/internal/internalapi"
-	"github.com/VaynerAkaWalo/mc-server-manager/internal/save"
-	"github.com/VaynerAkaWalo/mc-server-manager/internal/server"
-	"github.com/VaynerAkaWalo/mc-server-manager/internal/store"
-	"github.com/VaynerAkaWalo/mc-server-manager/internal/versions"
 	"log/slog"
 	"os"
 )
@@ -21,80 +10,23 @@ import (
 func main() {
 	slog.SetDefault(slog.New(xlog.NewPreConfiguredHandler()))
 
-	clientLoader := cluster.CreateClientLoader()
-	clusterClient, err := clientLoader.Client()
-	if err != nil {
-		slog.Error("Failed to create cluster client")
-		os.Exit(-1)
-	}
-	dynamicClient, err := clientLoader.DynamicClient()
-	if err != nil {
-		slog.Error("Failed to create crd cluster client")
-		os.Exit(-1)
+	if name, rest, ok := splitJobArgs(os.Args[1:]); ok {
+		os.Args = append(os.Args[:1], rest...)
+
+		os.Exit(runJob(context.Background(), name))
 	}
 
-	dbURL := os.Getenv("DB_URL")
-	if dbURL == "" {
-		slog.Error("DB_URL is not set")
-		os.Exit(-1)
-	}
-	serverStore, err := store.Connect(context.Background(), dbURL)
-	if err != nil {
-		slog.Error("Failed to connect to database: " + err.Error())
-		os.Exit(-1)
-	}
-	defer serverStore.Close()
+	runServer()
+}
 
-	err = serverStore.Migrate(context.Background())
-	if err != nil {
-		slog.Error("Failed to migrate database: " + err.Error())
-		os.Exit(-1)
+func splitJobArgs(args []string) (name string, rest []string, ok bool) {
+	if len(args) == 0 || args[0] != "job" {
+		return "", nil, false
 	}
 
-	authHandlers, err := auth.NewHandlers(os.Getenv("OIDC_ISSUER"), os.Getenv("OIDC_CLIENT_ID"), os.Getenv("APP_URL"), serverStore)
-	if err != nil {
-		slog.Error("Failed to configure authentication", "error", err)
-		os.Exit(1)
-	}
-	go authHandlers.RunCleanup(context.Background())
-
-	saveBucket, err := bucket.New(bucket.Config{
-		Endpoint:  os.Getenv("SAVES_ENDPOINT"),
-		Bucket:    os.Getenv("SAVES_BUCKET"),
-		Region:    os.Getenv("SAVES_REGION"),
-		AccessKey: os.Getenv("AWS_ACCESS_KEY_ID"),
-		SecretKey: os.Getenv("AWS_SECRET_ACCESS_KEY"),
-	})
-	if err != nil {
-		slog.Error("Failed to configure the saves bucket", "error", err)
-		os.Exit(1)
-	}
-	saveService := save.NewService(serverStore, saveBucket)
-
-	gameVersions := versions.NewSource()
-
-	serverService := server.CreateServerService(cluster.CreateClusterService(*clusterClient, *dynamicClient), serverStore, gameVersions)
-	serverHandlers := server.NewServerHandlers(serverService, authHandlers)
-
-	go serverService.RunMonitor(context.Background())
-
-	frontendHandlers := frontend.NewFrontendHandlers(os.DirFS("static"))
-
-	internalHandlers := internalapi.NewHandlers(serverStore.Ping, &serverService, saveService)
-
-	publicServer := xhttp.Server{
-		Addr:     ":8080",
-		Handlers: []xhttp.RouteHandler{authHandlers, serverHandlers, save.NewHandlers(saveService, authHandlers), catalog.NewCatalogHandlers(gameVersions), frontendHandlers},
-	}
-	internalServer := xhttp.Server{
-		Addr:     ":8081",
-		Handlers: []xhttp.RouteHandler{internalHandlers},
+	if len(args) == 1 {
+		return "", nil, true
 	}
 
-	failed := make(chan error, 2)
-	go func() { failed <- publicServer.ListenAndServe() }()
-	go func() { failed <- internalServer.ListenAndServe() }()
-
-	slog.Error((<-failed).Error())
-	os.Exit(1)
+	return args[1], args[2:], true
 }
