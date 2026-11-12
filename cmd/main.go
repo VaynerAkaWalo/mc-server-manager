@@ -10,13 +10,23 @@ import (
 func main() {
 	slog.SetDefault(slog.New(xlog.NewPreConfiguredHandler()))
 
-	if len(os.Args) > 1 && os.Args[1] == "job" {
-		name := ""
-		if len(os.Args) > 2 {
-			name = os.Args[2]
-		}
+	if name, rest, ok := splitJobArgs(os.Args[1:]); ok {
+		os.Args = append(os.Args[:1], rest...)
+
 		os.Exit(runJob(context.Background(), name))
 	}
 
 	runServer()
+}
+
+func splitJobArgs(args []string) (name string, rest []string, ok bool) {
+	if len(args) == 0 || args[0] != "job" {
+		return "", nil, false
+	}
+
+	if len(args) == 1 {
+		return "", nil, true
+	}
+
+	return args[1], args[2:], true
 }

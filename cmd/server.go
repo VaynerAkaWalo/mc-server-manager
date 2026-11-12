@@ -56,7 +56,7 @@ func runServer() {
 
 	frontendHandlers := frontend.NewFrontendHandlers(os.DirFS("static"))
 
-	internalHandlers := internalapi.NewHandlers(serverStore.Ping)
+	internalHandlers := internalapi.NewHandlers(serverStore.Ping, &serverService, saveService)
 
 	publicServer := xhttp.Server{
 		Addr:     ":8080",
