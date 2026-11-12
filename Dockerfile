@@ -10,7 +10,7 @@ COPY web .
 
 RUN npm run build
 
-FROM --platform=$BUILDPLATFORM golang:1.24.2-alpine AS build
+FROM --platform=$BUILDPLATFORM golang:1.26.11-alpine AS build
 
 ARG TARGETARCH
 
@@ -24,7 +24,7 @@ COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -o app cmd/main.go
 
-FROM golang:1.24.2-alpine
+FROM golang:1.26.11-alpine
 
 WORKDIR /app
 
